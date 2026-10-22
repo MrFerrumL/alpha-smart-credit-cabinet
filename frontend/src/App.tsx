@@ -8,7 +8,9 @@ import { FullScreenLoader } from './components/ui';
 import { ApplicationPage } from './pages/ApplicationPage';
 import { ApplicationWizardPage } from './pages/ApplicationWizardPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
+import { ContractPage } from './pages/ContractPage';
 import { HomePage } from './pages/HomePage';
+import { LoanPage, LoansPage } from './pages/LoansPage';
 import { LoginPage } from './pages/LoginPage';
 import { MatchPage } from './pages/MatchPage';
 import { QueuePage } from './pages/QueuePage';
@@ -69,11 +71,14 @@ function AppRoutes() {
             <Route path="match" element={<MatchPage />} />
             <Route path="applications" element={<ApplicationsPage />} />
             <Route path="applications/:id/edit" element={<ApplicationWizardPage />} />
+            <Route path="loans" element={<LoansPage />} />
+            <Route path="loans/:id" element={<LoanPage />} />
           </Route>
           <Route element={<RequireRole role="analyst" />}>
             <Route path="queue" element={<QueuePage />} />
           </Route>
           <Route path="applications/:id" element={<ApplicationPage />} />
+          <Route path="applications/:id/contract" element={<ContractPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

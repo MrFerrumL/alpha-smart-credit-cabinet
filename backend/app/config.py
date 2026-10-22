@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     pipeline_max_attempts: int = 5
     worker_poll_interval_s: float = 0.5
     offer_valid_days: int = 7
+    housekeeping_interval_s: float = 60.0  # как часто воркер закрывает просроченные предложения
+
+    # Подписание договора одноразовым кодом из уведомлений кабинета.
+    signing_code_ttl_s: int = 300
+    signing_max_attempts: int = 3
+    bank_name: str = "АО «Банк» (демо)"
 
     # Документы клиентов. В Docker — отдельный том.
     upload_dir: str = (Path(__file__).resolve().parents[1] / "uploads").as_posix()

@@ -17,13 +17,17 @@ from app.schemas import (
     ApplicationUpdate,
     CancelIn,
     CheckOut,
+    ContractOut,
     DocumentOut,
     EventOut,
+    SignConfirmIn,
+    SigningCodeOut,
     StreamSnapshot,
     TaskAnswerIn,
     TaskOut,
 )
 from app.services import applications as svc
+from app.services import signing as signing_svc
 from app.services import tasks as tasks_svc
 
 STREAM_POLL_S = 1.0
@@ -215,3 +219,62 @@ async def application_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+
+# --- Предложение, договор, подписание -----------------------------------------------------------
+
+
+@router.post("/{application_id}/offer/accept", response_model=ApplicationOut, summary="Принять предложение банка")
+def accept_offer(
+    application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    signing_svc.accept_offer(db, user, app)
+    return svc.to_out(app, user, db)
+
+
+@router.post("/{application_id}/offer/decline", response_model=ApplicationOut, summary="Отказаться от предложения")
+def decline_offer(
+    application_id: int,
+    data: CancelIn | None = None,
+    user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    signing_svc.decline_offer(db, user, app, data.comment if data else None)
+    return svc.to_out(app, user, db)
+
+
+@router.get("/{application_id}/contract", response_model=ContractOut, summary="Кредитный договор")
+def get_contract(
+    application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ContractOut:
+    return signing_svc.contract(db, svc.get_for_user(db, user, application_id))
+
+
+@router.post(
+    "/{application_id}/signing/code",
+    response_model=SigningCodeOut,
+    summary="Запросить код для подписания (приходит в уведомления кабинета)",
+)
+def request_signing_code(
+    application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
+) -> SigningCodeOut:
+    app = svc.get_for_user(db, user, application_id)
+    challenge = signing_svc.request_code(db, user, app)
+    return SigningCodeOut(
+        challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left
+    )
+
+
+@router.post("/{application_id}/signing/confirm", response_model=ApplicationOut, summary="Подписать договор кодом")
+def confirm_signing(
+    application_id: int,
+    data: SignConfirmIn,
+    user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    signing_svc.confirm(db, user, app, data.challenge_id, data.code)
+    return svc.to_out(app, user, db)

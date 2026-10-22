@@ -1,6 +1,6 @@
-"""Клиент внешних источников: ЕГРЮЛ/ЕГРИП, бюро кредитных историй, ФНС «Прозрачный бизнес».
+"""Клиент внешних систем: ЕГРЮЛ/ЕГРИП, бюро кредитных историй, ФНС «Прозрачный бизнес», АБС банка.
 
-В прототипе все три источника эмулирует сервис mocks. Клиент делает то же, что делал бы с
+В прототипе все внешние системы эмулирует сервис mocks. Клиент делает то же, что делал бы с
 настоящими интеграциями: ограничивает время ответа, повторяет запрос при сбоях с растущей
 паузой и отличает «данных нет» от «источник недоступен».
 """
@@ -36,11 +36,11 @@ class ExternalSources:
         self._retries = max(1, retries)
         self._backoff = backoff
 
-    def _get(self, source: str, path: str) -> dict:
+    def _request(self, source: str, method: str, path: str, json: dict | None = None) -> dict:
         last_error = "unknown error"
         for attempt in range(1, self._retries + 1):
             try:
-                response = self._client.get(path, timeout=self._timeout)
+                response = self._client.request(method, path, json=json, timeout=self._timeout)
                 if response.status_code == 404:
                     raise NotInSource(source)
                 if response.status_code >= 500:
@@ -58,13 +58,23 @@ class ExternalSources:
         raise SourceUnavailable(source, last_error)
 
     def egrul(self, inn: str) -> dict:
-        return self._get("egrul", f"/egrul/{inn}")
+        return self._request("egrul", "GET", f"/egrul/{inn}")
 
     def bki(self, inn: str) -> dict:
-        return self._get("bki", f"/bki/{inn}")
+        return self._request("bki", "GET", f"/bki/{inn}")
 
     def fns(self, inn: str) -> dict:
-        return self._get("fns", f"/fns/{inn}")
+        return self._request("fns", "GET", f"/fns/{inn}")
+
+    def disburse(self, *, contract_number: str, inn: str, amount: int) -> dict:
+        """Перевод суммы кредита на счёт клиента. Номер договора — ключ идемпотентности:
+        повтор запроса после сбоя связи не приведёт к двойной выдаче."""
+        return self._request(
+            "abs",
+            "POST",
+            "/abs/disbursements",
+            json={"contract_number": contract_number, "inn": inn, "amount": amount},
+        )
 
 
 @lru_cache

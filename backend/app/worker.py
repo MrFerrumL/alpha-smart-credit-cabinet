@@ -14,6 +14,7 @@ from app.db import SessionLocal
 from app.observability import configure_logging
 from app.pipeline.queue import recover_stale
 from app.pipeline.runner import process_next
+from app.pipeline.steps import expire_offers
 from app.services.integrations import get_sources
 
 log = logging.getLogger("app.worker")
@@ -37,8 +38,15 @@ def main() -> None:
         recovered = recover_stale(db)
     log.info("worker started", extra={"status": f"recovered {recovered} stale jobs"})
 
+    next_housekeeping = 0.0
     while not _stopping:
         try:
+            if time.monotonic() >= next_housekeeping:
+                with SessionLocal() as db:
+                    expired = expire_offers(db)
+                if expired:
+                    log.info("offers expired", extra={"status": str(expired)})
+                next_housekeeping = time.monotonic() + settings.housekeeping_interval_s
             worked = process_next(SessionLocal, sources)
         except OperationalError:
             log.exception("database unavailable, retrying")
