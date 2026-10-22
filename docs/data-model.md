@@ -141,7 +141,7 @@ erDiagram
         string kind "document | field | question"
         string title
         json payload "какой документ или поле анкеты нужно"
-        string status "open | done"
+        string status "open | done | expired"
         string answer
     }
     documents {
