@@ -267,7 +267,17 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
         ...(outcome === 'reject' ? { reasons: reason ? [reason] : [], tips: tip ? [tip] : [] } : {}),
         ...(outcome === 'request_info' ? { task_kind: taskKind, task_title: taskTitle } : {}),
       },
-      { onError: (e) => setError(e instanceof ApiError ? e.message : 'Не удалось сохранить решение') },
+      {
+        // В errors[] сказано, какое поле неверно, — это точнее общего detail.
+        onError: (e) =>
+          setError(
+            e instanceof ApiError
+              ? e.errors?.length
+                ? e.errors.map((x) => x.message).join('. ')
+                : e.message
+              : 'Не удалось сохранить решение',
+          ),
+      },
     );
   };
 
@@ -300,6 +310,8 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
                 step={50_000}
                 min={a.product_limits.min_amount}
                 max={a.product_limits.max_amount}
+                allowNegative={false}
+                allowDecimal={false}
               />
               <NumberInput
                 label="Срок, мес."
@@ -308,6 +320,8 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
                 disabled={outcome === 'approve'}
                 min={a.product_limits.min_term}
                 max={a.product_limits.max_term}
+                allowNegative={false}
+                allowDecimal={false}
               />
               <NumberInput
                 label="Ставка, %"
@@ -315,7 +329,8 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
                 onChange={(v) => setRateValue(Number(v) || 0)}
                 decimalScale={2}
                 step={0.5}
-                min={a.min_rate ?? undefined}
+                min={a.min_rate ?? 0.01}
+                max={99.99}
               />
             </SimpleGrid>
             <Group gap="lg">
@@ -357,12 +372,13 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
             placeholder="Например: договор поставки оборудования"
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.currentTarget.value)}
+            maxLength={255}
           />
         )}
         {outcome === 'reject' && (
           <>
-            <TextInput label="Причина отказа для клиента" value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
-            <TextInput label="Что можно улучшить (необязательно)" value={tip} onChange={(e) => setTip(e.currentTarget.value)} />
+            <TextInput label="Причина отказа для клиента" value={reason} onChange={(e) => setReason(e.currentTarget.value)} maxLength={300} />
+            <TextInput label="Что можно улучшить (необязательно)" value={tip} onChange={(e) => setTip(e.currentTarget.value)} maxLength={300} />
           </>
         )}
         <Textarea
@@ -370,6 +386,7 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
           description="Обязательно. Клиент его не видит."
           value={comment}
           onChange={(e) => setComment(e.currentTarget.value)}
+          maxLength={2000}
           autosize
           minRows={2}
         />
@@ -377,6 +394,7 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
           label="Сообщение клиенту (необязательно)"
           value={clientMessage}
           onChange={(e) => setClientMessage(e.currentTarget.value)}
+          maxLength={1000}
           autosize
           minRows={1}
         />
