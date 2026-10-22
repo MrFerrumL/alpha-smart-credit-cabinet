@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 137 автотестов на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 138 автотестов на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -199,6 +199,8 @@ docker compose up --build
   - После подписи статус остаётся «Подписание договора», в окне: «Договор подписан. Деньги поступят, как только
     вы закроете условия выдачи». Закрыто одно условие — денег всё ещё нет; закрыты оба — «Деньги зачислены».
   - Если выдачу поставить в очередь вручную при открытых условиях, шаг деньги не переводит (только автотест).
+  - Если документы по залогу приложены ещё в анкете (шаг «Документы»), условие о них при принятии сразу
+    отмечено «Готово» — повторно банк их не просит, открытым остаётся только поручительство.
   - Клиенту нельзя открывать карточку аналитика и принимать решение (403).
 - **Автотесты:**
   `test_pipeline.py::test_investment_credit_goes_to_specialist`,
@@ -207,6 +209,7 @@ docker compose up --build
   `test_signing.py::test_secured_loan_is_issued_only_after_issue_conditions_are_closed`,
   `test_signing.py::test_disburse_step_refuses_while_conditions_are_open`,
   `test_signing.py::test_conditions_close_when_the_contract_expires`,
+  `test_signing.py::test_collateral_documents_from_the_form_are_not_requested_again`,
   `test_signing.py::test_unsecured_loan_has_no_issue_conditions` (у кредита без залога условий нет),
   `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status` (живой статус).
   Появление решения аналитика у клиента без перезагрузки страницы — в браузере, `e2e/tests/personas.spec.ts`
@@ -579,7 +582,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 137 тестов; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 138 тестов; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 

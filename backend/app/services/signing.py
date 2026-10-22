@@ -23,7 +23,7 @@ from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, schedule
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, TooManyRequests
-from app.models import Application, ApplicationEvent, ClientTask, Offer, SigningChallenge, User, utcnow
+from app.models import Application, ApplicationEvent, ClientTask, Document, Offer, SigningChallenge, User, utcnow
 from app.pipeline.queue import enqueue
 from app.schemas import ContractOut, ContractSection, ScheduleRowOut
 from app.services.applications import handed_off, user_may_sign
@@ -164,7 +164,17 @@ def accept_offer(db: Session, user: User, app: Application) -> Offer:
     offer.accepted_at = utcnow()
     offer.contract_number = f"КД-{utcnow().year}-{app.id:06d}"
     for spec in issue_conditions(PRODUCTS[offer.product_code]):
-        db.add(ClientTask(application_id=app.id, created_by_type="system", **spec))
+        task = ClientTask(application_id=app.id, created_by_type="system", **spec)
+        kind = (spec.get("payload") or {}).get("document_kind")
+        provided = kind and db.scalar(
+            select(Document.filename)
+            .where(Document.application_id == app.id, Document.kind == kind)
+            .order_by(Document.id)
+            .limit(1)
+        )
+        if provided:  # документ уже приложен к заявке в анкете: условие выполнено, повторно не просим
+            task.status, task.answer, task.resolved_at = "done", provided, utcnow()
+        db.add(task)
     apply_transition(
         db, app, Status.SIGNING, Actor.CLIENT, actor_id=user.id, event="offer_accepted",
         payload={

@@ -437,6 +437,42 @@ def test_secured_loan_is_issued_only_after_issue_conditions_are_closed(client, m
     assert app["status"]["code"] == "issued" and app["loan_id"]
 
 
+def test_collateral_documents_from_the_form_are_not_requested_again(client, mocks):
+    headers = auth(client, "vector@demo.local")
+    created = client.post("/api/applications", headers=headers, json={
+        "product_code": "invest", "purpose": "equipment", "amount": 25_000_000, "term_months": 48,
+        "form": {"finance": {"monthly_revenue": 8_000_000}, "collateral": {"kind": "equipment", "value": 30_000_000},
+                 "consent_bki": True},
+    })
+    app_id = created.json()["id"]
+    uploaded = client.post(f"/api/applications/{app_id}/documents", headers=headers,
+                           files={"file": ("zalog.pdf", b"%PDF-1.4 collateral", "application/pdf")},
+                           data={"kind": "collateral"})
+    assert uploaded.status_code == 201, uploaded.text
+    assert client.post(f"/api/applications/{app_id}/submit", headers=headers).status_code == 200
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "manual_review"
+    client.post(f"/api/applications/{app_id}/decision", headers=auth(client, "analyst@demo.local"), json={
+        "outcome": "counter_offer", "amount": 19_500_000, "term_months": 60, "comment": "Рекомендация конвейера",
+    })
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).status_code == 200
+
+    tasks = client.get(f"/api/applications/{app_id}/tasks", headers=headers).json()
+    document = next(t for t in tasks if t["kind"] == "document")
+    question = next(t for t in tasks if t["kind"] == "question")
+    assert document["status"] == "done" and document["answer"] == "zalog.pdf"  # залог уже приложен в анкете
+    assert question["status"] == "open"
+    assert get(client, app_id, headers)["open_tasks"] == 1
+
+    # Выдачу держит только поручительство. До выдачи не доводим: второй кредит «Вектора» изменил бы его оценку
+    # в следующих тестах — сама выдача после закрытия условий проверена в тесте выше.
+    sign(client, app_id, headers)
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "signing" and app["open_tasks"] == 1
+    assert len(client.get(f"/api/applications/{app_id}/documents", headers=headers).json()) == 1
+
+
 def test_unsecured_loan_has_no_issue_conditions(client, mocks):
     app_id, headers = approved(client, mocks)
     client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
