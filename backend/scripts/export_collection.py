@@ -74,6 +74,7 @@ LOGIN_HINTS: dict[tuple[str, str], str] = {
     "уже подключена, и запрос вернёт `409`.",
     ("post", "/api/applications/{application_id}/decision"): "Нужен токен аналитика (`analyst@demo.local`) и "
     "заявка в статусе «Рассматривает специалист», например `vector@demo.local` с инвестиционным кредитом.",
+    ("get", "/api/applications/{application_id}/assessment"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/applications/{application_id}/assessment/replay"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/policy/simulate"): "Нужен токен аналитика (`analyst@demo.local`).",
 }
