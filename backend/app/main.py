@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import inspect
 
-from app.api import applications, auth, companies, health, meta, products
+from app.api import applications, auth, companies, health, loans, meta, notifications, products
 from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.errors import register_error_handlers
@@ -18,7 +18,9 @@ TAGS = [
     {"name": "Справочники", "description": "Этапы, статусы и цели кредита для интерфейса"},
     {"name": "Продукты", "description": "Каталог, подбор продукта и калькулятор платежа"},
     {"name": "Компании", "description": "Данные компании из ЕГРЮЛ/ЕГРИП"},
-    {"name": "Заявки", "description": "Жизненный цикл кредитной заявки"},
+    {"name": "Заявки", "description": "Жизненный цикл кредитной заявки: анкета, конвейер, решение, договор, подпись"},
+    {"name": "Кредиты", "description": "Выданные кредиты и графики платежей"},
+    {"name": "Уведомления", "description": "Уведомления внутри кабинета — вместо SMS и почты"},
     {"name": "Служебное", "description": "Проверки живости и готовности"},
 ]
 
@@ -56,7 +58,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
     app.include_router(health.router)
-    for module in (auth, meta, products, companies, applications):
+    for module in (auth, meta, products, companies, applications, loans, notifications):
         app.include_router(module.router, prefix="/api")
     return app
 

@@ -34,6 +34,7 @@ import { useApplicationStream } from '../api/stream';
 import type { Application, ApplicationAction, ApplicationEvent } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ChecksCard, DecisionCard, DocumentList, TasksCard } from '../components/ApplicationBlocks';
+import { IssuedCard, SigningCard } from '../components/Signing';
 import { StageProgress } from '../components/StageProgress';
 import { Stat, StatusBadge, toneColor } from '../components/ui';
 import { dateTime, money, moneyShort, months, rate } from '../lib/format';
@@ -88,7 +89,7 @@ function StatusPanel({ app, live }: { app: Application; live: boolean }) {
               Продолжить оформление
             </Button>
           )}
-          {can('cancel') && (
+          {can('cancel') && !can('decline_offer') && (
             <Button size="md" variant="default" leftSection={<IconX size={18} />} onClick={() => setCancelOpened(true)}>
               {app.status.code === 'draft' ? 'Удалить черновик' : 'Отозвать заявку'}
             </Button>
@@ -215,6 +216,8 @@ export function ApplicationPage() {
       <StatusPanel app={app} live={live} />
 
       {hasOpenTasks && <TasksCard app={app} tasks={tasks.data ?? []} readOnly={readOnly} />}
+      {app.status.code === 'issued' && <IssuedCard app={app} />}
+      {app.status.code === 'signing' && <SigningCard app={app} />}
       <DecisionCard app={app} />
       {!hasOpenTasks && tasks.data && <TasksCard app={app} tasks={tasks.data} readOnly={readOnly} />}
 

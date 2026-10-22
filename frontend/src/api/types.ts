@@ -151,7 +151,15 @@ export interface ApplicationForm {
   consent_bki: boolean;
 }
 
-export type ApplicationAction = 'edit' | 'submit' | 'cancel' | 'answer_tasks' | 'accept_offer' | 'sign' | 'decide';
+export type ApplicationAction =
+  | 'edit'
+  | 'submit'
+  | 'cancel'
+  | 'answer_tasks'
+  | 'accept_offer'
+  | 'decline_offer'
+  | 'sign'
+  | 'decide';
 
 export interface Application {
   id: number;
@@ -169,6 +177,7 @@ export interface Application {
   offer: Offer | null;
   decision: Decision | null;
   open_tasks: number;
+  loan_id: number | null;
   created_at: string;
   updated_at: string;
   submitted_at: string | null;
@@ -196,8 +205,10 @@ export interface Offer {
   rate: number;
   monthly_payment: number;
   explanation: string[];
-  status: string;
+  status: 'active' | 'accepted' | 'signed' | 'declined' | 'expired';
   valid_until: string | null;
+  contract_number: string | null;
+  signed_at: string | null;
 }
 
 export interface Decision {
@@ -250,4 +261,72 @@ export interface StreamSnapshot {
   terminal: boolean;
   last_event_id: number;
   open_tasks: number;
+}
+
+export interface ContractSection {
+  title: string;
+  paragraphs: string[];
+}
+
+export interface Contract {
+  number: string;
+  date: string;
+  bank_name: string;
+  company_name: string;
+  company_inn: string;
+  product_name: string;
+  amount: number;
+  term_months: number;
+  rate: number;
+  monthly_payment: number;
+  total_payments: number;
+  sections: ContractSection[];
+  schedule: ScheduleRow[];
+  signed: boolean;
+  signed_at: string | null;
+  signed_by: string | null;
+}
+
+export interface SigningCode {
+  challenge_id: number;
+  expires_at: string;
+  attempts_left: number;
+  delivery: 'in_app';
+}
+
+export interface Loan {
+  id: number;
+  application_id: number;
+  contract_number: string;
+  product_code: string;
+  product_name: string;
+  amount: number;
+  rate: number;
+  term_months: number;
+  monthly_payment: number;
+  issued_at: string;
+  status: 'active' | 'closed';
+  next_payment_date: string | null;
+  next_payment_amount: number | null;
+  balance: number;
+  paid_payments: number;
+  total_payments: number;
+}
+
+export interface LoanScheduleRow extends ScheduleRow {
+  date: string;
+}
+
+export interface LoanDetail extends Loan {
+  schedule: LoanScheduleRow[];
+}
+
+export interface AppNotification {
+  id: number;
+  kind: 'status' | 'signing_code' | 'info';
+  title: string;
+  body: string | null;
+  link: string | null;
+  created_at: string;
+  read_at: string | null;
 }

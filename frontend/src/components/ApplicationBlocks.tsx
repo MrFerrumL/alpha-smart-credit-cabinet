@@ -33,6 +33,7 @@ import { Link } from 'react-router';
 import { useAnswerTask, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, SourceCheck, UploadedDocument } from '../api/types';
 import { date, money, moneyShort, months, rate } from '../lib/format';
+import { OfferActions } from './Signing';
 import { Stat } from './ui';
 
 // --- Решение банка -----------------------------------------------------------------------------
@@ -143,6 +144,7 @@ export function DecisionCard({ app }: { app: Application }) {
             <ReasonList items={decision.reasons} tone="good" />
           </>
         )}
+        <OfferActions app={app} />
       </Card>
     );
   }
@@ -166,6 +168,7 @@ export function DecisionCard({ app }: { app: Application }) {
           Почему условия другие
         </Text>
         <ReasonList items={decision.reasons} tone="info" />
+        <OfferActions app={app} />
       </Card>
     );
   }

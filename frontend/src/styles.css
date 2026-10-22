@@ -139,3 +139,26 @@ body {
     box-shadow: 0 0 0 6px rgba(18, 184, 134, 0);
   }
 }
+
+/* Печать договора и графика платежей: только документ, без меню и кнопок. */
+@media print {
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-header,
+  .mantine-Notifications-root,
+  .no-print {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  .mantine-Card-root {
+    box-shadow: none !important;
+  }
+}

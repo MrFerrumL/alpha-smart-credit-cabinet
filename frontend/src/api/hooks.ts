@@ -3,18 +3,23 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  AppNotification,
   Application,
   ApplicationEvent,
   Calculation,
   ClientTask,
   Company,
   CompanyLookup,
+  Contract,
   DemoAccount,
   Financials,
+  Loan,
+  LoanDetail,
   Meta,
   Product,
   ProductMatch,
   Purpose,
+  SigningCode,
   SourceCheck,
   UploadedDocument,
 } from './types';
@@ -223,5 +228,86 @@ export function useAnswerTask(id: number) {
       api<ClientTask>(`/applications/${id}/tasks/${taskId}/answer`, { method: 'POST', json: { answer } }),
     onSuccess: invalidate,
     onError: notifyError,
+  });
+}
+
+// --- Предложение, договор, подписание ----------------------------------------------------------
+
+function useApplicationMutation<TVars>(id: number, request: (vars: TVars) => Promise<Application>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: request,
+    onSuccess: (app) => {
+      qc.setQueryData(keys.application(app.id), app);
+      qc.invalidateQueries({ queryKey: ['application', id] });
+      qc.invalidateQueries({ queryKey: ['applications'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: notifyError,
+  });
+}
+
+export const useAcceptOffer = (id: number) =>
+  useApplicationMutation<void>(id, () => api<Application>(`/applications/${id}/offer/accept`, { method: 'POST' }));
+
+export const useDeclineOffer = (id: number) =>
+  useApplicationMutation<{ comment?: string }>(id, ({ comment }) =>
+    api<Application>(`/applications/${id}/offer/decline`, { method: 'POST', json: { comment: comment ?? null } }),
+  );
+
+export function useContract(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['application', id, 'contract'],
+    queryFn: () => api<Contract>(`/applications/${id}/contract`),
+    enabled,
+  });
+}
+
+export function useRequestSigningCode(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<SigningCode>(`/applications/${id}/signing/code`, { method: 'POST' }),
+    // Код приходит в уведомления кабинета — сразу подтягиваем их, не дожидаясь опроса.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onError: notifyError,
+  });
+}
+
+export function useConfirmSigning(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { challenge_id: number; code: string }) =>
+      api<Application>(`/applications/${id}/signing/confirm`, { method: 'POST', json: body }),
+    onSuccess: (app) => {
+      qc.setQueryData(keys.application(app.id), app);
+      qc.invalidateQueries({ queryKey: ['application', id] });
+    },
+  });
+}
+
+// --- Кредиты и уведомления ---------------------------------------------------------------------
+
+export function useLoans(enabled = true) {
+  return useQuery({ queryKey: ['loans'], queryFn: () => api<Loan[]>('/loans'), enabled });
+}
+
+export function useLoan(id: number) {
+  return useQuery({ queryKey: ['loans', id], queryFn: () => api<LoanDetail>(`/loans/${id}`) });
+}
+
+export function useNotifications(enabled: boolean) {
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api<AppNotification[]>('/notifications'),
+    enabled,
+    refetchInterval: 10_000,
+  });
+}
+
+export function useReadAllNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>('/notifications/read-all', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }

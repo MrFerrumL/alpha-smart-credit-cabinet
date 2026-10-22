@@ -246,6 +246,8 @@ class OfferOut(Out):
     explanation: list[str]
     status: str
     valid_until: UtcDatetime | None
+    contract_number: str | None
+    signed_at: UtcDatetime | None
 
 
 class DecisionOut(BaseModel):
@@ -272,6 +274,7 @@ class ApplicationOut(BaseModel):
     offer: OfferOut | None
     decision: DecisionOut | None
     open_tasks: int
+    loan_id: int | None
     created_at: UtcDatetime
     updated_at: UtcDatetime
     submitted_at: UtcDatetime | None
@@ -343,3 +346,92 @@ class StreamSnapshot(BaseModel):
     terminal: bool
     last_event_id: int
     open_tasks: int
+
+
+# --- Договор и подписание ------------------------------------------------------------------
+
+
+class ContractSection(BaseModel):
+    title: str
+    paragraphs: list[str]
+
+
+class ContractOut(BaseModel):
+    """Кредитный договор в структурированном виде: интерфейс показывает и печатает его."""
+
+    number: str
+    date: date
+    bank_name: str
+    company_name: str
+    company_inn: str
+    product_name: str
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+    total_payments: int
+    sections: list[ContractSection]
+    schedule: list[ScheduleRowOut]  # приложение 1: график платежей по условиям предложения
+    signed: bool
+    signed_at: UtcDatetime | None
+    signed_by: str | None
+
+
+class SigningCodeOut(BaseModel):
+    challenge_id: int
+    expires_at: UtcDatetime
+    attempts_left: int
+    delivery: str = Field(default="in_app", description="Код приходит в уведомления кабинета")
+
+
+class SignConfirmIn(BaseModel):
+    challenge_id: int
+    code: str = Field(min_length=4, max_length=12)
+
+
+# --- Кредиты -------------------------------------------------------------------------------
+
+
+class LoanScheduleRow(BaseModel):
+    n: int
+    date: date
+    payment: int
+    principal: int
+    interest: int
+    balance: int
+
+
+class LoanOut(BaseModel):
+    id: int
+    application_id: int
+    contract_number: str
+    product_code: str
+    product_name: str
+    amount: int
+    rate: float
+    term_months: int
+    monthly_payment: int
+    issued_at: UtcDatetime
+    status: str
+    next_payment_date: date | None
+    next_payment_amount: int | None
+    balance: int
+    paid_payments: int
+    total_payments: int
+
+
+class LoanDetailOut(LoanOut):
+    schedule: list[LoanScheduleRow]
+
+
+# --- Уведомления ---------------------------------------------------------------------------
+
+
+class NotificationOut(Out):
+    id: int
+    kind: str
+    title: str
+    body: str | None
+    link: str | None
+    created_at: UtcDatetime
+    read_at: UtcDatetime | None

@@ -1157,6 +1157,394 @@
           }
         }
       }
+    },
+    "/api/applications/{application_id}/offer/accept": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Принять предложение банка",
+        "operationId": "accept_offer_api_applications__application_id__offer_accept_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/offer/decline": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Отказаться от предложения",
+        "operationId": "decline_offer_api_applications__application_id__offer_decline_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CancelIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Data"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/contract": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Кредитный договор",
+        "operationId": "get_contract_api_applications__application_id__contract_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/signing/code": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Запросить код для подписания (приходит в уведомления кабинета)",
+        "operationId": "request_signing_code_api_applications__application_id__signing_code_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SigningCodeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/signing/confirm": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Подписать договор кодом",
+        "operationId": "confirm_signing_api_applications__application_id__signing_confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignConfirmIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loans": {
+      "get": {
+        "tags": [
+          "Кредиты"
+        ],
+        "summary": "Кредиты компании",
+        "operationId": "list_loans_api_loans_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LoanOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Loans Api Loans Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/loans/{loan_id}": {
+      "get": {
+        "tags": [
+          "Кредиты"
+        ],
+        "summary": "Кредит и график платежей",
+        "operationId": "get_loan_api_loans__loan_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "loan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Loan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoanDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "Уведомления"
+        ],
+        "summary": "Последние уведомления",
+        "operationId": "list_notifications_api_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Notifications Api Notifications Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "tags": [
+          "Уведомления"
+        ],
+        "summary": "Отметить все как прочитанные",
+        "operationId": "read_all_api_notifications_read_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1335,6 +1723,17 @@
             "type": "integer",
             "title": "Open Tasks"
           },
+          "loan_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loan Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1387,6 +1786,7 @@
           "offer",
           "decision",
           "open_tasks",
+          "loan_id",
           "created_at",
           "updated_at",
           "submitted_at",
@@ -1893,6 +2293,138 @@
         ],
         "title": "CompanyRef"
       },
+      "ContractOut": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "bank_name": {
+            "type": "string",
+            "title": "Bank Name"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "company_inn": {
+            "type": "string",
+            "title": "Company Inn"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          },
+          "total_payments": {
+            "type": "integer",
+            "title": "Total Payments"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ContractSection"
+            },
+            "type": "array",
+            "title": "Sections"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleRowOut"
+            },
+            "type": "array",
+            "title": "Schedule"
+          },
+          "signed": {
+            "type": "boolean",
+            "title": "Signed"
+          },
+          "signed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed At"
+          },
+          "signed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "date",
+          "bank_name",
+          "company_name",
+          "company_inn",
+          "product_name",
+          "amount",
+          "term_months",
+          "rate",
+          "monthly_payment",
+          "total_payments",
+          "sections",
+          "schedule",
+          "signed",
+          "signed_at",
+          "signed_by"
+        ],
+        "title": "ContractOut",
+        "description": "Кредитный договор в структурированном виде: интерфейс показывает и печатает его."
+      },
+      "ContractSection": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paragraphs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "paragraphs"
+        ],
+        "title": "ContractSection"
+      },
       "DecisionOut": {
         "properties": {
           "outcome": {
@@ -2247,6 +2779,261 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "LoanDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "contract_number": {
+            "type": "string",
+            "title": "Contract Number"
+          },
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "next_payment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Payment Date"
+          },
+          "next_payment_amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Payment Amount"
+          },
+          "balance": {
+            "type": "integer",
+            "title": "Balance"
+          },
+          "paid_payments": {
+            "type": "integer",
+            "title": "Paid Payments"
+          },
+          "total_payments": {
+            "type": "integer",
+            "title": "Total Payments"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/LoanScheduleRow"
+            },
+            "type": "array",
+            "title": "Schedule"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "application_id",
+          "contract_number",
+          "product_code",
+          "product_name",
+          "amount",
+          "rate",
+          "term_months",
+          "monthly_payment",
+          "issued_at",
+          "status",
+          "next_payment_date",
+          "next_payment_amount",
+          "balance",
+          "paid_payments",
+          "total_payments",
+          "schedule"
+        ],
+        "title": "LoanDetailOut"
+      },
+      "LoanOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "contract_number": {
+            "type": "string",
+            "title": "Contract Number"
+          },
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issued At"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "next_payment_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Payment Date"
+          },
+          "next_payment_amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Payment Amount"
+          },
+          "balance": {
+            "type": "integer",
+            "title": "Balance"
+          },
+          "paid_payments": {
+            "type": "integer",
+            "title": "Paid Payments"
+          },
+          "total_payments": {
+            "type": "integer",
+            "title": "Total Payments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "application_id",
+          "contract_number",
+          "product_code",
+          "product_name",
+          "amount",
+          "rate",
+          "term_months",
+          "monthly_payment",
+          "issued_at",
+          "status",
+          "next_payment_date",
+          "next_payment_amount",
+          "balance",
+          "paid_payments",
+          "total_payments"
+        ],
+        "title": "LoanOut"
+      },
+      "LoanScheduleRow": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "payment": {
+            "type": "integer",
+            "title": "Payment"
+          },
+          "principal": {
+            "type": "integer",
+            "title": "Principal"
+          },
+          "interest": {
+            "type": "integer",
+            "title": "Interest"
+          },
+          "balance": {
+            "type": "integer",
+            "title": "Balance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "date",
+          "payment",
+          "principal",
+          "interest",
+          "balance"
+        ],
+        "title": "LoanScheduleRow"
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -2380,6 +3167,72 @@
         ],
         "title": "MetaOut"
       },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "link",
+          "created_at",
+          "read_at"
+        ],
+        "title": "NotificationOut"
+      },
       "OfferOut": {
         "properties": {
           "id": {
@@ -2432,6 +3285,29 @@
               }
             ],
             "title": "Valid Until"
+          },
+          "contract_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Number"
+          },
+          "signed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed At"
           }
         },
         "type": "object",
@@ -2445,7 +3321,9 @@
           "monthly_payment",
           "explanation",
           "status",
-          "valid_until"
+          "valid_until",
+          "contract_number",
+          "signed_at"
         ],
         "title": "OfferOut"
       },
@@ -2641,6 +3519,56 @@
           "balance"
         ],
         "title": "ScheduleRowOut"
+      },
+      "SignConfirmIn": {
+        "properties": {
+          "challenge_id": {
+            "type": "integer",
+            "title": "Challenge Id"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 12,
+            "minLength": 4,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "code"
+        ],
+        "title": "SignConfirmIn"
+      },
+      "SigningCodeOut": {
+        "properties": {
+          "challenge_id": {
+            "type": "integer",
+            "title": "Challenge Id"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "attempts_left": {
+            "type": "integer",
+            "title": "Attempts Left"
+          },
+          "delivery": {
+            "type": "string",
+            "title": "Delivery",
+            "description": "Код приходит в уведомления кабинета",
+            "default": "in_app"
+          }
+        },
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "expires_at",
+          "attempts_left"
+        ],
+        "title": "SigningCodeOut"
       },
       "StatusInfoOut": {
         "properties": {
@@ -2922,7 +3850,15 @@
     },
     {
       "name": "Заявки",
-      "description": "Жизненный цикл кредитной заявки"
+      "description": "Жизненный цикл кредитной заявки: анкета, конвейер, решение, договор, подпись"
+    },
+    {
+      "name": "Кредиты",
+      "description": "Выданные кредиты и графики платежей"
+    },
+    {
+      "name": "Уведомления",
+      "description": "Уведомления внутри кабинета — вместо SMS и почты"
     },
     {
       "name": "Служебное",

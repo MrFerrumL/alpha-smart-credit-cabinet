@@ -5,8 +5,22 @@ from sqlalchemy.orm import Session
 from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
 from app.errors import InvalidTransition
 from app.models import Application, ApplicationEvent, utcnow
+from app.services.notifications import notify_company
 
 DECISION_STATUSES = frozenset({Status.APPROVED, Status.COUNTER_OFFER, Status.REJECTED})
+
+# О каких изменениях, сделанных банком, клиент получает уведомление в кабинете.
+NOTIFY_CLIENT = frozenset(
+    {
+        Status.NEEDS_INFO,
+        Status.MANUAL_REVIEW,
+        Status.APPROVED,
+        Status.COUNTER_OFFER,
+        Status.REJECTED,
+        Status.ISSUED,
+        Status.EXPIRED,
+    }
+)
 
 
 def apply_transition(
@@ -42,6 +56,16 @@ def apply_transition(
         payload=payload or {},
     )
     db.add(ev)
+    if actor != Actor.CLIENT and to in NOTIFY_CLIENT:
+        info = STATUS_INFO[to]
+        notify_company(
+            db,
+            application.company_id,
+            kind="status",
+            title=f"Заявка № {application.number}: {info.title.lower()}",
+            body=info.hint,
+            link=f"/applications/{application.id}",
+        )
     return ev
 
 

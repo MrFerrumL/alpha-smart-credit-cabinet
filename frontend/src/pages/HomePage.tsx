@@ -20,10 +20,11 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
-import { useApplications, useCompanyLookup, useLinkCompany } from '../api/hooks';
+import { useApplications, useCompanyLookup, useLinkCompany, useLoans } from '../api/hooks';
 import type { Company } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ApplicationCard } from '../components/ApplicationCard';
+import { LoanCard } from '../components/LoanCard';
 import { EmptyState, Section } from '../components/ui';
 import { greeting, plural, yearsSince } from '../lib/format';
 
@@ -257,6 +258,7 @@ function CompanyOnboarding() {
 export function HomePage() {
   const { user } = useAuth();
   const apps = useApplications();
+  const loans = useLoans(!!user?.company);
   if (!user) return null;
   const firstName = user.full_name.split(' ')[0];
 
@@ -296,6 +298,20 @@ export function HomePage() {
               <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="lg">
                 Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
               </Alert>
+            )}
+            {!!loans.data?.length && (
+              <Section
+                title="Мои кредиты"
+                action={
+                  <Anchor component={Link} to="/loans" fz="sm" fw={600}>
+                    Все кредиты
+                  </Anchor>
+                }
+              >
+                {loans.data.slice(0, 2).map((loan) => (
+                  <LoanCard key={loan.id} loan={loan} />
+                ))}
+              </Section>
             )}
             {attention.length > 0 && (
               <Section title="Нужно ваше действие">

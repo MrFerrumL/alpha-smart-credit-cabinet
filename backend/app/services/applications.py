@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
 from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
-from app.models import Application, ApplicationEvent, ClientTask, Offer, User, utcnow
+from app.models import Application, ApplicationEvent, ClientTask, Loan, Offer, User, utcnow
 from app.pipeline.queue import enqueue
 from app.pipeline.steps import SOURCE_TITLES
 from app.schemas import (
@@ -34,6 +34,12 @@ EVENT_TITLES = {
     "task_answered": "Вы ответили на запрос банка",
     "document_uploaded": "Загружен документ «{filename}»",
     "pipeline_failed": "Сбой обработки — заявку проверит специалист",
+    "offer_accepted": "Предложение принято — договор готов к подписанию",
+    "offer_declined": "Вы отказались от предложения банка",
+    "signing_code_sent": "Код для подписи отправлен в уведомления",
+    "contract_signed": "Договор подписан",
+    "disbursement_retry": "Банковская система не ответила — повторяем перевод",
+    "issued": "Деньги зачислены на расчётный счёт",
 }
 
 
@@ -50,19 +56,23 @@ def status_out(status: Status) -> StatusInfoOut:
     )
 
 
-def allowed_actions(app: Application, user: User) -> list[str]:
+def allowed_actions(app: Application, user: User, offer: Offer | None = None) -> list[str]:
     status = Status(app.status)
     actions: list[str] = []
     if user.role == "client" and user.company_id == app.company_id:
+        signed = offer is not None and offer.status == "signed"
         if status == Status.DRAFT:
             actions += ["edit", "submit"]
         if status == Status.NEEDS_INFO:
             actions.append("answer_tasks")
-        if can_transition(status, Status.SIGNING, Actor.CLIENT) and user.can_sign:
-            actions.append("accept_offer")
-        if status == Status.SIGNING and user.can_sign:
+        if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
+            if user.can_sign:
+                actions.append("accept_offer")
+            actions.append("decline_offer")
+        if status == Status.SIGNING and user.can_sign and not signed:
             actions.append("sign")
-        if can_transition(status, Status.CANCELLED, Actor.CLIENT):
+        # После подписи договора отозвать заявку нельзя — деньги уже в пути.
+        if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed:
             actions.append("cancel")
     if user.role == "analyst" and status == Status.MANUAL_REVIEW:
         actions.append("decide")
@@ -94,7 +104,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         monthly_payment=int(monthly_payment(app.amount, product.rate, app.term_months, product.repayment)),
         form=ApplicationForm.model_validate(app.form or {}),
         company=CompanyRef(id=app.company.id, inn=app.company.inn, name=app.company.short_name),
-        allowed_actions=allowed_actions(app, user),
+        allowed_actions=allowed_actions(app, user, offer),
         offer=OfferOut.model_validate(offer) if offer else None,
         decision=DecisionOut(
             outcome=decision["outcome"], reasons=decision.get("reasons", []), tips=decision.get("tips", [])
@@ -102,6 +112,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         if decision
         else None,
         open_tasks=open_tasks_count(db, app),
+        loan_id=db.scalar(select(Loan.id).where(Loan.application_id == app.id)),
         created_at=app.created_at,
         updated_at=app.updated_at,
         submitted_at=app.submitted_at,
@@ -211,7 +222,7 @@ def create_draft(db: Session, user: User, data: ApplicationCreate) -> Applicatio
 
 
 def update_draft(db: Session, user: User, app: Application, data: ApplicationUpdate) -> Application:
-    if "edit" not in allowed_actions(app, user):
+    if "edit" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Редактировать можно только черновик")
     changes = data.model_dump(exclude_unset=True)
     if "product_code" in changes:
@@ -239,7 +250,7 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
     # Повторная отправка с тем же ключом (двойной клик, ретрай сети) возвращает тот же результат.
     if idempotency_key and app.submit_key == idempotency_key:
         return app
-    if "submit" not in allowed_actions(app, user):
+    if "submit" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Эта заявка уже отправлена")
     validate_for_submit(app)
     app.submit_key = idempotency_key
@@ -251,7 +262,7 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
 
 
 def cancel(db: Session, user: User, app: Application, comment: str | None) -> Application:
-    if "cancel" not in allowed_actions(app, user):
+    if "cancel" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Эту заявку уже нельзя отозвать")
     apply_transition(db, app, Status.CANCELLED, Actor.CLIENT, actor_id=user.id, event="cancelled", comment=comment)
     db.commit()

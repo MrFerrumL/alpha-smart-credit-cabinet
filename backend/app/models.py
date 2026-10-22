@@ -162,10 +162,14 @@ class Offer(Base):
     rate: Mapped[Decimal] = mapped_column(Numeric(5, 2))
     monthly_payment: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     explanation: Mapped[list] = mapped_column(JsonType, default=list)
-    status: Mapped[str] = mapped_column(String(16), default="active")  # active | accepted | declined | expired
+    # active → accepted (клиент согласился) → signed (договор подписан); либо declined | expired
+    status: Mapped[str] = mapped_column(String(16), default="active")
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    contract_number: Mapped[str | None] = mapped_column(String(32), unique=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    signed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
 class ClientTask(Base):
@@ -218,3 +222,59 @@ class Job(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class SigningChallenge(Base):
+    """Одноразовый код для подписания договора простой электронной подписью.
+
+    Код доставляется в уведомления кабинета (SMS по условиям задачи не используется), в БД хранится
+    только его HMAC. Новый запрос кода делает предыдущий недействительным.
+    """
+
+    __tablename__ = "signing_challenges"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    code_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts_left: Mapped[int] = mapped_column(Integer)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Loan(Base):
+    """Выданный кредит. График платежей детерминированно считается из условий и даты выдачи."""
+
+    __tablename__ = "loans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), unique=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    contract_number: Mapped[str] = mapped_column(String(32), unique=True)
+    product_code: Mapped[str] = mapped_column(String(32))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    rate: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    term_months: Mapped[int] = mapped_column(Integer)
+    monthly_payment: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    repayment: Mapped[str] = mapped_column(String(16))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    first_payment_date: Mapped[date] = mapped_column(Date)
+    payment_ref: Mapped[str] = mapped_column(String(64))  # номер платежа в АБС
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Notification(Base):
+    """Уведомление внутри кабинета — вместо SMS и почты."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(32))  # status | signing_code | info
+    title: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str | None] = mapped_column(Text)
+    link: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

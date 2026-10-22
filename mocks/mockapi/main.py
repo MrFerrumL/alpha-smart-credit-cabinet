@@ -1,4 +1,4 @@
-"""Эмулятор внешних источников: ЕГРЮЛ/ЕГРИП, бюро кредитных историй, ФНС «Прозрачный бизнес».
+"""Эмулятор внешних систем: ЕГРЮЛ/ЕГРИП, бюро кредитных историй, ФНС «Прозрачный бизнес», АБС банка.
 
 Контракты упрощены, но сохраняют смысл интеграций. Чтобы показать отказоустойчивость конвейера,
 в сервис можно «внести сбой» через /admin/faults: источник начнёт отвечать ошибкой или зависать.
@@ -8,7 +8,8 @@ import os
 import random
 import threading
 import time
-from datetime import date
+import uuid
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -17,7 +18,7 @@ from pydantic import BaseModel, Field
 from mockapi.data import COMPANIES
 from mockapi.generator import generate
 
-Source = Literal["egrul", "bki", "fns"]
+Source = Literal["egrul", "bki", "fns", "abs"]
 
 app = FastAPI(
     title="Эмулятор внешних источников",
@@ -30,7 +31,7 @@ app = FastAPI(
 
 
 class FaultIn(BaseModel):
-    source: Literal["egrul", "bki", "fns", "all"]
+    source: Literal["egrul", "bki", "fns", "abs", "all"]
     mode: Literal["error", "timeout", "none"]
     count: int | None = Field(default=None, ge=1, description="Сколько запросов сломать; пусто — до отмены")
 
@@ -135,3 +136,36 @@ def bki(inn: str) -> dict:
 @app.get("/health", tags=["Служебное"])
 def health() -> dict:
     return {"status": "ok"}
+
+
+# --- АБС банка: выдача кредита --------------------------------------------------------------
+
+
+class DisbursementIn(BaseModel):
+    contract_number: str = Field(min_length=1, max_length=64)
+    inn: str
+    amount: int = Field(gt=0)
+
+
+_disbursements: dict[str, dict] = {}
+
+
+@app.post("/abs/disbursements", tags=["АБС"], summary="Перечислить сумму кредита на расчётный счёт клиента")
+def disburse(data: DisbursementIn) -> dict:
+    _maybe_fail("abs")
+    _latency()
+    with _lock:
+        # Номер договора — ключ идемпотентности: повторный запрос возвращает уже проведённый платёж.
+        existing = _disbursements.get(data.contract_number)
+        if existing:
+            return existing
+        payment = {
+            "payment_id": f"PAY-{uuid.uuid4().hex[:12].upper()}",
+            "contract_number": data.contract_number,
+            "inn": data.inn,
+            "amount": data.amount,
+            "status": "executed",
+            "executed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _disbursements[data.contract_number] = payment
+        return payment

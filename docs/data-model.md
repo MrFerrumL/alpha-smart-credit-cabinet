@@ -15,6 +15,10 @@ erDiagram
     applications ||--o{ documents : "документы"
     companies ||--o{ documents : "документы"
     applications ||--o{ jobs : "шаги конвейера"
+    applications ||--o| loans : "кредит"
+    applications ||--o{ signing_challenges : "коды подписи"
+    companies ||--o{ loans : "кредиты"
+    users ||--o{ notifications : "уведомления"
 
     companies {
         int id PK
@@ -95,7 +99,41 @@ erDiagram
         decimal rate
         decimal monthly_payment
         json explanation
-        string status "active | accepted | declined | expired"
+        string status "active | accepted | signed | declined | expired"
+        string contract_number UK "КД-2026-000001"
+        datetime signed_at
+        int signed_by_id FK
+    }
+    signing_challenges {
+        int id PK
+        int application_id FK
+        int user_id FK
+        string code_hash "HMAC кода, сам код не хранится"
+        datetime expires_at
+        int attempts_left
+        datetime used_at
+    }
+    loans {
+        int id PK
+        int application_id FK
+        int company_id FK
+        string contract_number UK
+        decimal amount
+        decimal rate
+        int term_months
+        decimal monthly_payment
+        string repayment "annuity | interest_only"
+        datetime issued_at
+        date first_payment_date
+        string payment_ref "номер платежа в АБС"
+    }
+    notifications {
+        int id PK
+        int user_id FK
+        string kind "status | signing_code | info"
+        string title
+        string link
+        datetime read_at
     }
     client_tasks {
         int id PK

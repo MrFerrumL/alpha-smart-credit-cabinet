@@ -1,0 +1,283 @@
+import {
+  Alert,
+  Anchor,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Loader,
+  Modal,
+  Paper,
+  PinInput,
+  SimpleGrid,
+  Stack,
+  Text,
+  Textarea,
+  ThemeIcon,
+  Title,
+} from '@mantine/core';
+import { IconArrowRight, IconConfetti, IconFileText, IconInfoCircle, IconSignature } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
+
+import { ApiError } from '../api/client';
+import {
+  useAcceptOffer,
+  useConfirmSigning,
+  useContract,
+  useDeclineOffer,
+  useRequestSigningCode,
+} from '../api/hooks';
+import type { Application, SigningCode } from '../api/types';
+import { useAuth } from '../auth/AuthContext';
+import { money, moneyShort, months, rate } from '../lib/format';
+import { Stat } from './ui';
+
+/** Кнопки под предложением банка: принять или отказаться. */
+export function OfferActions({ app }: { app: Application }) {
+  const { user } = useAuth();
+  const accept = useAcceptOffer(app.id);
+  const decline = useDeclineOffer(app.id);
+  const [declineOpened, setDeclineOpened] = useState(false);
+  const [comment, setComment] = useState('');
+  const canAccept = app.allowed_actions.includes('accept_offer');
+  const canDecline = app.allowed_actions.includes('decline_offer');
+  if (!canAccept && !canDecline) return null;
+
+  return (
+    <>
+      {!canAccept && (
+        <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
+          Принять предложение и подписать договор может только руководитель компании
+          {user?.company?.director ? ` — ${user.company.director}` : ''}.
+        </Alert>
+      )}
+      <Group mt="xl">
+        {canAccept && (
+          <Button size="md" rightSection={<IconArrowRight size={18} />} loading={accept.isPending} onClick={() => accept.mutate()}>
+            Принять и перейти к договору
+          </Button>
+        )}
+        {canDecline && (
+          <Button size="md" variant="default" onClick={() => setDeclineOpened(true)}>
+            Отказаться
+          </Button>
+        )}
+      </Group>
+      <Modal opened={declineOpened} onClose={() => setDeclineOpened(false)} title={<Text fw={800}>Отказаться от предложения?</Text>} centered>
+        <Stack>
+          <Text fz="sm" c="dimmed">
+            Заявка будет закрыта. Подобрать другой вариант можно в любой момент — данные компании сохранятся.
+          </Text>
+          <Textarea
+            label="Что не подошло? (необязательно)"
+            placeholder="Например: нужна большая сумма"
+            value={comment}
+            onChange={(e) => setComment(e.currentTarget.value)}
+            autosize
+            minRows={2}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setDeclineOpened(false)}>
+              Вернуться
+            </Button>
+            <Button
+              color="red"
+              loading={decline.isPending}
+              onClick={() => decline.mutate({ comment: comment || undefined }, { onSuccess: () => setDeclineOpened(false) })}
+            >
+              Отказаться
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
+  );
+}
+
+function useCountdown(until: string | null): number {
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!until) return;
+    const tick = () => setLeft(Math.max(0, Math.round((new Date(until).getTime() - Date.now()) / 1000)));
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [until]);
+  return left;
+}
+
+function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean; onClose: () => void }) {
+  const request = useRequestSigningCode(app.id);
+  const confirm = useConfirmSigning(app.id);
+  const [challenge, setChallenge] = useState<SigningCode | null>(null);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const left = useCountdown(challenge?.expires_at ?? null);
+
+  const send = () => {
+    setError(null);
+    setCode('');
+    request.mutate(undefined, { onSuccess: setChallenge });
+  };
+
+  useEffect(() => {
+    if (opened && !challenge && !request.isPending) send();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+
+  const submit = (value: string) => {
+    if (!challenge || value.length < 6) return;
+    setError(null);
+    confirm.mutate(
+      { challenge_id: challenge.challenge_id, code: value },
+      {
+        onSuccess: onClose,
+        onError: (e) => {
+          setCode('');
+          setError(e instanceof ApiError ? e.message : 'Не удалось подписать договор');
+        },
+      },
+    );
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title={<Text fw={800}>Подписание договора</Text>} centered radius="lg">
+      <Stack align="center" gap="md" ta="center">
+        <ThemeIcon size={56} radius="xl" variant="light">
+          <IconSignature size={30} />
+        </ThemeIcon>
+        <Text fz="sm" c="dimmed" maw={340}>
+          Мы отправили одноразовый код в уведомления кабинета — колокольчик вверху. Введите его, чтобы подписать
+          договор простой электронной подписью.
+        </Text>
+        <PinInput
+          length={6}
+          type="number"
+          oneTimeCode
+          size="lg"
+          value={code}
+          onChange={setCode}
+          onComplete={submit}
+          error={!!error}
+          disabled={!challenge || confirm.isPending}
+          autoFocus
+        />
+        {error && (
+          <Text c="red" fz="sm">
+            {error}
+          </Text>
+        )}
+        {confirm.isPending && <Loader size="sm" />}
+        <Text fz="xs" c="dimmed">
+          {challenge && left > 0
+            ? `Код действует ещё ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+            : challenge
+              ? 'Срок действия кода истёк'
+              : 'Отправляем код…'}
+        </Text>
+        <Button variant="subtle" size="xs" onClick={send} loading={request.isPending}>
+          Отправить новый код
+        </Button>
+      </Stack>
+    </Modal>
+  );
+}
+
+/** Этап «Подписание»: договор, согласие и подпись кодом; после подписи — ожидание выдачи. */
+export function SigningCard({ app }: { app: Application }) {
+  const contract = useContract(app.id, true);
+  const [agreed, setAgreed] = useState(false);
+  const [modalOpened, setModalOpened] = useState(false);
+  const signed = app.offer?.status === 'signed';
+  const canSign = app.allowed_actions.includes('sign');
+  const c = contract.data;
+
+  return (
+    <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in" style={{ border: '2px solid var(--mantine-color-brand-5)' }}>
+      <Group gap="sm" wrap="nowrap">
+        <ThemeIcon size={40} radius="md" color={signed ? 'teal' : 'brand'}>
+          {signed ? <IconSignature size={22} /> : <IconFileText size={22} />}
+        </ThemeIcon>
+        <div>
+          <Title order={3}>{signed ? 'Договор подписан' : 'Договор готов к подписанию'}</Title>
+          <Text c="dimmed" fz="sm">
+            {c ? `Кредитный договор № ${c.number}` : 'Готовим договор…'}
+          </Text>
+        </div>
+      </Group>
+
+      {c && (
+        <SimpleGrid cols={{ base: 2, sm: 4 }} mt="lg" spacing="lg">
+          <Stat label="Сумма" value={moneyShort(c.amount)} />
+          <Stat label="Срок" value={months(c.term_months)} />
+          <Stat label="Ставка" value={rate(c.rate)} />
+          <Stat label="Платёж в месяц" value={money(c.monthly_payment)} accent />
+        </SimpleGrid>
+      )}
+
+      <Anchor component={Link} to={`/applications/${app.id}/contract`} fz="sm" fw={600} mt="md" display="inline-block">
+        Открыть договор и график платежей
+      </Anchor>
+
+      {signed ? (
+        <Paper bg="teal.0" p="md" radius="md" mt="lg">
+          <Group gap="sm" wrap="nowrap">
+            <Loader size="sm" color="teal" />
+            <Text fz="sm">Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.</Text>
+          </Group>
+        </Paper>
+      ) : canSign ? (
+        <Stack mt="lg" gap="md">
+          <Checkbox
+            checked={agreed}
+            onChange={(e) => setAgreed(e.currentTarget.checked)}
+            label="Я ознакомился с договором и графиком платежей и согласен с условиями"
+          />
+          <Group>
+            <Button size="md" leftSection={<IconSignature size={18} />} disabled={!agreed} onClick={() => setModalOpened(true)}>
+              Подписать кодом
+            </Button>
+          </Group>
+          <CodeModal app={app} opened={modalOpened} onClose={() => setModalOpened(false)} />
+        </Stack>
+      ) : (
+        <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
+          Подписать договор может только руководитель компании.
+        </Alert>
+      )}
+    </Card>
+  );
+}
+
+/** Финал: деньги на счёте. */
+export function IssuedCard({ app }: { app: Application }) {
+  const offer = app.offer;
+  return (
+    <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in hero" radius="lg">
+      <Stack gap="sm" style={{ position: 'relative', zIndex: 1 }}>
+        <Group gap="sm">
+          <ThemeIcon size={44} radius="md" color="white" variant="white">
+            <IconConfetti size={26} color="#ef3124" />
+          </ThemeIcon>
+          <Title order={2} c="white">
+            Деньги на счёте!
+          </Title>
+        </Group>
+        {offer && (
+          <Text c="rgba(255,255,255,0.92)" fz="lg">
+            {money(offer.amount)} зачислены на расчётный счёт компании. Первый платёж — {money(offer.monthly_payment)}{' '}
+            через месяц.
+          </Text>
+        )}
+        {app.loan_id && (
+          <Group mt="xs">
+            <Button component={Link} to={`/loans/${app.loan_id}`} variant="white" rightSection={<IconArrowRight size={18} />}>
+              Кредит и график платежей
+            </Button>
+          </Group>
+        )}
+      </Stack>
+    </Card>
+  );
+}

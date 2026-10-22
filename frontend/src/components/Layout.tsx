@@ -1,10 +1,19 @@
-import { AppShell, Avatar, Box, Burger, Button, Container, Group, NavLink, Stack, Text } from '@mantine/core';
+import { AppShell, Avatar, Burger, Button, Container, Group, NavLink, Stack, Text } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconFileText, IconHome2, IconListCheck, IconLogout, IconSparkles, type Icon } from '@tabler/icons-react';
+import {
+  IconCreditCard,
+  IconFileText,
+  IconHome2,
+  IconListCheck,
+  IconLogout,
+  IconSparkles,
+  type Icon,
+} from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router';
 
 import { useAuth } from '../auth/AuthContext';
 import { initials } from '../lib/format';
+import { NotificationsBell } from './Notifications';
 import { Logo } from './ui';
 
 interface NavItem {
@@ -17,6 +26,7 @@ const CLIENT_NAV: NavItem[] = [
   { to: '/', label: 'Главная', icon: IconHome2 },
   { to: '/match', label: 'Подобрать кредит', icon: IconSparkles },
   { to: '/applications', label: 'Мои заявки', icon: IconFileText },
+  { to: '/loans', label: 'Мои кредиты', icon: IconCreditCard },
 ];
 
 const ANALYST_NAV: NavItem[] = [{ to: '/queue', label: 'Очередь заявок', icon: IconListCheck }];
@@ -39,14 +49,18 @@ export function Layout() {
       <AppShell.Header px="md">
         <Group h="100%" justify="space-between">
           <Logo />
-          <Burger opened={opened} onClick={toggle} size="sm" aria-label="Меню" />
+          <Group gap="xs">
+            {mobile && <NotificationsBell />}
+            <Burger opened={opened} onClick={toggle} size="sm" aria-label="Меню" />
+          </Group>
         </Group>
       </AppShell.Header>
 
       <AppShell.Navbar p="md" style={{ borderRight: '1px solid var(--app-line)' }}>
-        <Box visibleFrom="sm" px="xs" pt="xs" pb="lg">
+        <Group visibleFrom="sm" px="xs" pt="xs" pb="lg" justify="space-between" wrap="nowrap">
           <Logo />
-        </Box>
+          {!mobile && <NotificationsBell />}
+        </Group>
         <Stack gap={4} style={{ flex: 1 }}>
           {nav.map((item) => (
             <NavLink

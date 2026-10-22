@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.domain.products import PRODUCTS
 from app.domain.statuses import Actor, Status
-from app.models import Application, CheckResult, ClientTask, Document, Offer, ScoringResult, utcnow
+from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
 from app.scoring.decision import Decision, decide
@@ -217,6 +217,68 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
     _apply_decision(db, app, decision, result)
 
 
+def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
+    """Выдача: перевод через АБС, создание кредита с графиком, статус «Деньги зачислены»."""
+    from app.services.loans import first_payment_date  # локальный импорт: loans → schemas → без циклов
+
+    offer = db.scalar(select(Offer).where(Offer.application_id == app.id, Offer.status == "signed").limit(1))
+    if offer is None:
+        return
+    try:
+        payment = sources.disburse(
+            contract_number=offer.contract_number, inn=app.company.inn, amount=int(offer.amount)
+        )
+    except SourceUnavailable as exc:
+        record_event(db, app, "disbursement_retry", Actor.SYSTEM, payload={"error": exc.reason})
+        db.commit()
+        raise RetryLater(f"abs: {exc.reason}") from exc
+
+    issued_at = utcnow()
+    if db.scalar(select(Loan.id).where(Loan.application_id == app.id)) is None:
+        product = PRODUCTS[offer.product_code]
+        db.add(
+            Loan(
+                application_id=app.id,
+                company_id=app.company_id,
+                contract_number=offer.contract_number,
+                product_code=offer.product_code,
+                amount=offer.amount,
+                rate=offer.rate,
+                term_months=offer.term_months,
+                monthly_payment=offer.monthly_payment,
+                repayment=product.repayment,
+                issued_at=issued_at,
+                first_payment_date=first_payment_date(issued_at.date()),
+                payment_ref=payment["payment_id"],
+            )
+        )
+    apply_transition(
+        db, app, Status.ISSUED, Actor.SYSTEM, event="issued",
+        payload={"payment_id": payment["payment_id"], "amount": int(offer.amount)},
+    )
+
+
+def expire_offers(db: Session) -> int:
+    """Закрывает предложения, срок которых истёк, — заявка переходит в «Срок предложения истёк»."""
+    now = utcnow()
+    query = (
+        select(Offer, Application)
+        .join(Application, Application.id == Offer.application_id)
+        .where(
+            Offer.status == "active",
+            Offer.valid_until < now,
+            Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+        )
+    )
+    expired = 0
+    for offer, app in db.execute(query).all():
+        offer.status = "expired"
+        apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM)
+        expired += 1
+    db.commit()
+    return expired
+
+
 Step = Callable[[Session, Application, ExternalSources], None]
 
 # Задача → (статус, в котором должна быть заявка, шаг).
@@ -225,6 +287,7 @@ STEPS: dict[str, tuple[Status, Step]] = {
     "pipeline.validate": (Status.VALIDATION, validate),
     "pipeline.enrich": (Status.ENRICHMENT, enrich),
     "pipeline.score": (Status.SCORING, score),
+    "pipeline.disburse": (Status.SIGNING, disburse),
 }
 
 # Что делать, если шаг так и не удалось выполнить за все попытки.
