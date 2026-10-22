@@ -51,6 +51,8 @@ jobs:
         run: python -m scripts.export_openapi --check
       - name: State diagram in docs matches the code
         run: python -m scripts.export_state_diagram --check
+      - name: Request collection matches the API
+        run: python -m scripts.export_collection --check
 
   frontend:
     name: Frontend build

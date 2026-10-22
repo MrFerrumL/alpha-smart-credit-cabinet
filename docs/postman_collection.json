@@ -1,0 +1,1150 @@
+{
+  "info": {
+    "name": "Поток — кредитный конвейер",
+    "description": "Коллекция запросов к API кредитного конвейера «Поток». Построена автоматически из OpenAPI-спецификации (`python -m scripts.export_collection`), поэтому совпадает с кодом.\n\n**Как пользоваться**\n1. Поднимите стенд (`docker compose up`) и импортируйте файл в Postman, Insomnia или Bruno.\n2. Переменная `base_url` по умолчанию указывает на nginx стенда: `http://localhost:8080`. Backend напрямую тоже доступен: `http://localhost:8000` — просто поменяйте значение переменной.\n3. Откройте папку «Сквозной сценарий: от заявки до выдачи» и запускайте запросы по порядку (или целиком через Runner): тестовые скрипты сами сохраняют `token`, `application_id`, `challenge_id`, `signing_code` и `loan_id` в переменные коллекции.\n4. Остальные папки — по одной на раздел API; в них все запросы, не вошедшие в сквозной сценарий.\n\n**Авторизация.** Bearer-токен берётся из переменной `token` (заполняется запросом `demo-login` или `login`). Публичные ручки отправляются без токена.\n\n**Тестовые учётки.** Список возвращает `GET /api/auth/demo-accounts`; пароль всех — `demo1234`. Сценарий использует `bakery@demo.local`: заявка «Экспресс-оборот» одобряется автоматически.\n\n**Подпись смоделирована.** Вместо SMS код подтверждения возвращается в ответе `signing/code` (поле `demo_code`).\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "application_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challenge_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "signing_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loan_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "code",
+      "value": "express",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Сквозной сценарий: от заявки до выдачи",
+      "description": "Последовательный сценарий для запуска по порядку (Runner / «Run collection»). Шаги 4 и 9 — опрос: повторяйте их, пока статус не достигнет нужного значения. Учётка `bakery@demo.local`, продукт «Экспресс-оборот» одобряется автоматически.",
+      "item": [
+        {
+          "name": "1. Вход под тестовой учёткой",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bakery@demo.local\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/demo-login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "demo-login"
+              ]
+            },
+            "description": "Вход в один клик под учёткой «Северной пекарни». Токен сохраняется в переменную `token`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Вход выполнен', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('token', data.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Создать черновик заявки",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_code\": \"express\",\n  \"purpose\": \"working_capital\",\n  \"amount\": 3000000,\n  \"term_months\": 12,\n  \"form\": {\n    \"finance\": {\n      \"monthly_revenue\": 4000000\n    },\n    \"consent_bki\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            },
+            "description": "Продукт «Экспресс-оборот», пополнение оборотных средств, 3 000 000 ₽ на 12 месяцев. Идентификатор заявки сохраняется в `application_id`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Черновик создан', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('application_id', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Отправить заявку в банк",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/submit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "submit"
+              ]
+            },
+            "description": "Запускает конвейер проверок. Заголовок `Idempotency-Key` защищает от двойной отправки: повтор с тем же ключом вернёт тот же результат."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Заявка отправлена', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Статус заявки (повторять до approved)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}"
+              ]
+            },
+            "description": "Конвейер работает в фоне, решение появляется примерно через 10 секунд. Повторяйте запрос, пока `status.code` не станет `approved`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
+                  "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Принять предложение банка",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/offer/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "offer",
+                "accept"
+              ]
+            },
+            "description": "Доступно после статуса `approved`. Переводит заявку к подписанию договора."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Предложение принято', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Кредитный договор",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/contract",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "contract"
+              ]
+            },
+            "description": "Текст договора с условиями и графиком платежей."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Договор получен', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Запросить код для подписания",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/signing/code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "signing",
+                "code"
+              ]
+            },
+            "description": "Электронная подпись смоделирована: вместо SMS код возвращается в кабинет (поле `demo_code`). Идентификатор попытки и код сохраняются в `challenge_id` и `signing_code`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Код выдан', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.collectionVariables.set('challenge_id', data.challenge_id);",
+                  "pm.collectionVariables.set('signing_code', data.demo_code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Подписать договор кодом",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge_id\": {{challenge_id}},\n  \"code\": \"{{signing_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/signing/confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "signing",
+                "confirm"
+              ]
+            },
+            "description": "Подтверждение подписи кодом из предыдущего шага. После подписания запускается выдача."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Договор подписан', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Статус заявки (повторять до issued)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}"
+              ]
+            },
+            "description": "Выдача занимает несколько секунд. Повторяйте запрос, пока `status.code` не станет `issued`; тогда в поле `loan_id` появится идентификатор кредита (сохраняется в `loan_id`)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
+                  "if (data.loan_id) { pm.collectionVariables.set('loan_id', data.loan_id); }",
+                  "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Кредит и график платежей",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/loans/{{loan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loan_id}}"
+              ]
+            },
+            "description": "Выданный кредит с графиком погашения."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Кредит найден', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Вход",
+      "description": "Аутентификация и тестовые учётные записи",
+      "item": [
+        {
+          "name": "Вход по почте и паролю",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bakery@demo.local\",\n  \"password\": \"demo1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Вход по почте и паролю"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Вход выполнен', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Тестовые учётки (только в демо-режиме)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/demo-accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "demo-accounts"
+              ]
+            },
+            "description": "Тестовые учётки (только в демо-режиме)"
+          },
+          "response": []
+        },
+        {
+          "name": "Текущий пользователь",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Текущий пользователь"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Справочники",
+      "description": "Этапы, статусы и цели кредита для интерфейса",
+      "item": [
+        {
+          "name": "Этапы, статусы и цели кредита для интерфейса",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/meta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "meta"
+              ]
+            },
+            "description": "Этапы, статусы и цели кредита для интерфейса"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Продукты",
+      "description": "Каталог, подбор продукта и калькулятор платежа",
+      "item": [
+        {
+          "name": "Каталог кредитных продуктов",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/products",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Каталог кредитных продуктов"
+          },
+          "response": []
+        },
+        {
+          "name": "Подбор продукта под цель, сумму и срок",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"working_capital\",\n  \"amount\": 3000000,\n  \"term_months\": 12\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/products/match",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "match"
+              ]
+            },
+            "description": "Подбор продукта под цель, сумму и срок"
+          },
+          "response": []
+        },
+        {
+          "name": "Платёж и график погашения",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/products/{{code}}/calculate?amount=3000000&term_months=12",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{code}}",
+                "calculate"
+              ],
+              "query": [
+                {
+                  "key": "amount",
+                  "value": "3000000"
+                },
+                {
+                  "key": "term_months",
+                  "value": "12"
+                }
+              ]
+            },
+            "description": "Платёж и график погашения"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Компании",
+      "description": "Данные компании из ЕГРЮЛ/ЕГРИП",
+      "item": [
+        {
+          "name": "Найти компанию по ИНН (ЕГРЮЛ/ЕГРИП)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/companies/lookup?inn=0077010019",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "0077010019"
+                }
+              ]
+            },
+            "description": "Найти компанию по ИНН (ЕГРЮЛ/ЕГРИП)"
+          },
+          "response": []
+        },
+        {
+          "name": "Привязать компанию к учётной записи нового клиента",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inn\": \"0077070071\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/companies/link",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "link"
+              ]
+            },
+            "description": "Привязать компанию к учётной записи нового клиента\n\nПодключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже\nподключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться\nбез доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель."
+          },
+          "response": []
+        },
+        {
+          "name": "Финансы своей компании по данным ФНС",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/companies/me/financials",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "me",
+                "financials"
+              ]
+            },
+            "description": "Финансы своей компании по данным ФНС"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Заявки",
+      "description": "Жизненный цикл кредитной заявки: анкета, конвейер, решение, договор, подпись",
+      "item": [
+        {
+          "name": "Заявки: клиенту — свои, аналитику — все отправленные",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Заявки: клиенту — свои, аналитику — все отправленные"
+          },
+          "response": []
+        },
+        {
+          "name": "Изменить черновик",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2500000,\n  \"term_months\": 18\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}"
+              ]
+            },
+            "description": "Изменить черновик"
+          },
+          "response": []
+        },
+        {
+          "name": "Отозвать заявку",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Передумали: нужна другая сумма\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "cancel"
+              ]
+            },
+            "description": "Отозвать заявку"
+          },
+          "response": []
+        },
+        {
+          "name": "История заявки",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "events"
+              ]
+            },
+            "description": "История заявки"
+          },
+          "response": []
+        },
+        {
+          "name": "Запросы банка по заявке",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/tasks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "tasks"
+              ]
+            },
+            "description": "Запросы банка по заявке"
+          },
+          "response": []
+        },
+        {
+          "name": "Ответить на запрос банка",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"Выписка по расчётному счёту за последние 6 месяцев приложена\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/tasks/{{task_id}}/answer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "tasks",
+                "{{task_id}}",
+                "answer"
+              ]
+            },
+            "description": "Ответить на запрос банка"
+          },
+          "response": []
+        },
+        {
+          "name": "Документы по заявке",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/documents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "documents"
+              ]
+            },
+            "description": "Документы по заявке"
+          },
+          "response": []
+        },
+        {
+          "name": "Приложить документ (к черновику или по запросу банка)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "kind",
+                  "value": "bank_statement",
+                  "type": "text"
+                },
+                {
+                  "key": "task_id",
+                  "value": "{{task_id}}",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/documents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "documents"
+              ]
+            },
+            "description": "Приложить документ (к черновику или по запросу банка)\n\nВыберите файл в поле `file` (PDF, изображение или таблица)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ход проверок во внешних источниках",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/checks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "checks"
+              ]
+            },
+            "description": "Ход проверок во внешних источниках"
+          },
+          "response": []
+        },
+        {
+          "name": "Живой статус заявки (Server-Sent Events)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "stream"
+              ]
+            },
+            "description": "Живой статус заявки (Server-Sent Events)\n\nПоток Server-Sent Events: ответ не завершается, события приходят по мере изменения статуса."
+          },
+          "response": []
+        },
+        {
+          "name": "Отказаться от предложения",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Передумали: нужна другая сумма\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/offer/decline",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "offer",
+                "decline"
+              ]
+            },
+            "description": "Отказаться от предложения"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Кредиты",
+      "description": "Выданные кредиты и графики платежей",
+      "item": [
+        {
+          "name": "Кредиты компании",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/loans",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "Кредиты компании"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Уведомления",
+      "description": "Уведомления внутри кабинета — вместо SMS и почты",
+      "item": [
+        {
+          "name": "Последние уведомления",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "description": "Последние уведомления"
+          },
+          "response": []
+        },
+        {
+          "name": "Отметить все как прочитанные",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/read-all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Отметить все как прочитанные"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Служебное",
+      "description": "Проверки живости и готовности",
+      "item": [
+        {
+          "name": "Процесс жив",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/health/live",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ]
+            },
+            "description": "Процесс жив"
+          },
+          "response": []
+        },
+        {
+          "name": "Сервис готов принимать запросы (БД доступна)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{base_url}}/health/ready",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            },
+            "description": "Сервис готов принимать запросы (БД доступна)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
