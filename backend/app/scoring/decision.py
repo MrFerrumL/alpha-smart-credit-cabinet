@@ -66,11 +66,22 @@ class StopCheck:
     client_text: str  # причина отказа для клиента, если проверка не пройдена
 
 
+# Причина отказа для клиента по статусу компании в ЕГРЮЛ. Реорганизация — не стоп-фактор, а повод для специалиста.
+COMPANY_STATUS_TEXTS = {
+    "liquidating": "Компания находится в стадии ликвидации — таким компаниям банк не выдаёт кредиты",
+    "bankrupt": "В отношении компании введена процедура банкротства — кредит выдать нельзя",
+    "unknown": "Компания не найдена в ЕГРЮЛ — проверьте ИНН или обратитесь в банк",
+}
+ACTIVE_STATUSES = frozenset({"active", "reorganizing"})
+
+
 def stop_checks(f: Features) -> list[StopCheck]:
     """Стоп-факторы как чек-лист: аналитик видит и пройденные проверки, клиент — только причины отказа."""
+    status_text = COMPANY_STATUS_TEXTS.get(
+        f.company_status, f"Компания не действует по данным ЕГРЮЛ (статус «{f.company_status}»)"
+    )
     return [
-        StopCheck("Компания действующая по ЕГРЮЛ", f.company_status == "active",
-                  "Компания находится в стадии ликвидации — таким компаниям банк не выдаёт кредиты"),
+        StopCheck("Компания не ликвидируется и не банкротится (ЕГРЮЛ)", f.company_status in ACTIVE_STATUSES, status_text),
         StopCheck("Руководитель не дисквалифицирован", not f.disqualified_director,
                   "Руководитель компании дисквалифицирован"),
         StopCheck("Счета не заблокированы налоговой", not f.blocked_accounts,
@@ -270,6 +281,8 @@ def decide(
 
     # Поводы для ручного рассмотрения — по порядку: первый сработавший и есть причина.
     manual = [
+        (f.company_status == "reorganizing", "reorganization",
+         "Компания в процессе реорганизации — заявку проверит специалист"),
         (f.current_overdue_days > 0, "current_overdue",
          "По действующему кредиту есть текущая просрочка — заявку проверит специалист"),
         (f.revenue_source == "statement", "unverified_revenue",

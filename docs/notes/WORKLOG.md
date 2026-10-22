@@ -25,8 +25,8 @@ verification, docs, a full review of the branch against the case and the release
 | P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | done `35dd827` |
 | P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | done `17165e4` |
 | P1.6 | Offer expiry (B7), unanswered bank requests | done `17165e4` |
-| B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done (this commit), reviewed |
-| G | Risk profiles in the mock generator (N10) together with B5 | pending |
+| B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done `385d3c6`, reviewed |
+| G | Risk profiles in the mock generator (N10) together with B5 | implemented, under review |
 | News | Feed from `news.json`, tagged by OKVED, product, status | pending |
 | A | Decision rule trace, policy version, replay | pending |
 | C | Policy impact simulator | pending |
@@ -220,6 +220,13 @@ purpose so the stages are visible.
   negative profit → specific rejection; FNS without expenses → specialist; offers show a product change;
   expired bank requests show as closed. Not done: the analyst cannot counter-offer a different product
   (recommendation stays None when the requested product does not fit) — roadmap.
+- D11 (23.10) G: profile by the 9th INN digit (0–4 healthy, 5 thin margin, 6 heavy debt, 7 current
+  overdue, 8 tax debt + mass address, 9 inactive: liquidating/reorganizing/bankrupt by the 8th digit).
+  B5 fixed: status-specific stop texts, reorganizing → specialist. Open question: linking a generated
+  company needs the profile name to match the registry director; the only seeded client without a company
+  is `new@` (director of «Новые горизонты»), so jurors cannot yet try a generated INN in the UI. Options:
+  let a client without a company state their name at onboarding (identity check stays simulated), or seed
+  a few extra demo heads for sample INNs.
 
 ## Verification commands
 

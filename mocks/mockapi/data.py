@@ -6,6 +6,8 @@
 
 ACTIVE = {"code": "active", "title": "Действующая"}
 LIQUIDATING = {"code": "liquidating", "title": "Находится в стадии ликвидации"}
+REORGANIZING = {"code": "reorganizing", "title": "Находится в процессе реорганизации"}
+BANKRUPT = {"code": "bankrupt", "title": "В отношении компании введена процедура банкротства"}
 
 
 def _fns(year=2025, *, regime, employees, revenue, expenses, taxes_paid, tax_debt=0, mass_address=False,

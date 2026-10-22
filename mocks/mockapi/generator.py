@@ -1,11 +1,32 @@
 """Детерминированный генератор данных для любого корректного ИНН, которого нет в демо-наборе.
 
-Один и тот же ИНН всегда даёт один и тот же ответ, поэтому проверки воспроизводимы.
+Один и тот же ИНН всегда даёт один и тот же ответ, поэтому проверки воспроизводимы. Профиль риска задаёт
+девятая цифра ИНН, чтобы произвольный ИНН давал разные исходы, а не только одобрения:
+
+    0–4  благополучная компания
+    5    низкая рентабельность (прибыль ~1,5 % выручки)
+    6    высокая долговая нагрузка (действующие платежи ~49 % выручки)
+    7    текущая просрочка 20 дней, в истории — до 40 дней
+    8    налоговая задолженность и массовый адрес регистрации
+    9    компания не действует: ликвидация, реорганизация или банкротство (по восьмой цифре)
 """
 
 import random
 
-from mockapi.data import ACTIVE
+from mockapi.data import ACTIVE, BANKRUPT, LIQUIDATING, REORGANIZING
+
+PROFILES = {
+    **{d: "healthy" for d in "01234"},
+    "5": "thin_margin",
+    "6": "heavy_debt",
+    "7": "overdue",
+    "8": "tax_debt",
+    "9": "inactive",
+}
+
+
+def profile_of(inn: str) -> str:
+    return PROFILES[inn[8]]
 
 _NAME_A = ("Альфа", "Вега", "Орион", "Гранит", "Север", "Престиж", "Импульс", "Дельта", "Меридиан", "Атлас")
 _NAME_B = ("Трейд", "Строй", "Сервис", "Логистик", "Групп", "Маркет", "Тех", "Пром")
@@ -54,7 +75,7 @@ def generate(inn: str) -> dict:
             "overdue_max_days_24m": rng.choice((0, 0, 0, 5, 12)),
         })
 
-    return {
+    data = {
         "egrul": {
             "full_name": full,
             "short_name": short,
@@ -89,3 +110,30 @@ def generate(inn: str) -> dict:
         },
         "bki": {"loans": loans, "inquiries_90d": rng.randint(0, 4)},
     }
+    _apply_profile(data, inn, revenue)
+    return data
+
+
+def _apply_profile(data: dict, inn: str, revenue: int) -> None:
+    profile = profile_of(inn)
+    fns, loans = data["fns"], data["bki"]["loans"]
+    if profile == "thin_margin":
+        fns["expenses"] = int(revenue * 0.985)
+    elif profile == "heavy_debt":
+        monthly = revenue // 12 * 49 // 100 // 1000 * 1000
+        loans.append({
+            "lender": "Северный банк", "type": "Кредитная линия", "amount": monthly * 30, "balance": monthly * 20,
+            "monthly_payment": monthly, "opened_at": "2024-03-01", "overdue_days_current": 0,
+            "overdue_amount_current": 0, "overdue_max_days_24m": 0,
+        })
+    elif profile == "overdue":
+        loans.append({
+            "lender": "Банк Развитие", "type": "Кредит на пополнение оборотных средств", "amount": 2_000_000,
+            "balance": 1_200_000, "monthly_payment": 95_000, "opened_at": "2024-06-01", "overdue_days_current": 20,
+            "overdue_amount_current": 95_000, "overdue_max_days_24m": 40,
+        })
+    elif profile == "tax_debt":
+        fns["tax_debt"] = 150_000
+        fns["mass_address"] = True
+    elif profile == "inactive":
+        data["egrul"]["status"] = (LIQUIDATING, REORGANIZING, BANKRUPT)[int(inn[7]) % 3]

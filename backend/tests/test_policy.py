@@ -18,7 +18,8 @@ def _client_for(monkeypatch, *, revenue_year: int, expenses_year: int, loans: li
     inn = _org_inn(f"0077{next(_counter):05d}")
     data = generate(inn)
     data["egrul"]["registered_at"] = "2015-01-15"
-    data["fns"] |= {"revenue": revenue_year, "expenses": expenses_year, "tax_debt": 0}
+    data["egrul"]["status"] = {"code": "active", "title": "Действующая"}
+    data["fns"] |= {"revenue": revenue_year, "expenses": expenses_year, "tax_debt": 0, "mass_address": False}
     data["bki"] = {"loans": loans, "inquiries_90d": 1}
     monkeypatch.setitem(COMPANIES, inn, data)
     email = f"policy-{inn}@demo.local"
