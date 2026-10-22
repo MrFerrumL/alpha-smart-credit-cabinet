@@ -1,3 +1,5 @@
+import re
+
 from tests.conftest import auth
 
 
@@ -137,3 +139,38 @@ def test_analyst_cannot_create_applications(client):
         headers=analyst,
     )
     assert response.status_code == 403
+
+
+def test_schema_errors_are_explained_in_russian(client):
+    def errors(response, field):
+        assert response.status_code == 422, response.text
+        body = response.json()
+        assert body["code"] == "validation_error"
+        messages = {e["field"]: e["message"] for e in body["errors"]}
+        assert not any(re.search("[A-Za-z]", m) for m in messages.values()), messages
+        return messages[field]
+
+    login = client.post("/api/auth/login", json={"email": "ab", "password": "x"})
+    assert errors(login, "email") == "Почта — не короче 3 символов"
+
+    owner = auth(client, "bakery@demo.local")
+    draft = _draft(client, owner)
+    url = f"/api/applications/{draft['id']}"
+    employees = client.patch(url, json={"form": {"finance": {"employees": 1_000_000}}}, headers=owner)
+    assert errors(employees, "form.finance.employees") == "Сотрудников — не больше 100 000"
+    # Так браузер отправляет 22-значную выручку: число больше MAX_SAFE_INTEGER уходит в экспоненциальной записи.
+    huge = client.patch(
+        url, content='{"form":{"finance":{"monthly_revenue":1e+21}}}', headers=owner | {"Content-Type": "application/json"}
+    )
+    assert errors(huge, "form.finance.monthly_revenue") == "Выручка в месяц — слишком большое число"
+    name = client.patch(url, json={"form": {"contact_name": "А" * 256}}, headers=owner)
+    assert errors(name, "form.contact_name") == "Контактное лицо — не длиннее 255 символов"
+
+    analyst = auth(client, "analyst@demo.local")
+    decision = client.post(
+        f"{url}/decision",
+        json={"outcome": "reject", "comment": "Обоснование решения", "reasons": ["П" * 301], "rate": 100},
+        headers=analyst,
+    )
+    assert errors(decision, "reasons.0") == "Причина отказа — не длиннее 300 символов"
+    assert errors(decision, "rate") == "Ставка — меньше 100"

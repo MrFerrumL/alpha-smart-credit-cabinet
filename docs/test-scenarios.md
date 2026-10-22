@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 131 автотест на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 136 автотестов на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -36,7 +36,7 @@ docker compose up --build
 |---|---|
 | E2E — сквозные сценарии | E2E-01 … E2E-15 |
 | Отказоустойчивость | FAIL-01 … FAIL-05 |
-| NEG — негативные и ролевые сценарии | NEG-01 … NEG-54 |
+| NEG — негативные и ролевые сценарии | NEG-01 … NEG-55 |
 | Автотесты и CI | запуск и проверки в CI |
 
 ---
@@ -505,6 +505,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-12 | ИНН с неверной контрольной цифрой | `GET /api/companies/lookup?inn=0077060067` | 422 | `test_api.py::test_company_lookup_uses_registry` |
 | NEG-13 | ЕГРЮЛ не отвечает | Сбой `egrul` без `count`, `GET /api/companies/lookup?inn=0077010019` | 503, `code: integration_unavailable` | `test_api.py::test_company_lookup_survives_source_outage` |
 | NEG-14 | Недопустимый файл | Загрузить `virus.exe` как выписку | 422 | `test_pipeline.py::test_missing_tax_revenue_requests_statement_and_resumes` |
+| NEG-55 | Значение вне схемы запроса | Вход с почтой `ab`; в черновике 1 000 000 сотрудников, выручка `1e+21`, контактное лицо из 256 символов; причина отказа из 301 символа | 422, поле в `errors[].field`, сообщение по-русски с названием поля: «Сотрудников — не больше 100 000», «Выручка в месяц — слишком большое число» | `test_api.py::test_schema_errors_are_explained_in_russian` |
 
 ### Доступ к чужому и роли
 
@@ -577,7 +578,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 131 тест; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 136 тестов; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 

@@ -307,12 +307,14 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 value={form.contact_name ?? ''}
                 onChange={(e) => setForm({ ...form, contact_name: e.currentTarget.value })}
                 error={err('contact_name')}
+                maxLength={255}
                 withAsterisk
               />
               <TextInput
                 label="Должность"
                 value={form.contact_position ?? ''}
                 onChange={(e) => setForm({ ...form, contact_position: e.currentTarget.value })}
+                maxLength={255}
               />
             </SimpleGrid>
             {!user?.can_sign && (
@@ -465,6 +467,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 description="Включая вас"
                 value={form.finance.employees ?? ''}
                 onChange={(v) => setFinance('employees', v)}
+                max={100_000}
                 allowNegative={false}
                 allowDecimal={false}
               />
@@ -522,6 +525,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
               onChange={(e) =>
                 setForm({ ...form, collateral: { kind: form.collateral?.kind ?? null, value: form.collateral?.value ?? null, description: e.currentTarget.value } })
               }
+              maxLength={1000}
               autosize
               minRows={2}
             />
