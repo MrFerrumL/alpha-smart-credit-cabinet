@@ -219,7 +219,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
   const upload = useUploadDocument(app.id);
   const [value, setValue] = useState<string | number>('');
   const done = task.status === 'done';
-  const canAnswer = task.status === 'open' && !readOnly;
+  const canAnswer = task.status === 'open' && !readOnly && app.allowed_actions.includes('answer_tasks');
 
   return (
     <Paper withBorder p="md" radius="md" bg={done ? 'gray.0' : 'white'}>
@@ -308,13 +308,20 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
 export function TasksCard({ app, tasks, readOnly = false }: { app: Application; tasks: ClientTask[]; readOnly?: boolean }) {
   if (tasks.length === 0) return null;
   const open = tasks.filter((t) => t.status === 'open').length;
+  const signing = app.status.code === 'signing';
   return (
     <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in" style={open ? { border: '2px solid var(--mantine-color-orange-5)' } : undefined}>
-      <Title order={4}>{open ? 'Банк просит уточнить' : 'Запросы банка'}</Title>
+      <Title order={4}>{signing ? 'Условия выдачи' : open ? 'Банк просит уточнить' : 'Запросы банка'}</Title>
       <Text fz="sm" c="dimmed" mt={4}>
-        {open
-          ? 'Как только вы ответите на все запросы, проверка продолжится автоматически.'
-          : 'Все запросы закрыты — спасибо!'}
+        {signing
+          ? open
+            ? readOnly
+              ? 'Клиент закрывает условия выдачи — после этого деньги будут переведены автоматически.'
+              : 'Закройте условия — как только последнее будет выполнено, деньги поступят на счёт автоматически.'
+            : 'Все условия выполнены.'
+          : open
+            ? 'Как только вы ответите на все запросы, проверка продолжится автоматически.'
+            : 'Все запросы закрыты — спасибо!'}
       </Text>
       <Stack gap="sm" mt="md">
         {tasks.map((task) => (

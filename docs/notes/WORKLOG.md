@@ -29,8 +29,8 @@ verification, docs, a full review of the branch against the case and the release
 | G | Risk profiles in the mock generator (N10) together with B5 | done `9834575` |
 | News | Feed from `news.json`, tagged by OKVED, product, status | done `189b0dd` |
 | A | Decision rule trace, policy version, replay | done `f81366e` |
-| C | Policy impact simulator | done (this commit), reviewed |
-| E | Product-dependent conditions before issue | pending |
+| C | Policy impact simulator | done `d063bbc` |
+| E | Product-dependent conditions before issue | done, reviewed (commit after `d063bbc`) |
 | Rel | 25.10: e2e verification, full review, `rc` tag | pending |
 
 Every P0 item and every differentiator gets a code review of its diff before the next item starts.
@@ -249,5 +249,11 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-Close the gaps the Step 3 review finds; confirm the first CI run; agree who builds the analyst cabinet
-(README step 4 = our P0.2) to avoid duplicate work with the teammate.
+State on 23.10 early morning: everything up to C is on `feat/e2e-completion`, CI green on `d063bbc`
+(`gh` installed at `C:\Program Files\GitHub CLI\gh.exe`, logged in). Next: E — product-dependent
+conditions before issue (investment loan: collateral documents and owner guarantee as client tasks; issue
+waits until they are closed). Then 25.10: end-to-end verification, README walkthrough with exact inputs,
+`docs/test-scenarios.md`, `docs/api.md`, RELEASE.md, CHANGELOG.md, NOTICES check against lock files,
+"Допущения" and "Развитие" sections, full branch review against the case and the submission checklist,
+`rc` tag only on Kirill's go-ahead. Open question to Kirill: how jurors can try generated INNs in the UI
+(recommended: extra demo heads for the README sample INNs).

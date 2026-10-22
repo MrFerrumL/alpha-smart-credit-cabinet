@@ -1,6 +1,6 @@
 """Сценарии работы с заявкой: черновик, редактирование, отправка, отзыв, доступ."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.authority import may_sign
@@ -36,6 +36,8 @@ EVENT_TITLES = {
     "document_uploaded": "Загружен документ «{filename}»",
     "pipeline_failed": "Сбой обработки — заявку проверит специалист",
     "handed_to_signer": "Предложение передано руководителю на подпись",
+    "issue_waiting_conditions": "Договор подписан — выдача после закрытия условий",
+    "issue_conditions_met": "Условия выдачи выполнены",
     "offer_accepted": "Предложение принято — договор готов к подписанию",
     "offer_declined": "Вы отказались от предложения банка",
     "signing_code_sent": "Код для подписи отправлен в уведомления",
@@ -72,7 +74,7 @@ def handed_off(db: Session, app: Application, offer: Offer) -> bool:
     return any((payload or {}).get("offer_id") == offer.id for payload in events)
 
 
-def allowed_actions(app: Application, user: User, offer: Offer | None = None) -> list[str]:
+def allowed_actions(app: Application, user: User, offer: Offer | None = None, open_tasks: int = 0) -> list[str]:
     status = Status(app.status)
     actions: list[str] = []
     if user.role == "client" and user.company_id == app.company_id:
@@ -80,7 +82,7 @@ def allowed_actions(app: Application, user: User, offer: Offer | None = None) ->
         signed = offer is not None and offer.status == "signed"
         if status == Status.DRAFT:
             actions += ["edit", "submit"]
-        if status == Status.NEEDS_INFO:
+        if status == Status.NEEDS_INFO or (status == Status.SIGNING and offer is not None and open_tasks):
             actions.append("answer_tasks")
         if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
             if signer:
@@ -104,15 +106,16 @@ def latest_offer(db: Session, app: Application) -> Offer | None:
 
 
 def open_tasks_count(db: Session, app: Application) -> int:
-    query = select(ClientTask.id).where(ClientTask.application_id == app.id, ClientTask.status == "open")
-    return len(db.scalars(query).all())
+    query = select(func.count(ClientTask.id)).where(ClientTask.application_id == app.id, ClientTask.status == "open")
+    return db.scalar(query) or 0
 
 
 def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     product = PRODUCTS[app.product_code]
     offer = latest_offer(db, app)
     decision = app.decision or None
-    actions = allowed_actions(app, user, offer)
+    open_tasks = open_tasks_count(db, app)
+    actions = allowed_actions(app, user, offer, open_tasks)
     awaiting = offer is not None and offer.status == "active" and handed_off(db, app, offer)
     if awaiting and "handoff_to_signer" in actions:
         actions.remove("handoff_to_signer")
@@ -136,7 +139,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         )
         if decision
         else None,
-        open_tasks=open_tasks_count(db, app),
+        open_tasks=open_tasks,
         loan_id=db.scalar(select(Loan.id).where(Loan.application_id == app.id)),
         created_at=app.created_at,
         updated_at=app.updated_at,

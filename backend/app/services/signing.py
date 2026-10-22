@@ -21,11 +21,12 @@ from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, schedule
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, TooManyRequests
-from app.models import Application, ApplicationEvent, Offer, SigningChallenge, User, utcnow
+from app.models import Application, ApplicationEvent, ClientTask, Offer, SigningChallenge, User, utcnow
 from app.pipeline.queue import enqueue
 from app.schemas import ContractOut, ContractSection, ScheduleRowOut
 from app.services.applications import handed_off, user_may_sign
 from app.services.notifications import notify_users
+from app.services.tasks import BEFORE_ISSUE, open_issue_conditions
 from app.services.state_machine import apply_transition, record_event
 
 OFFER_STATUSES = (Status.APPROVED.value, Status.COUNTER_OFFER.value)
@@ -103,6 +104,29 @@ def _require_offer(db: Session, app: Application, *statuses: str) -> Offer:
     return offer
 
 
+def issue_conditions(product) -> list[dict]:
+    """Условия выдачи зависят от продукта: для кредита с обеспечением — документы по залогу и поручительство
+    собственника. Договор можно подписать сразу, но деньги переводятся только после закрытия условий."""
+    if not product.collateral:
+        return []
+    return [
+        {
+            "kind": "document",
+            "title": "Загрузите документы по залогу",
+            "description": "Договор купли-продажи или спецификация имущества и документ об оценке. "
+                           "Без них банк не сможет оформить залог и перевести деньги.",
+            "payload": {"condition": BEFORE_ISSUE, "document_kind": "collateral"},
+        },
+        {
+            "kind": "question",
+            "title": "Подтвердите поручительство собственника",
+            "description": "Напишите ФИО собственника, который поручается по кредиту. В промышленной версии — "
+                           "отдельный договор поручительства с подписью.",
+            "payload": {"condition": BEFORE_ISSUE},
+        },
+    ]
+
+
 def _require_valid(offer: Offer) -> None:
     if offer.valid_until and offer.valid_until.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
         raise Conflict("Срок предложения истёк — подайте новую заявку")
@@ -137,6 +161,8 @@ def accept_offer(db: Session, user: User, app: Application) -> Offer:
     offer.status = "accepted"
     offer.accepted_at = utcnow()
     offer.contract_number = f"КД-{utcnow().year}-{app.id:06d}"
+    for spec in issue_conditions(PRODUCTS[offer.product_code]):
+        db.add(ClientTask(application_id=app.id, created_by_type="system", **spec))
     apply_transition(
         db, app, Status.SIGNING, Actor.CLIENT, actor_id=user.id, event="offer_accepted",
         payload={
@@ -278,8 +304,12 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
             "signer_authority": f"руководитель по ЕГРЮЛ: {app.company.director}" if app.company.director else None,
         },
     )
-    # Выдачу выполняет конвейер: запрос в АБС с ретраями и идемпотентностью по номеру договора.
-    enqueue(db, "pipeline.disburse", app.id, delay_s=get_settings().pipeline_step_delay_s)
+    # Выдачу выполняет конвейер: запрос в АБС с ретраями и идемпотентностью по номеру договора. Если по
+    # продукту есть условия выдачи и они не закрыты — выдача начнётся, когда клиент закроет последнее.
+    if open_issue_conditions(db, app):
+        record_event(db, app, "issue_waiting_conditions", Actor.SYSTEM)
+    else:
+        enqueue(db, "pipeline.disburse", app.id, delay_s=get_settings().pipeline_step_delay_s)
     db.commit()
     return offer
 

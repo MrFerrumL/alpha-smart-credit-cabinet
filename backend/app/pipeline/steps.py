@@ -233,6 +233,11 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
     offer = db.scalar(select(Offer).where(Offer.application_id == app.id, Offer.status == "signed").limit(1))
     if offer is None:
         return
+    open_conditions = db.scalars(
+        select(ClientTask).where(ClientTask.application_id == app.id, ClientTask.status == "open")
+    )
+    if any((t.payload or {}).get("condition") == "before_issue" for t in open_conditions):
+        return  # условия выдачи не закрыты: выдачу запустит закрытие последнего условия
     try:
         payment = sources.disburse(
             contract_number=offer.contract_number, inn=app.company.inn, amount=int(offer.amount)

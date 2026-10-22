@@ -384,3 +384,91 @@ def test_signing_right_is_checked_against_the_registry_director(client, mocks):
         requests = db.scalars(select(Notification).where(Notification.kind == "signature_requested")).all()
         assert any(n.user_id == olga.id for n in requests)
         assert not any(n.user_id == ex.id for n in requests)  # бывшему директору запрос не уходит
+
+
+def test_secured_loan_is_issued_only_after_issue_conditions_are_closed(client, mocks):
+    from tests.test_analyst import vector_in_review
+
+    app_id, headers = vector_in_review(client, mocks)
+    analyst = auth(client, "analyst@demo.local")
+    decided = client.post(f"/api/applications/{app_id}/decision", headers=analyst, json={
+        "outcome": "counter_offer", "amount": 19_500_000, "term_months": 60,
+        "comment": "Рекомендация конвейера: покрытие прибылью 1,2",
+    })
+    assert decided.status_code == 200, decided.text
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).status_code == 200
+    tasks = client.get(f"/api/applications/{app_id}/tasks", headers=headers).json()
+    conditions = [t for t in tasks if (t["payload"] or {}).get("condition") == "before_issue"]
+    assert {t["kind"] for t in conditions} == {"document", "question"}
+
+    sign(client, app_id, headers)
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "signing" and app["open_tasks"] == 2  # подписан, но денег нет
+    assert "answer_tasks" in app["allowed_actions"]
+    assert "issue_waiting_conditions" in [e["event"] for e in client.get(
+        f"/api/applications/{app_id}/events", headers=headers).json()]
+
+    document = next(t for t in conditions if t["kind"] == "document")
+    question = next(t for t in conditions if t["kind"] == "question")
+    uploaded = client.post(f"/api/applications/{app_id}/documents", headers=headers,
+                           files={"file": ("zalog.pdf", b"%PDF-1.4 collateral", "application/pdf")},
+                           data={"kind": "collateral", "task_id": str(document["id"])})
+    assert uploaded.status_code == 201, uploaded.text
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "signing"  # одно условие ещё открыто
+    answered = client.post(f"/api/applications/{app_id}/tasks/{question['id']}/answer", headers=headers,
+                           json={"answer": "Волков Игорь Сергеевич"})
+    assert answered.status_code == 200, answered.text
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "issued" and app["loan_id"]
+
+
+def test_unsecured_loan_has_no_issue_conditions(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    assert get(client, app_id, headers)["open_tasks"] == 0
+
+
+def test_disburse_step_refuses_while_conditions_are_open(client, mocks):
+    from app.pipeline.queue import enqueue
+    from tests.test_analyst import vector_in_review
+
+    app_id, headers = vector_in_review(client, mocks)
+    client.post(f"/api/applications/{app_id}/decision", headers=auth(client, "analyst@demo.local"), json={
+        "outcome": "counter_offer", "amount": 19_500_000, "term_months": 60, "comment": "Рекомендация конвейера",
+    })
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    sign(client, app_id, headers)
+    with SessionLocal() as db:  # выдачу кто-то поставил в очередь вручную — шаг всё равно не переведёт деньги
+        enqueue(db, "pipeline.disburse", app_id)
+        db.commit()
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "signing"
+    tasks = client.get(f"/api/applications/{app_id}/tasks", headers=headers).json()
+    question = next(t for t in tasks if t["kind"] == "question")
+    accountant = auth(client, "buh@demo.local")  # другая компания — 404, а свой бухгалтер у «Вектора» не заведён
+    assert client.post(f"/api/applications/{app_id}/tasks/{question['id']}/answer", headers=accountant,
+                       json={"answer": "x"}).status_code == 404
+    blank = client.post(f"/api/applications/{app_id}/tasks/{question['id']}/answer", headers=headers,
+                        json={"answer": "   "})
+    assert blank.status_code == 422
+
+
+def test_conditions_close_when_the_contract_expires(client, mocks):
+    from tests.test_analyst import vector_in_review
+
+    app_id, headers = vector_in_review(client, mocks)
+    client.post(f"/api/applications/{app_id}/decision", headers=auth(client, "analyst@demo.local"), json={
+        "outcome": "counter_offer", "amount": 19_500_000, "term_months": 60, "comment": "Рекомендация конвейера",
+    })
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    assert get(client, app_id, headers)["open_tasks"] == 2
+    with SessionLocal() as db:
+        offer = db.scalar(select(Offer).where(Offer.application_id == app_id).order_by(Offer.id.desc()))
+        offer.valid_until = utcnow() - timedelta(minutes=1)
+        db.commit()
+        expire_offers(db)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "expired" and app["open_tasks"] == 0

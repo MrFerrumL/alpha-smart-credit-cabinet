@@ -252,13 +252,15 @@ export function SigningCard({ app }: { app: Application }) {
       )}
 
       {signed ? (
-        <Paper bg={c?.issue_delayed ? 'orange.0' : 'teal.0'} p="md" radius="md" mt="lg">
+        <Paper bg={c?.issue_delayed || app.open_tasks > 0 ? 'orange.0' : 'teal.0'} p="md" radius="md" mt="lg">
           <Group gap="sm" wrap="nowrap">
-            <Loader size="sm" color={c?.issue_delayed ? 'orange' : 'teal'} />
+            {app.open_tasks > 0 ? null : <Loader size="sm" color={c?.issue_delayed ? 'orange' : 'teal'} />}
             <Text fz="sm">
-              {c?.issue_delayed
-                ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
-                : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
+              {app.open_tasks > 0
+                ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они выше на странице.'
+                : c?.issue_delayed
+                  ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
+                  : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
             </Text>
           </Group>
         </Paper>
