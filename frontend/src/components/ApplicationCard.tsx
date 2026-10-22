@@ -2,14 +2,18 @@ import { Card, Group, Progress, Text } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
 
+import { useProducts } from '../api/hooks';
 import type { Application } from '../api/types';
 import { months, moneyShort } from '../lib/format';
+import { shownTerms } from './ApplicationBlocks';
 import { StatusBadge, toneColor } from './ui';
 
 const LAST_STAGE = 6;
 
 export function ApplicationCard({ app }: { app: Application }) {
   const navigate = useNavigate();
+  const products = useProducts();
+  const terms = shownTerms(app, products.data);
   const progress = app.status.code === 'issued' ? 100 : (app.status.stage / LAST_STAGE) * 100;
 
   return (
@@ -23,10 +27,10 @@ export function ApplicationCard({ app }: { app: Application }) {
             Заявка № {app.number}
           </Text>
           <Text fw={800} fz="lg">
-            {app.product.name}
+            {terms.product}
           </Text>
           <Text c="dimmed" fz="sm">
-            {moneyShort(app.amount)} · {months(app.term_months)} · {app.purpose_title}
+            {moneyShort(terms.amount)} · {months(terms.term)} · {app.purpose_title}
           </Text>
         </div>
         <StatusBadge status={app.status} />

@@ -31,12 +31,43 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAnswerTask, useProducts, useUploadDocument } from '../api/hooks';
-import type { Application, ClientTask, SourceCheck, UploadedDocument } from '../api/types';
+import type { Application, ClientTask, Product, SourceCheck, UploadedDocument } from '../api/types';
 import { date, money, moneyShort, months, rate } from '../lib/format';
 import { OfferActions } from './Signing';
 import { Stat } from './ui';
 
 // --- Решение банка -----------------------------------------------------------------------------
+
+/**
+ * Условия, которые показываем по заявке. Пока предложение не принято — то, что клиент просил; после принятия
+ * (подписание, выдача) — условия договора, а запрошенные остаются только справкой «вы просили».
+ */
+export function shownTerms(app: Application, products?: Product[]) {
+  const offer = app.offer;
+  if (offer && (offer.status === 'accepted' || offer.status === 'signed')) {
+    const sameProduct = offer.product_code === app.product.code;
+    const asked = !sameProduct || offer.amount !== app.amount || offer.term_months !== app.term_months;
+    return {
+      agreed: true,
+      product:
+        products?.find((p) => p.code === offer.product_code)?.name ?? (sameProduct ? app.product.name : offer.product_code),
+      amount: offer.amount,
+      term: offer.term_months,
+      rate: rate(offer.rate),
+      payment: money(offer.monthly_payment),
+      asked: asked ? `${app.product.name} · ${moneyShort(app.amount)} · ${months(app.term_months)}` : null,
+    };
+  }
+  return {
+    agreed: false,
+    product: app.product.name,
+    amount: app.amount,
+    term: app.term_months,
+    rate: `от ${rate(app.product.rate)}`,
+    payment: `≈ ${money(app.monthly_payment)}`,
+    asked: null,
+  };
+}
 
 function OfferGrid({ app }: { app: Application }) {
   const offer = app.offer!;

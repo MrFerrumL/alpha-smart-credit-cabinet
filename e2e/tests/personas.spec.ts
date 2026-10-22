@@ -67,6 +67,11 @@ test('clean: контрпредложение другим продуктом �
   await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
   await sign(page);
   await expect(page.getByRole('heading', { name: 'Деньги на счёте!' })).toBeVisible({ timeout: 60_000 });
+  // После выдачи заявка показывает условия кредита, а не то, что просили.
+  const terms = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Условия кредита' }) });
+  await expect(terms).toContainText('Овердрафт');
+  await expect(terms).toContainText('150 тыс. ₽');
+  await expect(terms).toContainText('Вы просили: Экспресс-оборот · 300 тыс. ₽ · 12 месяцев');
   await page.getByRole('link', { name: 'Кредит и график платежей' }).click();
   await expect(page.getByRole('heading', { name: 'Овердрафт' })).toBeVisible();
   await expect(page.getByText('Сумма кредита').locator('..')).toContainText('150 000 ₽');

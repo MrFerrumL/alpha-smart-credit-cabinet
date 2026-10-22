@@ -87,6 +87,11 @@ def test_other_product_is_offered_when_the_requested_one_does_not_fit(client, mo
     assert "Овердрафт" in app["decision"]["reasons"][0]
     accepted = client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
     assert accepted.status_code == 200, accepted.text
+    # Заявка хранит то, что просили, а принятые условия — в предложении: по ним кабинет показывает кредит.
+    app = get(client, app_id, headers)
+    assert (app["product"]["code"], app["amount"]) == ("express", 300_000)
+    offer = app["offer"]
+    assert (offer["status"], offer["product_code"], offer["amount"]) == ("accepted", "overdraft", 150_000)
     contract = client.get(f"/api/applications/{app_id}/contract", headers=headers).json()
     assert contract["product_name"] == "Овердрафт" and contract["amount"] == 150_000
 

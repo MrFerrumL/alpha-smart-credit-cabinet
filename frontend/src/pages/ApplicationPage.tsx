@@ -28,17 +28,18 @@ import {
   useDocuments,
   useEvents,
   useMeta,
+  useProducts,
   useTasks,
 } from '../api/hooks';
 import { useApplicationStream } from '../api/stream';
 import type { Application, ApplicationAction, ApplicationEvent } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { ChecksCard, DecisionCard, DocumentList, TasksCard } from '../components/ApplicationBlocks';
+import { ChecksCard, DecisionCard, DocumentList, TasksCard, shownTerms } from '../components/ApplicationBlocks';
 import { AnalystPanel } from '../components/AnalystPanel';
 import { IssuedCard, SigningCard } from '../components/Signing';
 import { StageProgress } from '../components/StageProgress';
 import { Stat, StatusBadge, toneColor } from '../components/ui';
-import { dateTime, money, moneyShort, months, rate } from '../lib/format';
+import { dateTime, moneyShort, months } from '../lib/format';
 
 const ACTOR_LABEL: Record<ApplicationEvent['actor_type'], string> = {
   client: 'Клиент',
@@ -170,6 +171,7 @@ export function ApplicationPage() {
   const applicationId = Number(id);
   const { user } = useAuth();
   const meta = useMeta();
+  const products = useProducts();
   const query = useApplication(applicationId);
   const app = query.data;
   const live = useApplicationStream(applicationId, !!app && !app.status.terminal && app.status.code !== 'draft');
@@ -203,6 +205,7 @@ export function ApplicationPage() {
   const checking = app.status.code === 'enrichment';
   const hasOpenTasks = app.open_tasks > 0;
   const readOnly = user?.role !== 'client';
+  const terms = shownTerms(app, products.data);
 
   return (
     <Stack gap="xl">
@@ -241,15 +244,20 @@ export function ApplicationPage() {
         <Grid.Col span={{ base: 12, md: 7 }}>
           <Stack gap="lg">
             <Card p={{ base: 'lg', sm: 'xl' }}>
-              <Title order={4}>Параметры заявки</Title>
+              <Title order={4}>{terms.agreed ? 'Условия кредита' : 'Параметры заявки'}</Title>
               <SimpleGrid cols={{ base: 2, sm: 3 }} mt="lg" spacing="lg" verticalSpacing="lg">
-                <Stat label="Продукт" value={app.product.name} />
-                <Stat label="Сумма" value={moneyShort(app.amount)} />
-                <Stat label="Срок" value={months(app.term_months)} />
-                <Stat label="Ставка" value={`от ${rate(app.product.rate)}`} />
-                <Stat label="Платёж" value={`≈ ${money(app.monthly_payment)}`} accent />
+                <Stat label="Продукт" value={terms.product} />
+                <Stat label="Сумма" value={moneyShort(terms.amount)} />
+                <Stat label="Срок" value={months(terms.term)} />
+                <Stat label="Ставка" value={terms.rate} />
+                <Stat label="Платёж" value={terms.payment} accent />
                 <Stat label="Цель" value={<Text fw={700}>{app.purpose_title}</Text>} />
               </SimpleGrid>
+              {terms.asked && (
+                <Text fz="sm" c="dimmed" mt="md">
+                  {user?.role === 'analyst' ? 'Клиент просил' : 'Вы просили'}: {terms.asked}
+                </Text>
+              )}
               {documents.data && documents.data.length > 0 && (
                 <>
                   <Text fw={700} mt="xl" mb="xs">
