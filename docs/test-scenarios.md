@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 141 автотест на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 142 автотеста на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -36,7 +36,7 @@ docker compose up --build
 |---|---|
 | E2E — сквозные сценарии | E2E-01 … E2E-15 |
 | Отказоустойчивость | FAIL-01 … FAIL-05 |
-| NEG — негативные и ролевые сценарии | NEG-01 … NEG-57 |
+| NEG — негативные и ролевые сценарии | NEG-01 … NEG-58 |
 | Автотесты и CI | запуск и проверки в CI |
 
 ---
@@ -579,6 +579,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-48 | Повторное подключение того же ИНН | `new@` второй раз с ИНН `0077070071` | 409 | `test_api.py::test_new_client_links_company_by_inn` |
 | NEG-49 | Учредитель подключает свободную компанию | Учредитель по ЕГРЮЛ подключает новую компанию | 200; `can_sign: false` | `test_hardening.py::test_founder_connects_company_but_cannot_sign` |
 | NEG-50 | Сверка ФИО | Имя профиля сопоставляется с ФИО по ЕГРЮЛ: фамилия обязательна, одной фамилии мало, «Алёна/Алена» совпадают | совпадение только при фамилии и имени | `test_hardening.py::test_same_person_matches_profile_name_against_registry_name` |
+| NEG-58 | Заявка без подключённой компании | Клиент без компании: «Подобрать кредит» → «Оформить заявку» (`POST /api/applications`) | 409 `conflict`, в сообщении — ввести ИНН на главной странице (профиля в кабинете нет) | `test_hardening.py::test_client_without_company_is_sent_to_the_home_page_for_the_inn` |
 | NEG-51 | Предложение истекло | Предложение просрочено (7 дней), воркер переводит заявку в «Срок истёк»; `POST …/offer/accept` | заявка `expired`, предложение `expired`, принять — 409 | `test_signing.py::test_expired_offer_cannot_be_accepted` |
 | NEG-52 | Принятое, но не подписанное предложение истекло | Предложение принято, срок вышел; запросить код | 409; затем заявка `expired` | `test_signing.py::test_accepted_but_unsigned_contract_expires_with_the_offer` |
 | NEG-53 | Не отвеченный запрос банка | Банк запросил информацию, клиент молчит 14 дней | до срока ничего не закрывается; через 14 дней заявка `expired`, открытых запросов нет | `test_signing.py::test_unanswered_bank_request_closes_the_application` |
@@ -595,7 +596,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 141 тест; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 142 теста; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 

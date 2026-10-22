@@ -262,7 +262,7 @@ def create_draft(db: Session, user: User, data: ApplicationCreate) -> Applicatio
     if user.role != "client":
         raise Forbidden("Заявку оформляет клиент")
     if user.company_id is None:
-        raise Conflict("Сначала укажите компанию: введите ИНН в профиле")
+        raise Conflict("Сначала подключите компанию: введите ИНН на главной странице")
     _require_product(data.product_code)
     app = Application(
         company_id=user.company_id,

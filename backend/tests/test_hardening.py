@@ -136,6 +136,17 @@ def test_outsider_learns_nothing_about_a_connected_company(client):
     assert client.get("/api/applications", headers=stranger).json() == []
 
 
+def test_client_without_company_is_sent_to_the_home_page_for_the_inn(client):
+    # Профиля в кабинете нет: ИНН вводится на главной — туда и отправляет ошибка.
+    headers = _login(client, _client_without_company("no-company@demo.local", "Пётр Петров"))
+    body = {"product_code": "express", "purpose": "working_capital", "amount": 1_000_000, "term_months": 12}
+    response = client.post("/api/applications", json=body, headers=headers)
+    assert response.status_code == 409
+    problem = response.json()
+    assert problem["code"] == "conflict"
+    assert "на главной странице" in problem["detail"] and "профил" not in problem["detail"]
+
+
 def test_founder_cannot_join_a_company_already_in_the_cabinet(client):
     founder = _login(client, _client_without_company("sklad-founder@demo.local", "Мария Орлова"))
     response = client.post("/api/companies/link", json={"inn": "0077020024"}, headers=founder)
