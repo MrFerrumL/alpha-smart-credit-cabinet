@@ -36,6 +36,7 @@ git checkout v1.0.0
 | Требование кейса | Где |
 |---|---|
 | README: назначение, архитектура, окружение, запуск, переменные, компоненты, сценарий проверки | [README.md](README.md) |
+| Исследование, модель процесса, обоснование MVP | [docs/product.md](docs/product.md) |
 | Архитектурная схема | [docs/architecture.md](docs/architecture.md) |
 | Описание API и OpenAPI/Swagger | [docs/api.md](docs/api.md), [docs/openapi.json](docs/openapi.json), http://localhost:8000/api/docs |
 | Коллекция запросов | [docs/postman_collection.json](docs/postman_collection.json) |

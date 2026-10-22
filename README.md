@@ -203,6 +203,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentT
 
 | Документ | Что внутри |
 |---|---|
+| [docs/product.md](docs/product.md) | Пользователи и их боли, модель кредитного процесса и его границы, почему такой MVP |
 | [docs/architecture.md](docs/architecture.md) | Компоненты, ключевые решения, безопасность, масштабирование |
 | [docs/state-machine.md](docs/state-machine.md) | Диаграмма состояний заявки, статусы и переходы (собрана из кода) |
 | [docs/data-model.md](docs/data-model.md) | ER-диаграмма и пояснения к модели данных |
