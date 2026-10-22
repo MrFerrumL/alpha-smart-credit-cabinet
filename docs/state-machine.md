@@ -29,6 +29,7 @@ stateDiagram-v2
     counter_offer --> signing: client
     counter_offer --> expired: system
     signing --> issued: system
+    signing --> expired: system
     draft --> cancelled: client
     submitted --> cancelled: client
     validation --> cancelled: client
@@ -101,6 +102,7 @@ stateDiagram-v2
 | `counter_offer` | `signing` | клиент |
 | `counter_offer` | `expired` | система |
 | `signing` | `issued` | система |
+| `signing` | `expired` | система |
 | `draft` | `cancelled` | клиент |
 | `submitted` | `cancelled` | клиент |
 | `validation` | `cancelled` | клиент |

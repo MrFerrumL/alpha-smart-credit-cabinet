@@ -13,6 +13,7 @@ from app.errors import BusinessValidationError, Conflict, Forbidden, Integration
 from app.models import Company, User
 from app.schemas import CompanyLinkIn, CompanyLookupOut, CompanyOut, FinancialsOut
 from app.services.integrations import ExternalSources, NotInSource, SourceUnavailable, get_sources
+from app.services.notifications import notify_company
 
 router = APIRouter(prefix="/companies", tags=["Компании"])
 
@@ -61,8 +62,9 @@ def link(
     db: Session = Depends(get_db),
     sources: ExternalSources = Depends(get_sources),
 ) -> Company:
-    """Подключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ, и только если
-    компания ещё не подключена. Право подписи получает только руководитель."""
+    """Подключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже
+    подключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться
+    без доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель."""
     if user.company_id is not None:
         raise Conflict("Компания уже привязана к учётной записи")
     registry = _registry(sources, data.inn)
@@ -76,7 +78,8 @@ def link(
         )
     already_connected = Conflict("Эта компания уже подключена к кабинету. Доступ сотрудникам выдаёт её руководитель.")
     company = db.scalar(select(Company).where(Company.inn == card.inn).with_for_update())
-    if company is not None and db.scalar(select(User.id).where(User.company_id == company.id).limit(1)):
+    connected = company is not None and db.scalar(select(User.id).where(User.company_id == company.id).limit(1))
+    if connected and not authority.is_head:
         raise already_connected
     try:
         if company is None:
@@ -89,6 +92,15 @@ def link(
             db.flush()
         user.company_id = company.id
         user.can_sign = authority.can_sign
+        if connected:
+            notify_company(
+                db,
+                company.id,
+                kind="info",
+                title="К кабинету компании подключился руководитель",
+                body=f"{user.full_name} подключился как руководитель по данным ЕГРЮЛ и получил право подписи.",
+                link="/",
+            )
         db.commit()
     except IntegrityError:
         # Компанию одновременно подключил другой представитель.

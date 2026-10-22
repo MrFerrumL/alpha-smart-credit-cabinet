@@ -67,12 +67,13 @@ def allowed_actions(app: Application, user: User, offer: Offer | None = None) ->
             actions.append("answer_tasks")
         if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
             if user.can_sign:
-                actions.append("accept_offer")
-            actions.append("decline_offer")
+                actions += ["accept_offer", "decline_offer"]
         if status == Status.SIGNING and user.can_sign and not signed:
             actions.append("sign")
+        # Когда у заявки есть предложение банка, отзыв равен отказу от кредита — это решение руководителя.
         # После подписи договора отозвать заявку нельзя — деньги уже в пути.
-        if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed:
+        offer_stage = status in (Status.APPROVED, Status.COUNTER_OFFER, Status.SIGNING)
+        if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed and (user.can_sign or not offer_stage):
             actions.append("cancel")
     if user.role == "analyst" and status == Status.MANUAL_REVIEW:
         actions.append("decide")
@@ -262,6 +263,9 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
 
 
 def cancel(db: Session, user: User, app: Application, comment: str | None) -> Application:
+    offer_stage = app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value, Status.SIGNING.value)
+    if offer_stage and user.role == "client" and user.company_id == app.company_id and not user.can_sign:
+        raise Forbidden("Отказаться от одобренного кредита может только руководитель компании")
     if "cancel" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Эту заявку уже нельзя отозвать")
     apply_transition(db, app, Status.CANCELLED, Actor.CLIENT, actor_id=user.id, event="cancelled", comment=comment)

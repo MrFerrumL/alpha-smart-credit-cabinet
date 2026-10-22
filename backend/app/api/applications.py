@@ -256,15 +256,16 @@ def get_contract(
 @router.post(
     "/{application_id}/signing/code",
     response_model=SigningCodeOut,
-    summary="Запросить код для подписания (приходит в уведомления кабинета)",
+    summary="Запросить код для подписания (показывается в окне подписания)",
 )
 def request_signing_code(
     application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
 ) -> SigningCodeOut:
     app = svc.get_for_user(db, user, application_id)
-    challenge = signing_svc.request_code(db, user, app)
+    challenge, code = signing_svc.request_code(db, user, app)
     return SigningCodeOut(
-        challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left
+        challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left,
+        demo_code=code,
     )
 
 

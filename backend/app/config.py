@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Подписание договора одноразовым кодом из уведомлений кабинета.
     signing_code_ttl_s: int = 300
     signing_max_attempts: int = 3
+    signing_codes_per_hour: int = 5
+    # Выдача не «сдаётся»: после исчерпания повторов задача ставится заново с этой паузой.
+    disburse_retry_s: float = 60.0
     bank_name: str = "АО «Банк» (демо)"
 
     # Документы клиентов. В Docker — отдельный том.

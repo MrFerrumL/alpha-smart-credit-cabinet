@@ -114,11 +114,18 @@ def test_outsider_learns_nothing_about_a_connected_company(client):
     assert client.get("/api/applications", headers=stranger).json() == []
 
 
-def test_head_cannot_claim_a_company_already_in_the_cabinet(client):
-    head = _login(client, _client_without_company("second-head@demo.local", "Ольга Северова"))
-    response = client.post("/api/companies/link", json={"inn": "0077010019"}, headers=head)
+def test_founder_cannot_join_a_company_already_in_the_cabinet(client):
+    founder = _login(client, _client_without_company("sklad-founder@demo.local", "Мария Орлова"))
+    response = client.post("/api/companies/link", json={"inn": "0077020024"}, headers=founder)
     assert response.status_code == 409
     assert "уже подключена" in response.json()["detail"]
+
+
+def test_head_from_registry_can_always_join_and_sign(client):
+    head = _login(client, _client_without_company("second-head@demo.local", "Ольга Северова"))
+    response = client.post("/api/companies/link", json={"inn": "0077010019"}, headers=head)
+    assert response.status_code == 200, response.text
+    assert client.get("/api/auth/me", headers=head).json()["can_sign"] is True
 
 
 def test_only_head_or_founder_from_registry_can_connect_a_company(client):

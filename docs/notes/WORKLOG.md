@@ -18,9 +18,9 @@ verification, docs, a full review of the branch against the case and the release
 | # | Item | Status |
 |---|---|---|
 | — | Analysis: case, code, runtime checks, gap list, decision memo | done |
-| P0.3 | SSE session (B3), idempotency (B4), token `sub` (B14), company ownership on link (N1) | next |
-| CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | pending |
-| P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | pending |
+| P0.3 | SSE session (B3), idempotency (B4), token `sub` (B14), company ownership on link (N1) | done `496f420` |
+| CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | pushed `86c1418`, first run not yet inspected |
+| P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes from the spec review in the working tree, under review |
 | P0.2 | Analyst card and decision (B2, B9) | pending |
 | P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | pending |
 | P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | pending |
@@ -164,6 +164,29 @@ purpose so the stages are visible.
 - D3 (22.10) No local Docker: GitHub Actions runs `docker compose build`, `up -d --wait` and a smoke script.
 - D4 (22.10) The news feed uses the team's synthetic `news.json`, tagged by OKVED section, product and
   status, labelled as simulated.
+- D5 (22.10) `main` moved: Step 3 (accept, contract, in-cabinet code signing, issue via a core-banking
+  emulator, loans, notifications, offer expiry housekeeping) landed as `990e5d5`. Merged into the branch
+  (no rebase). Both sides had a migration numbered 0003; ours became `0004_submit_key_per_application`
+  on top of `0003_signing_loans_notifications`. 70 tests pass after the merge; OpenAPI and state diagram
+  still match the code.
+- D6 (22.10) P0.3 review follow-ups applied: authority is checked before the "already connected" 409 so
+  outsiders cannot probe which companies are clients; concurrent first links return 409 instead of 500;
+  the surname is mandatory in name matching; 0004 downgrade de-duplicates keys first.
+- D7 (22.10) Step 3 spec review → fixes:
+  - signing code no longer persisted in plain text (it was in the notification title): returned once as
+    `demo_code` and shown in the signing modal, labelled as a simulated e-signature;
+  - code HMAC on a derived key and bound to SHA-256 of canonical contract terms + schedule; the hash goes
+    to the `offer_accepted` / `contract_signed` events and the contract card;
+  - atomic attempt decrement, conditional consume of the code, version bump on sign (cancel race → 409),
+    5 codes per hour per application (429);
+  - offer validity re-checked on code/confirm; `signing → expired` added; expiry per application with its
+    own commit; worker loop survives any exception and recovers stale jobs periodically (part of N5);
+  - disbursement never strands: exhausted retries re-enqueue with `DISBURSE_RETRY_S`, UI says the transfer
+    is delayed;
+  - decline and offer-stage cancel need signing rights; the registry head may join an already connected
+    company (otherwise a founder connecting first locks the director out);
+  - overdraft contract text describes a limit; the amortising model of the overdraft is documented as a
+    simplification.
 
 ## Verification commands
 
@@ -176,5 +199,5 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-P0.3: stream-scoped auth dependency (B3), drop the global unique on `submit_key` and keep one key per draft
-on the frontend (B4), reject tokens without `sub` (B14), ownership rule for `/companies/link` (N1).
+Close the gaps the Step 3 review finds; confirm the first CI run; agree who builds the analyst cabinet
+(README step 4 = our P0.2) to avoid duplicate work with the teammate.

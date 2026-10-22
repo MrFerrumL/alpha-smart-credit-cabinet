@@ -108,7 +108,7 @@ erDiagram
         int id PK
         int application_id FK
         int user_id FK
-        string code_hash "HMAC кода, сам код не хранится"
+        string code_hash "HMAC кода и хеша условий договора, сам код не хранится"
         datetime expires_at
         int attempts_left
         datetime used_at

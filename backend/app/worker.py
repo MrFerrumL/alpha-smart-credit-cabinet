@@ -44,14 +44,20 @@ def main() -> None:
             if time.monotonic() >= next_housekeeping:
                 with SessionLocal() as db:
                     expired = expire_offers(db)
-                if expired:
-                    log.info("offers expired", extra={"status": str(expired)})
+                    # Задачи упавшего соседнего воркера возвращаются в очередь и во время работы, не только на старте.
+                    recovered = recover_stale(db)
+                if expired or recovered:
+                    log.info("housekeeping", extra={"status": f"expired {expired}, recovered {recovered}"})
                 next_housekeeping = time.monotonic() + settings.housekeeping_interval_s
             worked = process_next(SessionLocal, sources)
         except OperationalError:
             log.exception("database unavailable, retrying")
             worked = False
             time.sleep(2)
+        except Exception:  # noqa: BLE001 — любая ошибка цикла не должна останавливать воркер
+            log.exception("worker loop error, continuing")
+            worked = False
+            time.sleep(1)
         if not worked:
             time.sleep(settings.worker_poll_interval_s)
     log.info("worker stopped")

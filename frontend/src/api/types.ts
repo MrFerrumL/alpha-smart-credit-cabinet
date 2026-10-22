@@ -285,6 +285,8 @@ export interface Contract {
   signed: boolean;
   signed_at: string | null;
   signed_by: string | null;
+  terms_hash: string;
+  issue_delayed: boolean;
 }
 
 export interface SigningCode {
@@ -292,6 +294,7 @@ export interface SigningCode {
   expires_at: string;
   attempts_left: number;
   delivery: 'in_app';
+  demo_code: string;
 }
 
 export interface Loan {

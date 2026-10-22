@@ -50,6 +50,10 @@ class BusinessValidationError(AppError):
     status, code, title = 422, "validation_error", "Проверьте введённые данные"
 
 
+class TooManyRequests(AppError):
+    status, code, title = 429, "too_many_requests", "Слишком много запросов"
+
+
 class IntegrationUnavailable(AppError):
     status, code, title = 503, "integration_unavailable", "Внешний сервис временно недоступен"
 

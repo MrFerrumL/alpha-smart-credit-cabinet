@@ -390,7 +390,7 @@
           "Компании"
         ],
         "summary": "Привязать компанию к учётной записи нового клиента",
-        "description": "Подключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ, и только если\nкомпания ещё не подключена. Право подписи получает только руководитель.",
+        "description": "Подключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже\nподключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться\nбез доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель.",
         "operationId": "link_api_companies_link_post",
         "requestBody": {
           "content": {
@@ -1322,7 +1322,7 @@
         "tags": [
           "Заявки"
         ],
-        "summary": "Запросить код для подписания (приходит в уведомления кабинета)",
+        "summary": "Запросить код для подписания (показывается в окне подписания)",
         "operationId": "request_signing_code_api_applications__application_id__signing_code_post",
         "security": [
           {
@@ -2381,6 +2381,16 @@
               }
             ],
             "title": "Signed By"
+          },
+          "terms_hash": {
+            "type": "string",
+            "title": "Terms Hash",
+            "description": "SHA-256 условий договора и графика — подпись привязана к нему"
+          },
+          "issue_delayed": {
+            "type": "boolean",
+            "title": "Issue Delayed",
+            "description": "АБС не ответила — выдача повторяется автоматически"
           }
         },
         "type": "object",
@@ -2400,7 +2410,9 @@
           "schedule",
           "signed",
           "signed_at",
-          "signed_by"
+          "signed_by",
+          "terms_hash",
+          "issue_delayed"
         ],
         "title": "ContractOut",
         "description": "Кредитный договор в структурированном виде: интерфейс показывает и печатает его."
@@ -3559,15 +3571,21 @@
           "delivery": {
             "type": "string",
             "title": "Delivery",
-            "description": "Код приходит в уведомления кабинета",
+            "description": "Код показывается в окне подписания в кабинете",
             "default": "in_app"
+          },
+          "demo_code": {
+            "type": "string",
+            "title": "Demo Code",
+            "description": "Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет один раз и не хранится в открытом виде"
           }
         },
         "type": "object",
         "required": [
           "challenge_id",
           "expires_at",
-          "attempts_left"
+          "attempts_left",
+          "demo_code"
         ],
         "title": "SigningCodeOut"
       },

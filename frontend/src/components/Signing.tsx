@@ -42,13 +42,14 @@ export function OfferActions({ app }: { app: Application }) {
   const [comment, setComment] = useState('');
   const canAccept = app.allowed_actions.includes('accept_offer');
   const canDecline = app.allowed_actions.includes('decline_offer');
-  if (!canAccept && !canDecline) return null;
+  const waitsForDirector = user?.role === 'client' && !user.can_sign && app.offer?.status === 'active';
+  if (!canAccept && !canDecline && !waitsForDirector) return null;
 
   return (
     <>
       {!canAccept && (
         <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
-          Принять предложение и подписать договор может только руководитель компании
+          Принять предложение, отказаться от него и подписать договор может только руководитель компании
           {user?.company?.director ? ` — ${user.company.director}` : ''}.
         </Alert>
       )}
@@ -118,7 +119,10 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   const send = () => {
     setError(null);
     setCode('');
-    request.mutate(undefined, { onSuccess: setChallenge });
+    request.mutate(undefined, {
+      onSuccess: setChallenge,
+      onError: (e) => setError(e instanceof ApiError ? e.message : 'Не удалось получить код'),
+    });
   };
 
   useEffect(() => {
@@ -148,9 +152,17 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
           <IconSignature size={30} />
         </ThemeIcon>
         <Text fz="sm" c="dimmed" maw={340}>
-          Мы отправили одноразовый код в уведомления кабинета — колокольчик вверху. Введите его, чтобы подписать
-          договор простой электронной подписью.
+          Введите одноразовый код, чтобы подписать договор простой электронной подписью.
         </Text>
+        <Paper withBorder radius="md" p="sm" w="100%" bg="gray.0">
+          <Text fz="xs" c="dimmed">
+            Демо: электронная подпись смоделирована. В банке код пришёл бы в мобильное приложение — здесь он
+            показан прямо в кабинете, SMS и почта не используются.
+          </Text>
+          <Text fw={800} fz={26} lts={6} mt={4} ff="monospace">
+            {challenge?.demo_code ?? '······'}
+          </Text>
+        </Paper>
         <PinInput
           length={6}
           type="number"
@@ -220,11 +232,21 @@ export function SigningCard({ app }: { app: Application }) {
         Открыть договор и график платежей
       </Anchor>
 
+      {c && (
+        <Text fz="xs" c="dimmed" mt="xs">
+          Подпись привязана к условиям договора и графику: SHA-256 {c.terms_hash.slice(0, 16)}…
+        </Text>
+      )}
+
       {signed ? (
-        <Paper bg="teal.0" p="md" radius="md" mt="lg">
+        <Paper bg={c?.issue_delayed ? 'orange.0' : 'teal.0'} p="md" radius="md" mt="lg">
           <Group gap="sm" wrap="nowrap">
-            <Loader size="sm" color="teal" />
-            <Text fz="sm">Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.</Text>
+            <Loader size="sm" color={c?.issue_delayed ? 'orange' : 'teal'} />
+            <Text fz="sm">
+              {c?.issue_delayed
+                ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
+                : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
+            </Text>
           </Group>
         </Paper>
       ) : canSign ? (

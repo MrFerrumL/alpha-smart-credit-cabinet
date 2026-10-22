@@ -5,7 +5,7 @@ import logging
 from collections.abc import Callable
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -258,24 +258,53 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
     )
 
 
+def disburse_exhausted(db: Session, app: Application, error: str) -> None:
+    """АБС долго не отвечает: договор уже подписан, поэтому выдача не отменяется, а продолжает повторяться
+    с длинной паузой. Идемпотентность по номеру договора не даст выдать деньги дважды. Если же шаг падает
+    по другой причине (ошибка в данных или коде), бесконечно повторять его бессмысленно — сбой фиксируется
+    в журнале и разбирается вручную."""
+    if not error.startswith("abs:"):
+        record_event(db, app, "pipeline_failed", Actor.SYSTEM, payload={"step": "pipeline.disburse", "error": error})
+        return
+    record_event(db, app, "disbursement_delayed", Actor.SYSTEM, payload={"error": error})
+    enqueue(db, "pipeline.disburse", app.id, delay_s=get_settings().disburse_retry_s)
+
+
 def expire_offers(db: Session) -> int:
-    """Закрывает предложения, срок которых истёк, — заявка переходит в «Срок предложения истёк»."""
+    """Закрывает предложения, срок которых истёк: и не принятые, и принятые, но не подписанные. Заявка
+    переходит в «Срок предложения истёк». Сбой на одной заявке (например, клиент как раз принял
+    предложение) не мешает остальным."""
     now = utcnow()
     query = (
-        select(Offer, Application)
+        select(Offer.id, Application.id)
         .join(Application, Application.id == Offer.application_id)
         .where(
-            Offer.status == "active",
             Offer.valid_until < now,
-            Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+            or_(
+                (Offer.status == "active")
+                & Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+                (Offer.status == "accepted") & (Application.status == Status.SIGNING.value),
+            ),
         )
     )
     expired = 0
-    for offer, app in db.execute(query).all():
-        offer.status = "expired"
-        apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM)
-        expired += 1
-    db.commit()
+    for offer_id, app_id in db.execute(query).all():
+        try:
+            offer, app = db.get(Offer, offer_id), db.get(Application, app_id)
+            # Между выборкой и загрузкой клиент мог принять или подписать предложение — тогда не трогаем.
+            pending = (offer.status == "active" and app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value)) or (
+                offer.status == "accepted" and app.status == Status.SIGNING.value
+            )
+            if not pending:
+                db.rollback()
+                continue
+            offer.status = "expired"
+            apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM)
+            db.commit()
+            expired += 1
+        except Exception:  # noqa: BLE001 — гонка с действием клиента: заявку пропускаем до следующего прохода
+            db.rollback()
+            log.warning("offer expiry skipped", extra={"status": f"application {app_id}"})
     return expired
 
 
@@ -293,4 +322,5 @@ STEPS: dict[str, tuple[Status, Step]] = {
 # Что делать, если шаг так и не удалось выполнить за все попытки.
 ON_EXHAUSTED: dict[str, Callable[[Session, Application, str], None]] = {
     "pipeline.enrich": enrich_exhausted,
+    "pipeline.disburse": disburse_exhausted,
 }

@@ -1,12 +1,11 @@
 """Предложение → договор → подписание кодом → выдача → кредит с графиком."""
 
-import re
 from datetime import timedelta
 
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import Offer, utcnow
+from app.models import Offer, SigningChallenge, utcnow
 from app.pipeline.steps import expire_offers
 from tests.conftest import auth, run_pipeline
 from tests.test_pipeline import get, submit
@@ -19,10 +18,8 @@ def approved(client, mocks, email: str = "bakery@demo.local", **params) -> tuple
     return app_id, headers
 
 
-def latest_code(client, headers: dict) -> str:
-    items = client.get("/api/notifications", headers=headers).json()
-    code_note = next(n for n in items if n["kind"] == "signing_code")
-    return re.search(r"\d{6}", code_note["title"]).group()
+def other(code: str) -> str:
+    return "000000" if code != "000000" else "111111"
 
 
 def sign(client, app_id: int, headers: dict) -> dict:
@@ -30,7 +27,7 @@ def sign(client, app_id: int, headers: dict) -> dict:
     assert challenge.status_code == 200, challenge.text
     response = client.post(
         f"/api/applications/{app_id}/signing/confirm",
-        json={"challenge_id": challenge.json()["challenge_id"], "code": latest_code(client, headers)},
+        json={"challenge_id": challenge.json()["challenge_id"], "code": challenge.json()["demo_code"]},
         headers=headers,
     )
     assert response.status_code == 200, response.text
@@ -55,9 +52,13 @@ def test_full_path_from_offer_to_loan(client, mocks):
 
     challenge = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
     assert challenge["delivery"] == "in_app"
+    code = challenge["demo_code"]
+    # Код не хранится открытым текстом: ни в уведомлениях, ни в БД.
+    notes = client.get("/api/notifications", headers=headers).json()
+    assert all(code not in n["title"] + (n["body"] or "") for n in notes)
     wrong = client.post(
         f"/api/applications/{app_id}/signing/confirm",
-        json={"challenge_id": challenge["challenge_id"], "code": "000000" if latest_code(client, headers) != "000000" else "111111"},
+        json={"challenge_id": challenge["challenge_id"], "code": other(code)},
         headers=headers,
     )
     assert wrong.status_code == 422
@@ -65,10 +66,20 @@ def test_full_path_from_offer_to_loan(client, mocks):
 
     signed = client.post(
         f"/api/applications/{app_id}/signing/confirm",
-        json={"challenge_id": challenge["challenge_id"], "code": latest_code(client, headers)},
+        json={"challenge_id": challenge["challenge_id"], "code": code},
         headers=headers,
     ).json()
     assert signed["offer"]["status"] == "signed"
+    reused = client.post(
+        f"/api/applications/{app_id}/signing/confirm",
+        json={"challenge_id": challenge["challenge_id"], "code": code},
+        headers=headers,
+    )
+    assert reused.status_code == 409
+    events = client.get(f"/api/applications/{app_id}/events", headers=headers).json()
+    terms_hash = client.get(f"/api/applications/{app_id}/contract", headers=headers).json()["terms_hash"]
+    assert len(terms_hash) == 64
+    assert {"offer_accepted", "contract_signed", "signing_code_rejected"} <= {e["event"] for e in events}
     assert "cancel" not in signed["allowed_actions"]
     assert client.post(f"/api/applications/{app_id}/cancel", headers=headers).status_code == 409
 
@@ -103,15 +114,109 @@ def test_counter_offer_is_issued_on_offered_terms(client, mocks):
     assert client.get(f"/api/loans/{loan_id}", headers=headers).json()["amount"] == 4_500_000
 
 
-def test_accountant_can_decline_but_not_accept_or_sign(client, mocks):
-    app_id, _ = approved(client, mocks)
+def test_accountant_can_neither_accept_decline_nor_sign(client, mocks):
+    app_id, owner = approved(client, mocks)
     accountant = auth(client, "buh@demo.local")
     app = get(client, app_id, accountant)
-    assert "accept_offer" not in app["allowed_actions"]
-    assert "decline_offer" in app["allowed_actions"]
+    assert not {"accept_offer", "decline_offer", "sign"} & set(app["allowed_actions"])
     response = client.post(f"/api/applications/{app_id}/offer/accept", headers=accountant)
     assert response.status_code == 403
     assert "руководитель" in response.json()["detail"]
+    assert client.post(f"/api/applications/{app_id}/offer/decline", headers=accountant).status_code == 403
+    cancel = client.post(f"/api/applications/{app_id}/cancel", headers=accountant)
+    assert cancel.status_code == 403
+    assert "руководитель" in cancel.json()["detail"]
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=owner)
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=accountant).status_code == 403
+
+
+def test_strangers_and_analysts_cannot_touch_the_contract(client, mocks):
+    app_id, owner = approved(client, mocks)
+    stranger = auth(client, "sklad@demo.local")
+    analyst = auth(client, "analyst@demo.local")
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=stranger).status_code == 404
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=analyst).status_code == 403
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=owner)
+    assert client.get(f"/api/applications/{app_id}/contract", headers=stranger).status_code == 404
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=stranger).status_code == 404
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=analyst).status_code == 403
+
+
+def test_code_cannot_be_used_after_cancel_or_expiry(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    challenge = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
+    with SessionLocal() as db:
+        db.get(SigningChallenge, challenge["challenge_id"]).expires_at = utcnow() - timedelta(seconds=1)
+        db.commit()
+    expired = client.post(
+        f"/api/applications/{app_id}/signing/confirm",
+        json={"challenge_id": challenge["challenge_id"], "code": challenge["demo_code"]},
+        headers=headers,
+    )
+    assert expired.status_code == 409
+    fresh = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
+    assert client.post(f"/api/applications/{app_id}/cancel", headers=headers).status_code == 200
+    after_cancel = client.post(
+        f"/api/applications/{app_id}/signing/confirm",
+        json={"challenge_id": fresh["challenge_id"], "code": fresh["demo_code"]},
+        headers=headers,
+    )
+    assert after_cancel.status_code == 409
+
+
+def test_consumed_code_is_rejected_even_if_the_offer_still_waits(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    challenge = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
+    with SessionLocal() as db:  # как будто параллельный запрос уже погасил этот код
+        db.get(SigningChallenge, challenge["challenge_id"]).used_at = utcnow()
+        db.commit()
+    response = client.post(
+        f"/api/applications/{app_id}/signing/confirm",
+        json={"challenge_id": challenge["challenge_id"], "code": challenge["demo_code"]},
+        headers=headers,
+    )
+    assert response.status_code == 409
+    assert get(client, app_id, headers)["offer"]["status"] == "accepted"
+
+
+def test_code_is_bound_to_the_contract_terms(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    challenge = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
+    with SessionLocal() as db:  # условия изменились после выдачи кода
+        offer = db.scalar(select(Offer).where(Offer.application_id == app_id))
+        offer.amount = offer.amount + 100_000
+        db.commit()
+    response = client.post(
+        f"/api/applications/{app_id}/signing/confirm",
+        json={"challenge_id": challenge["challenge_id"], "code": challenge["demo_code"]},
+        headers=headers,
+    )
+    assert response.status_code == 422
+    assert get(client, app_id, headers)["offer"]["status"] == "accepted"
+
+
+def test_signing_codes_are_rate_limited(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    statuses = [client.post(f"/api/applications/{app_id}/signing/code", headers=headers).status_code for _ in range(6)]
+    assert statuses[:5] == [200] * 5
+    assert statuses[5] == 429
+
+
+def test_accepted_but_unsigned_contract_expires_with_the_offer(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    with SessionLocal() as db:
+        offer = db.scalar(select(Offer).where(Offer.application_id == app_id))
+        offer.valid_until = utcnow() - timedelta(minutes=1)
+        db.commit()
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=headers).status_code == 409
+    with SessionLocal() as db:
+        assert expire_offers(db) >= 1
+    assert get(client, app_id, headers)["status"]["code"] == "expired"
 
 
 def test_declining_offer_closes_application(client, mocks):
@@ -128,7 +233,7 @@ def test_code_attempts_run_out_and_new_code_replaces_old(client, mocks):
     app_id, headers = approved(client, mocks)
     client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
     first = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
-    first_code = latest_code(client, headers)
+    first_code = first["demo_code"]
     second = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
     stale = client.post(
         f"/api/applications/{app_id}/signing/confirm",
@@ -136,7 +241,7 @@ def test_code_attempts_run_out_and_new_code_replaces_old(client, mocks):
         headers=headers,
     )
     assert stale.status_code == 409
-    wrong = "000000" if latest_code(client, headers) != "000000" else "111111"
+    wrong = other(second["demo_code"])
     for _ in range(3):
         client.post(
             f"/api/applications/{app_id}/signing/confirm",
@@ -145,7 +250,7 @@ def test_code_attempts_run_out_and_new_code_replaces_old(client, mocks):
         )
     exhausted = client.post(
         f"/api/applications/{app_id}/signing/confirm",
-        json={"challenge_id": second["challenge_id"], "code": latest_code(client, headers)},
+        json={"challenge_id": second["challenge_id"], "code": second["demo_code"]},
         headers=headers,
     )
     assert exhausted.status_code == 409
@@ -163,6 +268,26 @@ def test_bank_system_outage_during_disbursement_is_retried(client, mocks):
     events = [e["event"] for e in client.get(f"/api/applications/{app_id}/events", headers=headers).json()]
     assert "disbursement_retry" in events
     assert events[-1] == "issued"
+
+
+def test_long_bank_system_outage_delays_issue_but_never_strands_it(client, mocks):
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    sign(client, app_id, headers)
+    mocks.post("/admin/faults", json={"source": "abs", "mode": "error"})
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "signing"
+    assert client.get(f"/api/applications/{app_id}/contract", headers=headers).json()["issue_delayed"] is True
+    mocks.post("/admin/faults", json={"source": "abs", "mode": "none"})
+    with SessionLocal() as db:  # следующая попытка выдачи по расписанию — не ждём паузу в тесте
+        from app.models import Job
+
+        for job in db.scalars(select(Job).where(Job.application_id == app_id, Job.status == "pending")):
+            job.run_after = utcnow()
+        db.commit()
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "issued"
+    assert client.get(f"/api/applications/{app_id}/contract", headers=headers).json()["issue_delayed"] is False
 
 
 def test_expired_offer_cannot_be_accepted(client, mocks):

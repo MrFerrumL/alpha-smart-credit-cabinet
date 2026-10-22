@@ -155,6 +155,8 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.COUNTER_OFFER, S.SIGNING): frozenset({_C}),
     (S.COUNTER_OFFER, S.EXPIRED): frozenset({_SYS}),
     (S.SIGNING, S.ISSUED): frozenset({_SYS}),
+    # Договор не подписан до конца срока предложения.
+    (S.SIGNING, S.EXPIRED): frozenset({_SYS}),
 }
 
 

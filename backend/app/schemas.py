@@ -375,13 +375,19 @@ class ContractOut(BaseModel):
     signed: bool
     signed_at: UtcDatetime | None
     signed_by: str | None
+    terms_hash: str = Field(description="SHA-256 условий договора и графика — подпись привязана к нему")
+    issue_delayed: bool = Field(description="АБС не ответила — выдача повторяется автоматически")
 
 
 class SigningCodeOut(BaseModel):
     challenge_id: int
     expires_at: UtcDatetime
     attempts_left: int
-    delivery: str = Field(default="in_app", description="Код приходит в уведомления кабинета")
+    delivery: str = Field(default="in_app", description="Код показывается в окне подписания в кабинете")
+    demo_code: str = Field(
+        description="Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет "
+        "один раз и не хранится в открытом виде"
+    )
 
 
 class SignConfirmIn(BaseModel):

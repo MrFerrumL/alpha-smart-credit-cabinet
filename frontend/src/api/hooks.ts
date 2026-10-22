@@ -280,7 +280,7 @@ export function useRequestSigningCode(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api<SigningCode>(`/applications/${id}/signing/code`, { method: 'POST' }),
-    // Код приходит в уведомления кабинета — сразу подтягиваем их, не дожидаясь опроса.
+    // Код показывается в окне подписания; в уведомлениях — только напоминание, что код готов.
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
     onError: notifyError,
   });
