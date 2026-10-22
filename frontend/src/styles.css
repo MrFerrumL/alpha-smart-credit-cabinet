@@ -125,3 +125,17 @@ body {
     box-shadow: 0 0 0 8px rgba(239, 49, 36, 0);
   }
 }
+
+.pulse-green {
+  animation: pulse-green 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(18, 184, 134, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(18, 184, 134, 0);
+  }
+}

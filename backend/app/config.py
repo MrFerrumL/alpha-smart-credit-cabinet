@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     integration_timeout_s: float = 3.0
     integration_retries: int = 3
 
+    # Конвейер: пауза между этапами (чтобы клиент видел, как заявка движется), повторы при сбоях.
+    pipeline_step_delay_s: float = 1.5
+    pipeline_retry_base_s: float = 2.0
+    pipeline_max_attempts: int = 5
+    worker_poll_interval_s: float = 0.5
+    offer_valid_days: int = 7
+
+    # Документы клиентов. В Docker — отдельный том.
+    upload_dir: str = (Path(__file__).resolve().parents[1] / "uploads").as_posix()
+    max_upload_mb: int = 10
+
     # Демо-режим: вход в один клик под тестовыми учётками и автозаполнение демо-данных.
     demo_mode: bool = True
     seed_on_start: bool = True

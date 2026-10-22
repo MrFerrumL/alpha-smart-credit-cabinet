@@ -148,6 +148,7 @@ export interface ApplicationForm {
   contact_name: string | null;
   contact_position: string | null;
   comment: string | null;
+  consent_bki: boolean;
 }
 
 export type ApplicationAction = 'edit' | 'submit' | 'cancel' | 'answer_tasks' | 'accept_offer' | 'sign' | 'decide';
@@ -165,6 +166,9 @@ export interface Application {
   form: ApplicationForm;
   company: { id: number; inn: string; name: string };
   allowed_actions: ApplicationAction[];
+  offer: Offer | null;
+  decision: Decision | null;
+  open_tasks: number;
   created_at: string;
   updated_at: string;
   submitted_at: string | null;
@@ -181,4 +185,69 @@ export interface ApplicationEvent {
   from_status: string | null;
   to_status: string | null;
   comment: string | null;
+}
+
+export interface Offer {
+  id: number;
+  kind: 'approved' | 'counter';
+  product_code: string;
+  amount: number;
+  term_months: number;
+  rate: number;
+  monthly_payment: number;
+  explanation: string[];
+  status: string;
+  valid_until: string | null;
+}
+
+export interface Decision {
+  outcome: string;
+  reasons: string[];
+  tips: string[];
+}
+
+export interface ClientTask {
+  id: number;
+  kind: 'document' | 'field' | 'question';
+  title: string;
+  description: string | null;
+  status: 'open' | 'done';
+  answer: string | null;
+  payload: { document_kind?: string; field?: string; input?: string } | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface UploadedDocument {
+  id: number;
+  kind: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface SourceCheck {
+  source: 'egrul' | 'fns' | 'bki';
+  title: string;
+  status: 'ok' | 'failed' | 'pending';
+  attempts: number;
+}
+
+export interface Financials {
+  available: boolean;
+  reporting_year: number | null;
+  revenue_monthly: number | null;
+  expenses_monthly: number | null;
+  employees: number | null;
+  tax_regime: string | null;
+}
+
+export interface StreamSnapshot {
+  status: string;
+  title: string;
+  tone: Tone;
+  terminal: boolean;
+  last_event_id: number;
+  open_tasks: number;
 }

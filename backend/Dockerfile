@@ -13,7 +13,7 @@ COPY alembic.ini .
 COPY migrations ./migrations
 COPY app ./app
 
-RUN useradd --create-home --uid 10001 app
+RUN useradd --create-home --uid 10001 app && mkdir -p /data/uploads && chown app:app /data/uploads
 USER app
 
 EXPOSE 8000

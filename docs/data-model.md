@@ -48,7 +48,8 @@ erDiagram
         decimal amount
         int term_months
         string status "см. state-machine.md"
-        json form "анкета: финансы, залог, контакт"
+        json form "анкета: финансы, залог, контакт, согласие на запрос в БКИ"
+        json decision "итог конвейера: исход, причины, подсказки"
         string submit_key UK "Idempotency-Key"
         int version "оптимистическая блокировка"
         datetime submitted_at
@@ -83,6 +84,7 @@ erDiagram
         int score
         string grade "A..E"
         json factors "вклад факторов"
+        json features "признаки, на которых считалась оценка"
     }
     offers {
         int id PK
@@ -98,8 +100,9 @@ erDiagram
     client_tasks {
         int id PK
         int application_id FK
-        string kind "document | question"
+        string kind "document | field | question"
         string title
+        json payload "какой документ или поле анкеты нужно"
         string status "open | done"
         string answer
     }

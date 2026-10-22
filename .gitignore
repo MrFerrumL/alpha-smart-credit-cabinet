@@ -19,3 +19,6 @@ dist/
 .vscode/
 *.swp
 .DS_Store
+
+# Документы клиентов при локальной разработке
+backend/uploads/

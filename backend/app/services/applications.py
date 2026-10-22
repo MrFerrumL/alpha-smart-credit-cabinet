@@ -6,14 +6,18 @@ from sqlalchemy.orm import Session
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
 from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
-from app.models import Application, ApplicationEvent, User, utcnow
+from app.models import Application, ApplicationEvent, ClientTask, Offer, User, utcnow
+from app.pipeline.queue import enqueue
+from app.pipeline.steps import SOURCE_TITLES
 from app.schemas import (
     ApplicationCreate,
     ApplicationForm,
     ApplicationOut,
     ApplicationUpdate,
     CompanyRef,
+    DecisionOut,
     EventOut,
+    OfferOut,
     ProductRef,
     StatusInfoOut,
 )
@@ -24,6 +28,12 @@ EVENT_TITLES = {
     "updated": "Анкета обновлена",
     "submitted": "Заявка отправлена в банк",
     "cancelled": "Заявка отозвана",
+    "check_completed": "Получены данные: {source}",
+    "check_retry": "{source} не ответил — повторяем запрос",
+    "scored": "Заявка оценена",
+    "task_answered": "Вы ответили на запрос банка",
+    "document_uploaded": "Загружен документ «{filename}»",
+    "pipeline_failed": "Сбой обработки — заявку проверит специалист",
 }
 
 
@@ -59,8 +69,19 @@ def allowed_actions(app: Application, user: User) -> list[str]:
     return actions
 
 
-def to_out(app: Application, user: User) -> ApplicationOut:
+def latest_offer(db: Session, app: Application) -> Offer | None:
+    return db.scalar(select(Offer).where(Offer.application_id == app.id).order_by(Offer.id.desc()).limit(1))
+
+
+def open_tasks_count(db: Session, app: Application) -> int:
+    query = select(ClientTask.id).where(ClientTask.application_id == app.id, ClientTask.status == "open")
+    return len(db.scalars(query).all())
+
+
+def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     product = PRODUCTS[app.product_code]
+    offer = latest_offer(db, app)
+    decision = app.decision or None
     return ApplicationOut(
         id=app.id,
         number=app.number,
@@ -74,6 +95,13 @@ def to_out(app: Application, user: User) -> ApplicationOut:
         form=ApplicationForm.model_validate(app.form or {}),
         company=CompanyRef(id=app.company.id, inn=app.company.inn, name=app.company.short_name),
         allowed_actions=allowed_actions(app, user),
+        offer=OfferOut.model_validate(offer) if offer else None,
+        decision=DecisionOut(
+            outcome=decision["outcome"], reasons=decision.get("reasons", []), tips=decision.get("tips", [])
+        )
+        if decision
+        else None,
+        open_tasks=open_tasks_count(db, app),
         created_at=app.created_at,
         updated_at=app.updated_at,
         submitted_at=app.submitted_at,
@@ -83,7 +111,11 @@ def to_out(app: Application, user: User) -> ApplicationOut:
 
 def event_out(ev: ApplicationEvent) -> EventOut:
     if ev.event in EVENT_TITLES:
-        title = EVENT_TITLES[ev.event]
+        payload = ev.payload or {}
+        title = EVENT_TITLES[ev.event].format(
+            source=SOURCE_TITLES.get(payload.get("source", ""), "Источник"),
+            filename=payload.get("filename", ""),
+        )
     elif ev.to_status:
         title = STATUS_INFO[Status(ev.to_status)].title
     else:
@@ -124,6 +156,8 @@ def validate_for_submit(app: Application) -> None:
         })
     if Purpose(app.purpose) not in product.purposes:
         errors.append({"field": "purpose", "message": f"Продукт «{product.name}» не предназначен для этой цели"})
+    if not (app.form or {}).get("consent_bki"):
+        errors.append({"field": "form.consent_bki", "message": "Нужно согласие на запрос в бюро кредитных историй"})
     if errors:
         raise BusinessValidationError("Заявку нельзя отправить: параметры не подходят под продукт.", errors=errors)
 
@@ -189,7 +223,14 @@ def update_draft(db: Session, user: User, app: Application, data: ApplicationUpd
         app.purpose = Purpose(changes["purpose"]).value
     if data.form is not None:
         app.form = data.form.model_dump()
-    record_event(db, app, "updated", Actor.CLIENT, actor_id=user.id, payload={"fields": sorted(changes)})
+    # Анкета сохраняется на каждом шаге; подряд идущие сохранения — одно событие в истории.
+    last = app.events[-1] if app.events else None
+    if last is not None and last.event == "updated" and last.actor_id == user.id:
+        fields = set(last.payload.get("fields", [])) | set(changes)
+        last.payload = {"fields": sorted(fields)}
+        last.created_at = utcnow()
+    else:
+        record_event(db, app, "updated", Actor.CLIENT, actor_id=user.id, payload={"fields": sorted(changes)})
     db.commit()
     return app
 
@@ -203,6 +244,8 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
     validate_for_submit(app)
     app.submit_key = idempotency_key
     apply_transition(db, app, Status.SUBMITTED, Actor.CLIENT, actor_id=user.id, event="submitted")
+    # Конвейер ставится в очередь в той же транзакции — шаг не потеряется.
+    enqueue(db, "pipeline.start", app.id)
     db.commit()
     return app
 

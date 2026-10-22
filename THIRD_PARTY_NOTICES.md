@@ -14,6 +14,7 @@
 | psycopg 3 | LGPL-3.0 | Драйвер PostgreSQL |
 | PyJWT | MIT | Токены доступа |
 | httpx | BSD-3-Clause | HTTP-клиент для интеграций |
+| python-multipart | Apache-2.0 | Загрузка документов |
 | Uvicorn | BSD-3-Clause | ASGI-сервер |
 | pytest | MIT | Тесты |
 

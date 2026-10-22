@@ -1,6 +1,7 @@
 import {
   Alert,
   Anchor,
+  Box,
   Button,
   Card,
   Grid,
@@ -16,13 +17,23 @@ import {
   Timeline,
   Title,
 } from '@mantine/core';
-import { IconArrowLeft, IconCircleCheck, IconRefresh, IconSend, IconX } from '@tabler/icons-react';
+import { IconArrowLeft, IconCircleCheck, IconPencil, IconX } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 
-import { useApplication, useCancelApplication, useEvents, useMeta, useSubmitApplication } from '../api/hooks';
+import {
+  useApplication,
+  useCancelApplication,
+  useChecks,
+  useDocuments,
+  useEvents,
+  useMeta,
+  useTasks,
+} from '../api/hooks';
+import { useApplicationStream } from '../api/stream';
 import type { Application, ApplicationAction, ApplicationEvent } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { ChecksCard, DecisionCard, DocumentList, TasksCard } from '../components/ApplicationBlocks';
 import { StageProgress } from '../components/StageProgress';
 import { Stat, StatusBadge, toneColor } from '../components/ui';
 import { dateTime, money, moneyShort, months, rate } from '../lib/format';
@@ -30,11 +41,25 @@ import { dateTime, money, moneyShort, months, rate } from '../lib/format';
 const ACTOR_LABEL: Record<ApplicationEvent['actor_type'], string> = {
   client: 'Клиент',
   analyst: 'Банк',
-  system: 'Система',
+  system: 'Банк, автоматически',
 };
 
-function StatusPanel({ app }: { app: Application }) {
-  const submit = useSubmitApplication();
+function LiveIndicator({ live }: { live: boolean }) {
+  return (
+    <Group gap={8} mt="sm">
+      {live ? (
+        <Box w={10} h={10} bg="teal.5" style={{ borderRadius: '50%' }} className="pulse-green" />
+      ) : (
+        <Loader size={14} />
+      )}
+      <Text fz="sm" c="dimmed">
+        {live ? 'Статус обновляется в реальном времени' : 'Подключаемся к обновлениям…'}
+      </Text>
+    </Group>
+  );
+}
+
+function StatusPanel({ app, live }: { app: Application; live: boolean }) {
   const cancel = useCancelApplication();
   const [cancelOpened, setCancelOpened] = useState(false);
   const [comment, setComment] = useState('');
@@ -55,29 +80,12 @@ function StatusPanel({ app }: { app: Application }) {
           <Text mt={6} c="dimmed" maw={620}>
             {app.status.hint}
           </Text>
-          {app.status.code === 'draft' && (
-            <Text mt={6} fz="sm">
-              Проверьте параметры ниже — после отправки изменить их будет нельзя.
-            </Text>
-          )}
-          {moving && (
-            <Group gap={8} mt="sm">
-              <Loader size={14} />
-              <Text fz="sm" c="dimmed">
-                Статус обновляется автоматически
-              </Text>
-            </Group>
-          )}
+          {moving && <LiveIndicator live={live} />}
         </div>
         <Group gap="sm">
-          {can('submit') && (
-            <Button
-              size="md"
-              leftSection={<IconSend size={18} />}
-              loading={submit.isPending}
-              onClick={() => submit.mutate({ id: app.id })}
-            >
-              Отправить в банк
+          {can('edit') && (
+            <Button size="md" component={Link} to={`/applications/${app.id}/edit`} leftSection={<IconPencil size={18} />}>
+              Продолжить оформление
             </Button>
           )}
           {can('cancel') && (
@@ -125,7 +133,15 @@ function History({ events }: { events: ApplicationEvent[] }) {
   return (
     <Timeline active={events.length - 1} bulletSize={22} lineWidth={2}>
       {events.map((ev) => (
-        <Timeline.Item key={ev.id} bullet={<IconCircleCheck size={13} />} title={<Text fw={700} fz="sm">{ev.title}</Text>}>
+        <Timeline.Item
+          key={ev.id}
+          bullet={<IconCircleCheck size={13} />}
+          title={
+            <Text fw={700} fz="sm">
+              {ev.title}
+            </Text>
+          }
+        >
           <Text fz="xs" c="dimmed">
             {dateTime(ev.created_at)} · {ev.actor_name ?? ACTOR_LABEL[ev.actor_type]}
           </Text>
@@ -146,7 +162,12 @@ export function ApplicationPage() {
   const { user } = useAuth();
   const meta = useMeta();
   const query = useApplication(applicationId);
-  const events = useEvents(applicationId, query.data);
+  const app = query.data;
+  const live = useApplicationStream(applicationId, !!app && !app.status.terminal && app.status.code !== 'draft');
+  const events = useEvents(applicationId, app);
+  const tasks = useTasks(applicationId, app);
+  const checks = useChecks(applicationId, app);
+  const documents = useDocuments(applicationId, !!app);
   const backTo = user?.role === 'analyst' ? '/queue' : '/applications';
 
   if (query.isLoading) {
@@ -159,7 +180,7 @@ export function ApplicationPage() {
     );
   }
 
-  if (!query.data) {
+  if (!app) {
     return (
       <Alert color="red" title="Заявка не найдена" radius="lg">
         Возможно, ссылка устарела.{' '}
@@ -170,7 +191,9 @@ export function ApplicationPage() {
     );
   }
 
-  const app = query.data;
+  const checking = app.status.code === 'enrichment';
+  const hasOpenTasks = app.open_tasks > 0;
+  const readOnly = user?.role !== 'client';
 
   return (
     <Stack gap="xl">
@@ -189,7 +212,11 @@ export function ApplicationPage() {
         </Text>
       </div>
 
-      <StatusPanel app={app} />
+      <StatusPanel app={app} live={live} />
+
+      {hasOpenTasks && <TasksCard app={app} tasks={tasks.data ?? []} readOnly={readOnly} />}
+      <DecisionCard app={app} />
+      {!hasOpenTasks && tasks.data && <TasksCard app={app} tasks={tasks.data} readOnly={readOnly} />}
 
       {meta.data && (
         <Card p={{ base: 'lg', sm: 'xl' }}>
@@ -199,24 +226,32 @@ export function ApplicationPage() {
 
       <Grid gutter="lg">
         <Grid.Col span={{ base: 12, md: 7 }}>
-          <Card p={{ base: 'lg', sm: 'xl' }} h="100%">
-            <Title order={4}>Параметры заявки</Title>
-            <SimpleGrid cols={{ base: 2, sm: 3 }} mt="lg" spacing="lg" verticalSpacing="lg">
-              <Stat label="Продукт" value={app.product.name} />
-              <Stat label="Сумма" value={moneyShort(app.amount)} />
-              <Stat label="Срок" value={months(app.term_months)} />
-              <Stat label="Ставка" value={`от ${rate(app.product.rate)}`} />
-              <Stat label="Платёж" value={`≈ ${money(app.monthly_payment)}`} accent />
-              <Stat label="Цель" value={<Text fw={700}>{app.purpose_title}</Text>} />
-            </SimpleGrid>
-          </Card>
+          <Stack gap="lg">
+            <Card p={{ base: 'lg', sm: 'xl' }}>
+              <Title order={4}>Параметры заявки</Title>
+              <SimpleGrid cols={{ base: 2, sm: 3 }} mt="lg" spacing="lg" verticalSpacing="lg">
+                <Stat label="Продукт" value={app.product.name} />
+                <Stat label="Сумма" value={moneyShort(app.amount)} />
+                <Stat label="Срок" value={months(app.term_months)} />
+                <Stat label="Ставка" value={`от ${rate(app.product.rate)}`} />
+                <Stat label="Платёж" value={`≈ ${money(app.monthly_payment)}`} accent />
+                <Stat label="Цель" value={<Text fw={700}>{app.purpose_title}</Text>} />
+              </SimpleGrid>
+              {documents.data && documents.data.length > 0 && (
+                <>
+                  <Text fw={700} mt="xl" mb="xs">
+                    Документы
+                  </Text>
+                  <DocumentList documents={documents.data} />
+                </>
+              )}
+            </Card>
+            {checks.data && <ChecksCard checks={checks.data} active={checking} />}
+          </Stack>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 5 }}>
           <Card p={{ base: 'lg', sm: 'xl' }} h="100%">
-            <Group justify="space-between">
-              <Title order={4}>История</Title>
-              {events.isFetching && <IconRefresh size={16} color="var(--mantine-color-gray-5)" />}
-            </Group>
+            <Title order={4}>История</Title>
             <div style={{ marginTop: 20 }}>
               {events.data ? <History events={events.data} /> : <Skeleton h={120} />}
             </div>

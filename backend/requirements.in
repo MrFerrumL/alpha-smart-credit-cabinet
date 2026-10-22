@@ -7,3 +7,4 @@ pydantic-settings
 pyjwt
 httpx
 psycopg[binary]
+python-multipart

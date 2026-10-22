@@ -10,12 +10,17 @@ _db_file = Path(tempfile.mkdtemp()) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_db_file.as_posix()}"
 os.environ["SEED_ON_START"] = "false"
 os.environ["MOCK_LATENCY_MS"] = "0"
+os.environ["PIPELINE_STEP_DELAY_S"] = "0"
+os.environ["PIPELINE_RETRY_BASE_S"] = "0"
+os.environ["PIPELINE_MAX_ATTEMPTS"] = "3"
+os.environ["UPLOAD_DIR"] = (Path(tempfile.mkdtemp()) / "uploads").as_posix()
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.pipeline.runner import run_until_idle  # noqa: E402
 from app.seed import seed  # noqa: E402
 from app.services.integrations import ExternalSources, get_sources  # noqa: E402
 from mockapi.main import app as mock_app  # noqa: E402
@@ -49,3 +54,8 @@ def auth(client: TestClient, email: str) -> dict:
     response = client.post("/api/auth/demo-login", json={"email": email})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def run_pipeline(mocks) -> int:
+    """Прогоняет конвейер до конца синхронно — как воркер, но без пауз."""
+    return run_until_idle(SessionLocal, ExternalSources(mocks, timeout=2, retries=1, backoff=0))

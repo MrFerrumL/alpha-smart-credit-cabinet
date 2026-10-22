@@ -1,6 +1,7 @@
 # Запуск всего решения одной командой:  docker compose up --build
 # Кабинет: http://localhost:8080   API и Swagger: http://localhost:8000/api/docs
 # Эмулятор внешних источников: http://localhost:8001/docs
+# Воркер конвейера стартует сам и обрабатывает отправленные заявки.
 
 name: alpha-credit
 
@@ -37,6 +38,9 @@ services:
       DEMO_MODE: ${DEMO_MODE:-true}
       SEED_ON_START: ${SEED_ON_START:-true}
       ENVIRONMENT: ${ENVIRONMENT:-demo}
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -44,6 +48,24 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    restart: unless-stopped
+
+  # Фоновый конвейер: проверка → ЕГРЮЛ/ФНС/БКИ → оценка → решение.
+  # Можно масштабировать: docker compose up --scale worker=3
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-credit}:${POSTGRES_PASSWORD:-credit}@db:5432/${POSTGRES_DB:-credit}
+      MOCKS_URL: http://mocks:8001
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-in-production}
+      PIPELINE_STEP_DELAY_S: ${PIPELINE_STEP_DELAY_S:-1.5}
+      SEED_ON_START: "false"
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -57,3 +79,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

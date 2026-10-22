@@ -73,7 +73,7 @@ STATUS_INFO: dict[Status, StatusInfo] = {
     ),
     S.NEEDS_INFO: StatusInfo(
         "Нужна информация",
-        "Нам не хватает данных. Откройте задачи по заявке — после ответа проверка продолжится сама.",
+        "Нам не хватает данных. Ответьте на запрос банка ниже — после этого проверка продолжится сама.",
         1, "warning", action_required=True,
     ),
     S.ENRICHMENT: StatusInfo(
@@ -139,6 +139,8 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.NEEDS_INFO, S.VALIDATION): frozenset({_C, _SYS}),
     (S.NEEDS_INFO, S.EXPIRED): frozenset({_SYS}),
     (S.ENRICHMENT, S.SCORING): frozenset({_SYS}),
+    # Внешний источник так и не ответил — заявка не теряется, её разбирает специалист.
+    (S.ENRICHMENT, S.MANUAL_REVIEW): frozenset({_SYS}),
     (S.SCORING, S.APPROVED): frozenset({_SYS}),
     (S.SCORING, S.COUNTER_OFFER): frozenset({_SYS}),
     (S.SCORING, S.MANUAL_REVIEW): frozenset({_SYS}),

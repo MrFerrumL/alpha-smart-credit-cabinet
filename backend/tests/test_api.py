@@ -7,7 +7,7 @@ def _draft(client, headers, **overrides) -> dict:
         "purpose": "working_capital",
         "amount": 3_000_000,
         "term_months": 12,
-        "form": {"finance": {"monthly_revenue": 4_500_000}},
+        "form": {"finance": {"monthly_revenue": 4_500_000}, "consent_bki": True},
     } | overrides
     response = client.post("/api/applications", json=body, headers=headers)
     assert response.status_code == 201, response.text

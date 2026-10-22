@@ -6,13 +6,17 @@ import type {
   Application,
   ApplicationEvent,
   Calculation,
+  ClientTask,
   Company,
   CompanyLookup,
   DemoAccount,
+  Financials,
   Meta,
   Product,
   ProductMatch,
   Purpose,
+  SourceCheck,
+  UploadedDocument,
 } from './types';
 
 export function notifyError(error: unknown) {
@@ -62,6 +66,7 @@ export function useCalculation(code: string | null, amount: number, term: number
 }
 
 const ACTIVE_POLL_MS = 3000;
+const FALLBACK_POLL_MS = 10000;
 
 function isMoving(app: Application | undefined) {
   return !!app && !app.status.terminal && app.status.code !== 'draft' && !app.status.action_required;
@@ -79,8 +84,8 @@ export function useApplication(id: number) {
   return useQuery({
     queryKey: keys.application(id),
     queryFn: () => api<Application>(`/applications/${id}`),
-    // Пока заявка идёт по конвейеру, статус обновляется сам.
-    refetchInterval: (query) => (isMoving(query.state.data) ? ACTIVE_POLL_MS : false),
+    // Живой статус приходит потоком (useApplicationStream); опрос — запасной вариант, если поток оборвался.
+    refetchInterval: (query) => (isMoving(query.state.data) ? FALLBACK_POLL_MS : false),
   });
 }
 
@@ -132,6 +137,91 @@ export function useCompanyLookup() {
 export function useLinkCompany() {
   return useMutation({
     mutationFn: (inn: string) => api<Company>('/companies/link', { method: 'POST', json: { inn } }),
+    onError: notifyError,
+  });
+}
+
+export function useTasks(id: number, app?: Application) {
+  return useQuery({
+    queryKey: ['application', id, 'tasks', app?.status.code, app?.open_tasks],
+    queryFn: () => api<ClientTask[]>(`/applications/${id}/tasks`),
+    enabled: !!app && app.status.code !== 'draft',
+  });
+}
+
+export function useDocuments(id: number, enabled = true) {
+  return useQuery({
+    queryKey: ['application', id, 'documents'],
+    queryFn: () => api<UploadedDocument[]>(`/applications/${id}/documents`),
+    enabled,
+  });
+}
+
+export function useChecks(id: number, app?: Application) {
+  return useQuery({
+    queryKey: ['application', id, 'checks', app?.status.code],
+    queryFn: () => api<SourceCheck[]>(`/applications/${id}/checks`),
+    enabled: !!app && app.status.code !== 'draft' && app.status.code !== 'submitted',
+  });
+}
+
+export function useFinancials(enabled: boolean) {
+  return useQuery({
+    queryKey: ['financials'],
+    queryFn: () => api<Financials>('/companies/me/financials'),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export interface ApplicationUpdate {
+  product_code: string;
+  purpose: Purpose;
+  amount: number;
+  term_months: number;
+  form: Application['form'];
+}
+
+export function useUpdateApplication(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<ApplicationUpdate>) =>
+      api<Application>(`/applications/${id}`, { method: 'PATCH', json: body }),
+    onSuccess: (app) => qc.setQueryData(keys.application(app.id), app),
+    onError: notifyError,
+  });
+}
+
+function useInvalidateApplication(id: number) {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ['application', id] });
+    qc.invalidateQueries({ queryKey: ['applications'] });
+  };
+}
+
+export function useUploadDocument(id: number) {
+  const invalidate = useInvalidateApplication(id);
+  return useMutation({
+    mutationFn: ({ file, kind, taskId }: { file: File; kind: string; taskId?: number }) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('kind', kind);
+      if (taskId !== undefined) form.append('task_id', String(taskId));
+      return api<UploadedDocument>(`/applications/${id}/documents`, { method: 'POST', form });
+    },
+    onSuccess: invalidate,
+    onError: notifyError,
+  });
+}
+
+export function useAnswerTask(id: number) {
+  const invalidate = useInvalidateApplication(id);
+  return useMutation({
+    mutationFn: ({ taskId, answer }: { taskId: number; answer: string }) =>
+      api<ClientTask>(`/applications/${id}/tasks/${taskId}/answer`, { method: 'POST', json: { answer } }),
+    onSuccess: invalidate,
     onError: notifyError,
   });
 }

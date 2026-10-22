@@ -9,7 +9,7 @@ from app.db import get_db
 from app.domain.inn import is_valid_inn
 from app.errors import BusinessValidationError, Conflict, IntegrationUnavailable, NotFound
 from app.models import Company, User
-from app.schemas import CompanyLinkIn, CompanyLookupOut, CompanyOut
+from app.schemas import CompanyLinkIn, CompanyLookupOut, CompanyOut, FinancialsOut
 from app.services.integrations import ExternalSources, NotInSource, SourceUnavailable, get_sources
 
 router = APIRouter(prefix="/companies", tags=["Компании"])
@@ -71,3 +71,22 @@ def link(
     user.company_id = company.id
     db.commit()
     return company
+
+
+@router.get("/me/financials", response_model=FinancialsOut, summary="Финансы своей компании по данным ФНС")
+def my_financials(user: User = Depends(require_client), sources: ExternalSources = Depends(get_sources)) -> FinancialsOut:
+    if user.company is None:
+        raise Conflict("Сначала укажите компанию")
+    try:
+        data = sources.fns(user.company.inn)
+    except (NotInSource, SourceUnavailable):
+        return FinancialsOut(available=False)
+    revenue, expenses = data.get("revenue"), data.get("expenses")
+    return FinancialsOut(
+        available=revenue is not None,
+        reporting_year=data.get("reporting_year"),
+        revenue_monthly=revenue // 12 if revenue else None,
+        expenses_monthly=expenses // 12 if expenses else None,
+        employees=data.get("employees"),
+        tax_regime=data.get("tax_regime"),
+    )

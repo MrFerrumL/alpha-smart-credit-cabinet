@@ -189,7 +189,7 @@ export function MatchPage() {
     create.mutate(
       { product_code: m.product.code, purpose, amount: m.amount, term_months: m.term_months },
       {
-        onSuccess: (app) => navigate(`/applications/${app.id}`),
+        onSuccess: (app) => navigate(`/applications/${app.id}/edit`),
         onSettled: () => setApplying(null),
       },
     );

@@ -6,6 +6,7 @@ import { useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
 import { FullScreenLoader } from './components/ui';
 import { ApplicationPage } from './pages/ApplicationPage';
+import { ApplicationWizardPage } from './pages/ApplicationWizardPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
@@ -67,6 +68,7 @@ function AppRoutes() {
             <Route index element={<HomePage />} />
             <Route path="match" element={<MatchPage />} />
             <Route path="applications" element={<ApplicationsPage />} />
+            <Route path="applications/:id/edit" element={<ApplicationWizardPage />} />
           </Route>
           <Route element={<RequireRole role="analyst" />}>
             <Route path="queue" element={<QueuePage />} />

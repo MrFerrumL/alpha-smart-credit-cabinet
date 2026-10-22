@@ -47,10 +47,10 @@ export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler;
 }
 
-type RequestOptions = Omit<RequestInit, 'body'> & { json?: unknown };
+type RequestOptions = Omit<RequestInit, 'body'> & { json?: unknown; form?: FormData };
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { json, headers: rawHeaders, ...rest } = options;
+  const { json, form, headers: rawHeaders, ...rest } = options;
   const headers = new Headers(rawHeaders);
   const token = tokenStore.get();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -58,6 +58,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (json !== undefined) {
     headers.set('Content-Type', 'application/json');
     body = JSON.stringify(json);
+  } else if (form) {
+    body = form; // Content-Type с границей multipart браузер проставит сам
   }
 
   let response: Response;

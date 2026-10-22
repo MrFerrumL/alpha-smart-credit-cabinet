@@ -13,7 +13,10 @@ export function ApplicationCard({ app }: { app: Application }) {
   const progress = app.status.code === 'issued' ? 100 : (app.status.stage / LAST_STAGE) * 100;
 
   return (
-    <Card className="clickable fade-in" onClick={() => navigate(`/applications/${app.id}`)}>
+    <Card
+      className="clickable fade-in"
+      onClick={() => navigate(app.status.code === 'draft' ? `/applications/${app.id}/edit` : `/applications/${app.id}`)}
+    >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <div>
           <Text fz="xs" c="dimmed">

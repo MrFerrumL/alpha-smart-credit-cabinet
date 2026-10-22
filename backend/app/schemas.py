@@ -200,6 +200,7 @@ class ApplicationForm(BaseModel):
     contact_name: str | None = Field(default=None, max_length=255)
     contact_position: str | None = Field(default=None, max_length=255)
     comment: str | None = Field(default=None, max_length=2000)
+    consent_bki: bool = Field(default=False, description="Согласие на запрос в бюро кредитных историй")
 
 
 class ApplicationCreate(BaseModel):
@@ -234,6 +235,27 @@ class CompanyRef(BaseModel):
     name: str
 
 
+class OfferOut(Out):
+    id: int
+    kind: str
+    product_code: str
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+    explanation: list[str]
+    status: str
+    valid_until: UtcDatetime | None
+
+
+class DecisionOut(BaseModel):
+    """Итог конвейера для клиента: исход, причины и что можно улучшить."""
+
+    outcome: str
+    reasons: list[str]
+    tips: list[str]
+
+
 class ApplicationOut(BaseModel):
     id: int
     number: str | None
@@ -247,6 +269,9 @@ class ApplicationOut(BaseModel):
     form: ApplicationForm
     company: CompanyRef
     allowed_actions: list[str]
+    offer: OfferOut | None
+    decision: DecisionOut | None
+    open_tasks: int
     created_at: UtcDatetime
     updated_at: UtcDatetime
     submitted_at: UtcDatetime | None
@@ -263,3 +288,58 @@ class EventOut(BaseModel):
     from_status: str | None
     to_status: str | None
     comment: str | None
+
+
+class TaskOut(Out):
+    id: int
+    kind: str
+    title: str
+    description: str | None
+    status: str
+    answer: str | None
+    payload: dict | None
+    created_at: UtcDatetime
+    resolved_at: UtcDatetime | None
+
+
+class TaskAnswerIn(BaseModel):
+    answer: str = Field(min_length=1, max_length=2000)
+
+
+class DocumentOut(Out):
+    id: int
+    kind: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    created_at: UtcDatetime
+
+
+class CheckOut(BaseModel):
+    source: str
+    title: str
+    status: str  # ok | failed | pending
+    attempts: int
+    data: dict | None = None  # только для сотрудников банка
+
+
+class FinancialsOut(BaseModel):
+    """Финансы компании по данным ФНС — для подсказок в анкете."""
+
+    available: bool
+    reporting_year: int | None = None
+    revenue_monthly: int | None = None
+    expenses_monthly: int | None = None
+    employees: int | None = None
+    tax_regime: str | None = None
+
+
+class StreamSnapshot(BaseModel):
+    """Событие потока статусов: что изменилось в заявке."""
+
+    status: str
+    title: str
+    tone: str
+    terminal: bool
+    last_event_id: int
+    open_tasks: int

@@ -76,6 +76,9 @@ class Application(Base):
     # Анкета: финансы, залог, контактное лицо. Схема описана в app.schemas.ApplicationForm.
     form: Mapped[dict] = mapped_column(JsonType, default=dict)
 
+    # Итог конвейера: исход, причины и подсказки для клиента (см. app.scoring.decision).
+    decision: Mapped[dict | None] = mapped_column(JsonType)
+
     submit_key: Mapped[str | None] = mapped_column(String(64), unique=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -140,6 +143,8 @@ class ScoringResult(Base):
     score: Mapped[int | None] = mapped_column(Integer)
     grade: Mapped[str] = mapped_column(String(2))  # A..E
     factors: Mapped[list] = mapped_column(JsonType, default=list)
+    # Признаки, на которых считалась оценка, — чтобы решение можно было воспроизвести.
+    features: Mapped[dict | None] = mapped_column(JsonType)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -170,8 +175,10 @@ class ClientTask(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(16))  # document | question
+    kind: Mapped[str] = mapped_column(String(16))  # document | field | question
     title: Mapped[str] = mapped_column(String(255))
+    # document: {"document_kind": ...}; field: {"field": "finance.monthly_revenue", "input": "money"}
+    payload: Mapped[dict | None] = mapped_column(JsonType)
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="open")  # open | done
     answer: Mapped[str | None] = mapped_column(Text)
