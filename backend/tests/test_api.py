@@ -48,15 +48,20 @@ def test_meta_and_product_matching(client):
     assert calc["total"] == calc["amount"] + calc["overpayment"]
 
 
-def test_company_lookup_uses_registry(client):
+def test_company_lookup_uses_registry(client, mocks):
     headers = auth(client, "new@demo.local")
     card = client.get("/api/companies/lookup", params={"inn": "0077060066"}, headers=headers).json()
     assert card["short_name"] == "ООО «Закат»"
     assert card["status"] == "liquidating"
     wrong = client.get("/api/companies/lookup", params={"inn": "0077060067"}, headers=headers)
     assert wrong.status_code == 422
-    generated = client.get("/api/companies/lookup", params={"inn": "7707083893"}, headers=headers)
+    generated = client.get("/api/companies/lookup", params={"inn": "0078012403"}, headers=headers)
     assert generated.status_code == 200
+    # ИНН реальной организации эмулятор не знает: вместо вымышленной выписки — «не найдена».
+    real = client.get("/api/companies/lookup", params={"inn": "7707083893"}, headers=headers)
+    assert real.status_code == 404
+    assert real.json()["code"] == "not_found" and "не найдена" in real.json()["detail"]
+    assert all(mocks.get(f"/{source}/7707083893").status_code == 404 for source in ("egrul", "fns", "bki"))
 
 
 def test_company_lookup_survives_source_outage(client, mocks):

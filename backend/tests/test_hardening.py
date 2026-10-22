@@ -163,7 +163,7 @@ def test_head_from_registry_can_always_join_and_sign(client):
 
 def test_only_head_or_founder_from_registry_can_connect_a_company(client):
     outsider = _login(client, _client_without_company("outsider@demo.local", "Иван Посторонний"))
-    response = client.post("/api/companies/link", json={"inn": _org_inn("771234567")}, headers=outsider)
+    response = client.post("/api/companies/link", json={"inn": _org_inn("007712345")}, headers=outsider)
     assert response.status_code == 403
     assert response.json()["code"] == "forbidden"
     me = client.get("/api/auth/me", headers=outsider).json()

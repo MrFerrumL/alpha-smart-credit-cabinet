@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from mockapi.data import COMPANIES
-from mockapi.generator import generate
+from mockapi.generator import SYNTHETIC_PREFIX, generate
 
 Source = Literal["egrul", "bki", "fns", "abs"]
 
@@ -85,9 +85,12 @@ def get_faults() -> dict:
 
 
 def _company(inn: str) -> dict:
-    if not inn.isdigit() or len(inn) not in (10, 12):
+    if inn in COMPANIES:
+        return COMPANIES[inn]
+    # Генерируются только синтетические ИНН: реальной организации эмулятор не выдумывает выписку.
+    if not inn.isdigit() or len(inn) not in (10, 12) or not inn.startswith(SYNTHETIC_PREFIX):
         raise HTTPException(status_code=404, detail="not found")
-    return COMPANIES.get(inn) or generate(inn)
+    return generate(inn)
 
 
 @app.get("/egrul/{inn}", tags=["Источники"], summary="Выписка ЕГРЮЛ/ЕГРИП")

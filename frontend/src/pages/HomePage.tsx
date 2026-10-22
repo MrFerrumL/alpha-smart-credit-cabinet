@@ -149,6 +149,12 @@ function CompanyOnboarding() {
   const link = useLinkCompany();
   const found = lookup.data;
   const lookupError = lookup.error instanceof ApiError ? lookup.error : null;
+  // Эмулятор ЕГРЮЛ знает только вымышленные компании: ИНН реальной организации в демо не найдётся.
+  const lookupMessage = !lookupError
+    ? undefined
+    : lookupError.status === 404
+      ? `${lookupError.message}. В демо все компании вымышлены — их ИНН начинаются с «00»`
+      : (lookupError.errors?.[0]?.message ?? lookupError.message);
   const ready = inn.length === 10 || inn.length === 12;
 
   const confirm = async () => {
@@ -184,7 +190,7 @@ function CompanyOnboarding() {
             setInn(e.currentTarget.value.replace(/\D/g, '').slice(0, 12));
             lookup.reset();
           }}
-          error={lookupError ? (lookupError.errors?.[0]?.message ?? lookupError.message) : undefined}
+          error={lookupMessage}
         />
         <Button
           size="md"
