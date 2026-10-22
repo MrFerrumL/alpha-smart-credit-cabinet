@@ -201,9 +201,18 @@ def test_code_is_bound_to_the_contract_terms(client, mocks):
 def test_signing_codes_are_rate_limited(client, mocks):
     app_id, headers = approved(client, mocks)
     client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
-    statuses = [client.post(f"/api/applications/{app_id}/signing/code", headers=headers).status_code for _ in range(6)]
-    assert statuses[:5] == [200] * 5
-    assert statuses[5] == 429
+    responses = [client.post(f"/api/applications/{app_id}/signing/code", headers=headers) for _ in range(6)]
+    assert [r.status_code for r in responses[:5]] == [200] * 5
+    assert responses[5].status_code == 429
+    # Сообщение говорит, когда можно запросить код снова, и не отправляет клиента за пределы кабинета.
+    body = responses[5].json()
+    assert body["code"] == "too_many_requests"
+    assert "через 60 мин." in body["detail"] and "обратитесь в банк" not in body["detail"]
+    with SessionLocal() as db:  # окно скользящее: через час после первых кодов можно запросить новый
+        for challenge in db.scalars(select(SigningChallenge).where(SigningChallenge.application_id == app_id)):
+            challenge.created_at = utcnow() - timedelta(minutes=61)
+        db.commit()
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=headers).status_code == 200
 
 
 def test_accepted_but_unsigned_contract_expires_with_the_offer(client, mocks):

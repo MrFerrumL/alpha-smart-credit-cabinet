@@ -10,8 +10,9 @@
 import hashlib
 import hmac
 import json
+import math
 import secrets
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -210,14 +211,19 @@ def request_code(db: Session, user: User, app: Application) -> tuple[SigningChal
     offer = _require_offer(db, app, "accepted")
     _require_valid(offer)
     settings = get_settings()
-    recent = db.scalar(
-        select(func.count(SigningChallenge.id)).where(
+    now = utcnow()
+    recent, oldest = db.execute(
+        select(func.count(SigningChallenge.id), func.min(SigningChallenge.created_at)).where(
             SigningChallenge.application_id == app.id,
-            SigningChallenge.created_at > utcnow() - timedelta(hours=1),
+            SigningChallenge.created_at > now - timedelta(hours=1),
         )
-    )
+    ).one()
     if recent >= settings.signing_codes_per_hour:
-        raise TooManyRequests("Слишком много запросов кода. Попробуйте позже или обратитесь в банк.")
+        # Окно скользящее: новый код можно запросить, когда самому раннему из последних кодов исполнится час.
+        oldest = oldest if oldest.tzinfo else oldest.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
+        wait = oldest + timedelta(hours=1) - now
+        minutes = max(1, math.ceil(wait.total_seconds() / 60))
+        raise TooManyRequests(f"Слишком много запросов кода. Новый код можно запросить через {minutes} мин.")
     # Новый код отменяет все прежние.
     db.execute(
         update(SigningChallenge)

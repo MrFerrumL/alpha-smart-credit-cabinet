@@ -536,7 +536,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-31 | Повторное использование кода | Подтвердить уже использованный код | 409 | `test_signing.py::test_full_path_from_offer_to_loan`, `test_signing.py::test_consumed_code_is_rejected_even_if_the_offer_still_waits` |
 | NEG-32 | Код после отзыва или истечения срока | Подтвердить код с истёкшим сроком; подтвердить код после отзыва заявки | 409 | `test_signing.py::test_code_cannot_be_used_after_cancel_or_expiry` |
 | NEG-33 | Код привязан к условиям | Условия договора изменились после выдачи кода | 422, оферта остаётся «принятой» | `test_signing.py::test_code_is_bound_to_the_contract_terms` |
-| NEG-34 | Лимит кодов | Запросить код 6 раз подряд (лимит 5 в час на заявку) | первые пять — 200, шестой — 429 | `test_signing.py::test_signing_codes_are_rate_limited` |
+| NEG-34 | Лимит кодов | Запросить код 6 раз подряд (лимит 5 в час на заявку) | первые пять — 200, шестой — 429 «Новый код можно запросить через 60 мин.»; через час после первых кодов — снова 200 | `test_signing.py::test_signing_codes_are_rate_limited` |
 | NEG-35 | Отзыв после подписи | `POST …/cancel` после подписи | 409 (в `allowed_actions` нет `cancel`) | `test_signing.py::test_full_path_from_offer_to_loan` |
 | NEG-36 | Передача на подпись дважды | Бухгалтер повторно передаёт; директор «передаёт» сам | 409 | `test_signing.py::test_accountant_hands_offer_to_the_director` |
 

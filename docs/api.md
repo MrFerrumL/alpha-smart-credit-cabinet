@@ -92,7 +92,7 @@ Authorization: Bearer <access_token>
 | 409 | `invalid_transition` | Машина состояний не допускает такой переход ([state-machine.md](state-machine.md)) |
 | 409 | `concurrent_update` | Заявку параллельно изменили (оптимистичная блокировка) — перечитайте и повторите |
 | 422 | `validation_error` | Ошибки полей: и схема запроса, и бизнес-правила; список в `errors[]` как `{field, message}` |
-| 429 | `too_many_requests` | Больше 5 запросов кода подписи за час по одной заявке |
+| 429 | `too_many_requests` | Больше 5 запросов кода подписи за час по одной заявке; в `detail` — через сколько минут можно запросить код снова |
 | 503 | `integration_unavailable` | Внешний источник (ЕГРЮЛ) не ответил: `companies/lookup`, `companies/link` |
 | 500 | `internal_error` | Непредвиденная ошибка |
 | любой | `http_error` | Ошибки самого HTTP-слоя (неизвестный путь, неверный метод) |
@@ -308,6 +308,8 @@ POST /api/applications/{id}/offer/accept
 Договор — `GET /api/applications/{id}/contract`.
 
 **6. Код подписи.** Электронная подпись **смоделирована**: вместо SMS код возвращается в ответе (`demo_code`) и показывается в окне подписания.
+В БД хранится только HMAC кода, поэтому повторно сервер его не отдаёт; кабинет держит последний код в
+`sessionStorage` вкладки и после перезагрузки показывает его снова, пока код действует.
 
 ```http
 POST /api/applications/{id}/signing/code

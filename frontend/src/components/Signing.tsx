@@ -121,10 +121,33 @@ function useCountdown(until: string | null): number {
   return left;
 }
 
+// Последний код подписи живёт только в этой вкладке (sessionStorage, как и токен): после перезагрузки или
+// возврата со страницы договора окно покажет его снова, пока он действует, и не запросит новый. На сервере
+// открытого кода нет — только его HMAC.
+function savedCode(key: string): SigningCode | null {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null') as SigningCode | null;
+    return saved && new Date(saved.expires_at).getTime() > Date.now() ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCode(key: string, challenge: SigningCode | null) {
+  try {
+    if (challenge) sessionStorage.setItem(key, JSON.stringify(challenge));
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* приватный режим браузера — код живёт до перезагрузки */
+  }
+}
+
 function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const storeKey = `credit.signing.${user?.id ?? 0}.${app.id}`;
   const request = useRequestSigningCode(app.id);
   const confirm = useConfirmSigning(app.id);
-  const [challenge, setChallenge] = useState<SigningCode | null>(null);
+  const [challenge, setChallenge] = useState<SigningCode | null>(() => savedCode(storeKey));
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const left = useCountdown(challenge?.expires_at ?? null);
@@ -133,7 +156,10 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
     setError(null);
     setCode('');
     request.mutate(undefined, {
-      onSuccess: setChallenge,
+      onSuccess: (fresh) => {
+        saveCode(storeKey, fresh);
+        setChallenge(fresh);
+      },
       onError: (e) => setError(e instanceof ApiError ? e.message : 'Не удалось получить код'),
     });
   };
@@ -149,9 +175,14 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
     confirm.mutate(
       { challenge_id: challenge.challenge_id, code: value },
       {
-        onSuccess: onClose,
+        onSuccess: () => {
+          saveCode(storeKey, null);
+          onClose();
+        },
         onError: (e) => {
           setCode('');
+          // Код погашен, заменён новым или больше не принимается — после перезагрузки его не показываем.
+          if (e instanceof ApiError && (e.status === 404 || e.status === 409)) saveCode(storeKey, null);
           setError(e instanceof ApiError ? e.message : 'Не удалось подписать договор');
         },
       },
@@ -199,7 +230,9 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
             ? `Код действует ещё ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
             : challenge
               ? 'Срок действия кода истёк'
-              : 'Отправляем код…'}
+              : request.isPending
+                ? 'Отправляем код…'
+                : null}
         </Text>
         <Button variant="subtle" size="xs" onClick={send} loading={request.isPending}>
           Отправить новый код
