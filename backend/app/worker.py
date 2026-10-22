@@ -6,6 +6,7 @@
 import logging
 import signal
 import time
+from pathlib import Path
 
 from sqlalchemy.exc import OperationalError
 
@@ -39,7 +40,10 @@ def main() -> None:
     log.info("worker started", extra={"status": f"recovered {recovered} stale jobs"})
 
     next_housekeeping = 0.0
+    heartbeat = Path(settings.worker_heartbeat_file) if settings.worker_heartbeat_file else None
     while not _stopping:
+        if heartbeat is not None:
+            heartbeat.touch()
         try:
             if time.monotonic() >= next_housekeeping:
                 with SessionLocal() as db:

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     pipeline_retry_base_s: float = 2.0
     pipeline_max_attempts: int = 5
     worker_poll_interval_s: float = 0.5
+    # Файл «пульса» воркера: обновляется на каждом проходе цикла, по нему healthcheck видит, что воркер жив.
+    worker_heartbeat_file: str | None = None
     offer_valid_days: int = 7
     # Сумма, которую кредитный аналитик одобряет сам; выше — решение кредитного комитета.
     analyst_authority_limit: int = 30_000_000

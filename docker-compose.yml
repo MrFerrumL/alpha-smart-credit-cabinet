@@ -63,8 +63,14 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-in-production}
       PIPELINE_STEP_DELAY_S: ${PIPELINE_STEP_DELAY_S:-1.5}
       SEED_ON_START: "false"
+      WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
+    # Воркер жив, если его цикл обновлял файл «пульса» в последнюю минуту (зависший шаг тоже будет виден).
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/worker-heartbeat') < 60 else 1)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
     depends_on:
       backend:
         condition: service_healthy
