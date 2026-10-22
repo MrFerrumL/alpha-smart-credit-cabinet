@@ -26,8 +26,8 @@ verification, docs, a full review of the branch against the case and the release
 | P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | done `17165e4` |
 | P1.6 | Offer expiry (B7), unanswered bank requests | done `17165e4` |
 | B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done `385d3c6`, reviewed |
-| G | Risk profiles in the mock generator (N10) together with B5 | implemented, under review |
-| News | Feed from `news.json`, tagged by OKVED, product, status | pending |
+| G | Risk profiles in the mock generator (N10) together with B5 | done `9834575` |
+| News | Feed from `news.json`, tagged by OKVED, product, status | done (this commit), reviewed |
 | A | Decision rule trace, policy version, replay | pending |
 | C | Policy impact simulator | pending |
 | E | Product-dependent conditions before issue | pending |
@@ -227,6 +227,11 @@ purpose so the stages are visible.
   is `new@` (director of «Новые горизонты»), so jurors cannot yet try a generated INN in the UI. Options:
   let a client without a company state their name at onboarding (identity check stays simulated), or seed
   a few extra demo heads for sample INNs.
+- D12 (23.10) News feed: the team's 20 items got real one-line summaries (the originals were placeholders,
+  so the demo could not show "what the news contains"), `tags.statuses` on 3 items, and 4 untagged general
+  items; ranking: OKVED section +3, IP +3, region +2, product +2, latest application status +6, general
+  +0.5; foreign sector, legal form or region excluded. UI refreshes the feed when application statuses
+  change.
 
 ## Verification commands
 

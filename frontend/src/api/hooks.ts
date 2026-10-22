@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  FeedItem,
   AnalystDecision,
   Assessment,
   AppNotification,
@@ -351,4 +352,9 @@ export function useAnalystDecision(id: number) {
       qc.invalidateQueries({ queryKey: ['applications'] });
     },
   });
+}
+
+/** Лента новостей; version — снимок статусов заявок, чтобы лента пересчитывалась при их смене. */
+export function useFeed(version: string) {
+  return useQuery({ queryKey: ['feed', version], queryFn: () => api<FeedItem[]>('/feed'), placeholderData: keepPreviousData });
 }

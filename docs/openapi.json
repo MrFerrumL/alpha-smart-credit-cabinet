@@ -1697,6 +1697,36 @@
           }
         ]
       }
+    },
+    "/api/feed": {
+      "get": {
+        "tags": [
+          "Лента"
+        ],
+        "summary": "Персональная лента новостей (синтетические новости, подобраны под компанию и её заявки)",
+        "operationId": "news_feed_api_feed_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedItemOut"
+                  },
+                  "type": "array",
+                  "title": "Response News Feed Api Feed Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3228,6 +3258,50 @@
         ],
         "title": "FactorOut"
       },
+      "FeedItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "description": "Почему новость показана этому клиенту"
+          },
+          "is_synthetic": {
+            "type": "boolean",
+            "title": "Is Synthetic",
+            "description": "Новость синтетическая — источник смоделирован"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "published_at",
+          "title",
+          "summary",
+          "reasons",
+          "is_synthetic"
+        ],
+        "title": "FeedItemOut"
+      },
       "FinanceForm": {
         "properties": {
           "monthly_revenue": {
@@ -4581,6 +4655,10 @@
     {
       "name": "Кредиты",
       "description": "Выданные кредиты и графики платежей"
+    },
+    {
+      "name": "Лента",
+      "description": "Персональная лента новостей (синтетические новости)"
     },
     {
       "name": "Уведомления",

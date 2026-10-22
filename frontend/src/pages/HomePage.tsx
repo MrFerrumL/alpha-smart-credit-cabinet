@@ -25,6 +25,7 @@ import type { Company } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ApplicationCard } from '../components/ApplicationCard';
 import { LoanCard } from '../components/LoanCard';
+import { NewsFeed } from '../components/NewsFeed';
 import { EmptyState, Section } from '../components/ui';
 import { greeting, plural, yearsSince } from '../lib/format';
 
@@ -356,6 +357,7 @@ export function HomePage() {
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack gap="lg">
             <CompanyCard company={user.company} />
+            <NewsFeed />
             <HowItWorks />
           </Stack>
         </Grid.Col>

@@ -530,3 +530,15 @@ class AnalystDecisionIn(BaseModel):
     task_kind: Literal["document", "question"] = "document"
     task_title: str | None = Field(default=None, max_length=255)
     task_description: str | None = Field(default=None, max_length=1000)
+
+
+# --- Лента новостей --------------------------------------------------------------------------
+
+
+class FeedItemOut(BaseModel):
+    id: str
+    published_at: datetime
+    title: str
+    summary: str
+    reasons: list[str] = Field(description="Почему новость показана этому клиенту")
+    is_synthetic: bool = Field(description="Новость синтетическая — источник смоделирован")

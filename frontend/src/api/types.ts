@@ -405,3 +405,12 @@ export interface AnalystDecision {
   task_title?: string;
   task_description?: string;
 }
+
+export interface FeedItem {
+  id: string;
+  published_at: string;
+  title: string;
+  summary: string;
+  reasons: string[];
+  is_synthetic: boolean;
+}
