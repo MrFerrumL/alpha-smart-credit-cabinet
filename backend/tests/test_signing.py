@@ -400,6 +400,9 @@ def test_secured_loan_is_issued_only_after_issue_conditions_are_closed(client, m
     tasks = client.get(f"/api/applications/{app_id}/tasks", headers=headers).json()
     conditions = [t for t in tasks if (t["payload"] or {}).get("condition") == "before_issue"]
     assert {t["kind"] for t in conditions} == {"document", "question"}
+    contract = client.get(f"/api/applications/{app_id}/contract", headers=headers).json()
+    subject = " ".join(next(s for s in contract["sections"] if s["title"] == "2. Предмет договора")["paragraphs"])
+    assert "после выполнения условий выдачи" in subject and "в день подписания" not in subject
 
     sign(client, app_id, headers)
     run_pipeline(mocks)
