@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 136 автотестов на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 137 автотестов на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -36,7 +36,7 @@ docker compose up --build
 |---|---|
 | E2E — сквозные сценарии | E2E-01 … E2E-15 |
 | Отказоустойчивость | FAIL-01 … FAIL-05 |
-| NEG — негативные и ролевые сценарии | NEG-01 … NEG-55 |
+| NEG — негативные и ролевые сценарии | NEG-01 … NEG-56 |
 | Автотесты и CI | запуск и проверки в CI |
 
 ---
@@ -524,6 +524,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-25 | Бывший директор | Пользователь с флагом права подписи, но не руководитель по ЕГРЮЛ: принять, отказаться, отозвать | 403, в сообщении имя руководителя по ЕГРЮЛ; передать руководителю — 200 | `test_signing.py::test_signing_right_is_checked_against_the_registry_director` |
 | NEG-26 | Ответ на запрос чужой компании | Ответить на запрос банка в заявке другой компании | 404 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
 | NEG-27 | Пустой ответ на запрос | `POST …/tasks/{task_id}/answer` с `{"answer": "   "}` | 422 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
+| NEG-56 | Номер вне диапазона ключей | `GET /api/applications/99999999999999999999` (и `…/events`, `…/stream`), `GET /api/loans/…`, `POST …/tasks/{task_id}/answer` и загрузка документа с таким `task_id` | 404 `not_found`, не 500 | `test_hardening.py::test_ids_outside_the_key_range_are_not_found` |
 
 ### Подписание
 
@@ -578,7 +579,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 136 тестов; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 137 тестов; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 

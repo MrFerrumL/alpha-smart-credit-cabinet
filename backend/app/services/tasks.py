@@ -8,6 +8,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db import get_by_id
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
 from app.models import Application, ClientTask, Document, User, utcnow
@@ -32,7 +33,7 @@ def list_documents(db: Session, app: Application) -> list[Document]:
 
 
 def _own_task(db: Session, app: Application, task_id: int) -> ClientTask:
-    task = db.get(ClientTask, task_id)
+    task = get_by_id(db, ClientTask, task_id)
     if task is None or task.application_id != app.id:
         raise NotFound("Запрос не найден")
     if task.status != "open":

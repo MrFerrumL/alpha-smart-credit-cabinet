@@ -76,6 +76,28 @@ def test_token_without_subject_is_rejected_as_unauthorized(client):
         assert response.json()["code"] == "unauthorized"
 
 
+def test_ids_outside_the_key_range_are_not_found(client):
+    owner, analyst = auth(client, "bakery@demo.local"), auth(client, "analyst@demo.local")
+    for headers in (owner, analyst):
+        for huge in (2**31, 2**63, 10**20):
+            for path in ("", "/events", "/stream"):
+                response = client.get(f"/api/applications/{huge}{path}", headers=headers)
+                assert response.status_code == 404, (huge, path, response.text)
+                assert response.json()["code"] == "not_found"
+    assert client.get("/api/applications/-1", headers=owner).status_code == 404
+    assert client.get(f"/api/loans/{10**20}", headers=owner).status_code == 404
+
+    draft = _draft(client, owner)
+    answer = client.post(f"/api/applications/{draft}/tasks/{10**20}/answer", json={"answer": "x"}, headers=owner)
+    assert answer.status_code == 404
+    upload = client.post(
+        f"/api/applications/{draft}/documents",
+        headers=owner,
+        data={"kind": "other", "task_id": str(10**20)},
+        files={"file": ("doc.pdf", b"%PDF-1.4 doc", "application/pdf")},
+    )
+    assert upload.status_code == 404
+
 def test_open_status_stream_does_not_hold_a_database_connection(client, mocks):
     app_id, headers = submit(
         client,

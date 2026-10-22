@@ -6,6 +6,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db import get_by_id
 from app.domain.products import PRODUCTS, schedule
 from app.errors import NotFound
 from app.models import Loan, User
@@ -70,7 +71,7 @@ def list_for(db: Session, user: User, today: date | None = None) -> list[LoanOut
 
 
 def get_for(db: Session, user: User, loan_id: int, today: date | None = None) -> LoanDetailOut:
-    loan = db.get(Loan, loan_id)
+    loan = get_by_id(db, Loan, loan_id)
     if loan is None or user.role != "client" or loan.company_id != user.company_id:
         raise NotFound("Кредит не найден")
     rows = _rows(loan)

@@ -17,6 +17,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.db import get_by_id
 from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, schedule
 from app.domain.statuses import Actor, Status
@@ -254,7 +255,7 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
     offer = _require_offer(db, app, "accepted")
-    challenge = db.get(SigningChallenge, challenge_id)
+    challenge = get_by_id(db, SigningChallenge, challenge_id)
     if challenge is None or challenge.application_id != app.id or challenge.user_id != user.id:
         raise NotFound("Запросите код ещё раз")
     if challenge.used_at is not None or challenge.attempts_left <= 0:

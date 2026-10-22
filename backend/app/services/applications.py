@@ -3,6 +3,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.db import get_by_id
 from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
 from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
@@ -205,7 +206,7 @@ def validate_for_submit(app: Application) -> None:
 
 
 def get_for_user(db: Session, user: User, application_id: int) -> Application:
-    app = db.get(Application, application_id)
+    app = get_by_id(db, Application, application_id)
     if app is None:
         raise NotFound("Заявка не найдена")
     if user.role == "client" and app.company_id != user.company_id:
