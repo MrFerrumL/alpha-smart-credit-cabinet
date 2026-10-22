@@ -114,6 +114,8 @@ def test_application_lifecycle_and_access(client):
 
     cancelled = client.post(f"/api/applications/{draft['id']}/cancel", json={"comment": "Передумали"}, headers=owner)
     assert cancelled.json()["status"]["code"] == "cancelled"
+    # Таймлайн отозванной заявки стоит на этапе, где её отозвали («Проверка данных»), а не на «Заявке».
+    assert cancelled.json()["status"]["stage"] == 1
     assert client.post(f"/api/applications/{draft['id']}/cancel", headers=owner).status_code == 409
 
     events = client.get(f"/api/applications/{draft['id']}/events", headers=owner).json()

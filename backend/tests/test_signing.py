@@ -249,6 +249,8 @@ def test_declining_offer_closes_application(client, mocks):
     ).json()
     assert declined["status"]["code"] == "cancelled"
     assert declined["offer"]["status"] == "declined"
+    # На таймлайне заявка остановилась на «Решении», где от предложения отказались, а не на «Заявке».
+    assert declined["status"]["stage"] == get(client, app_id, headers)["status"]["stage"] == 4
     assert client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).status_code == 409
 
 

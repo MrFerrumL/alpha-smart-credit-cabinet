@@ -1,5 +1,7 @@
 """Сценарии работы с заявкой: черновик, редактирование, отправка, отзыв, доступ."""
 
+from dataclasses import replace
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -118,6 +120,19 @@ def latest_offer(db: Session, app: Application) -> Offer | None:
     return db.scalar(select(Offer).where(Offer.application_id == app.id).order_by(Offer.id.desc()).limit(1))
 
 
+def cancelled_info(db: Session, app: Application) -> StatusInfo | None:
+    """Отозванная заявка остаётся на таймлайне на том этапе, где её отозвали, а не откатывается к «Заявке»."""
+    if app.status != Status.CANCELLED.value:
+        return None
+    src = db.scalar(
+        select(ApplicationEvent.from_status)
+        .where(ApplicationEvent.application_id == app.id, ApplicationEvent.to_status == Status.CANCELLED.value)
+        .order_by(ApplicationEvent.id.desc())
+        .limit(1)
+    )
+    return replace(STATUS_INFO[Status.CANCELLED], stage=STATUS_INFO[Status(src)].stage) if src else None
+
+
 def open_tasks_count(db: Session, app: Application) -> int:
     query = select(func.count(ClientTask.id)).where(ClientTask.application_id == app.id, ClientTask.status == "open")
     return db.scalar(query) or 0
@@ -139,7 +154,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     return ApplicationOut(
         id=app.id,
         number=app.number,
-        status=status_out(Status(app.status), signed_info),
+        status=status_out(Status(app.status), signed_info or cancelled_info(db, app)),
         product=ProductRef(code=product.code, name=product.name, rate=float(product.rate)),
         purpose=Purpose(app.purpose),
         purpose_title=PURPOSES[Purpose(app.purpose)].title,
