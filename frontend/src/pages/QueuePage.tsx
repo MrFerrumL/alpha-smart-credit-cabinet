@@ -17,8 +17,8 @@ const FILTERS = [
 
 export function QueuePage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('all');
-  const all = useApplications();
+  const [filter, setFilter] = useState('manual_review');
+  const all = useApplications(undefined, true);
   const list = (all.data ?? []).filter((a) => filter === 'all' || a.status.code === filter);
   const count = (code: string) => (all.data ?? []).filter((a) => a.status.code === code).length;
   const inPipeline = (all.data ?? []).filter((a) => !a.status.terminal && !a.status.action_required).length;

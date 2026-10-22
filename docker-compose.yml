@@ -26,7 +26,8 @@ services:
     environment:
       MOCK_LATENCY_MS: ${MOCK_LATENCY_MS:-400}
     ports:
-      - "8001:8001"
+      # Эмулятор с управлением сбоями (/admin/faults) — только с этой машины.
+      - "127.0.0.1:8001:8001"
     restart: unless-stopped
 
   backend:
@@ -47,7 +48,8 @@ services:
       mocks:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # API и Swagger — только с этой машины; кабинет ходит в API через nginx.
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
 
   # Фоновый конвейер: проверка → ЕГРЮЛ/ФНС/БКИ → оценка → решение.

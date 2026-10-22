@@ -79,11 +79,12 @@ function isMoving(app: Application | undefined) {
   return !!app && !app.status.terminal && app.status.code !== 'draft' && !app.status.action_required;
 }
 
-export function useApplications(status?: string) {
+/** live — опрашивать всегда (очередь аналитика: новые заявки появляются без перезагрузки). */
+export function useApplications(status?: string, live = false) {
   return useQuery({
     queryKey: keys.applications(status),
     queryFn: () => api<Application[]>(status ? `/applications?status=${status}` : '/applications'),
-    refetchInterval: (query) => (query.state.data?.some(isMoving) ? ACTIVE_POLL_MS : false),
+    refetchInterval: (query) => (live || query.state.data?.some(isMoving) ? ACTIVE_POLL_MS : false),
   });
 }
 

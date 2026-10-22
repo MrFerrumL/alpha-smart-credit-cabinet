@@ -33,6 +33,7 @@ const REASON_COLOR: Record<NonNullable<Assessment['review_reason']>, string> = {
   manual_product: 'blue',
   grade: 'yellow',
   source_failure: 'orange',
+  pipeline_failure: 'red',
   other: 'gray',
 };
 

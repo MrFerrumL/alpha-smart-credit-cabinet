@@ -479,7 +479,9 @@ class RevenueOut(BaseModel):
 class AssessmentOut(BaseModel):
     """Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."""
 
-    review_reason: str | None = Field(description="manual_product | grade | source_failure | other; пусто, если заявка не у специалиста")
+    review_reason: str | None = Field(
+        description="manual_product | grade | source_failure | pipeline_failure | other; пусто, если заявка не у специалиста"
+    )
     review_reason_title: str | None
     scored: bool
     failed_sources: list[str]

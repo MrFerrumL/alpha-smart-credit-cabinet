@@ -149,3 +149,20 @@ def test_founder_connects_company_but_cannot_sign(client, monkeypatch):
     me = client.get("/api/auth/me", headers=founder).json()
     assert me["company"]["inn"] == inn
     assert me["can_sign"] is False
+
+
+def test_step_that_keeps_crashing_hands_application_to_specialist(client, mocks, monkeypatch):
+    from app.scoring import rules
+
+    def broken(_features):
+        raise RuntimeError("scorecard misconfigured")
+
+    monkeypatch.setattr(rules, "score", broken)
+    app_id, headers = submit(client, "bakery@demo.local")
+    run_pipeline(mocks)
+    app = client.get(f"/api/applications/{app_id}", headers=headers).json()
+    assert app["status"]["code"] == "manual_review"
+    analyst = auth(client, "analyst@demo.local")
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
+    assert card["review_reason"] == "pipeline_failure"
+    assert card["scored"] is False

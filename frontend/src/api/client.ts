@@ -2,24 +2,26 @@ import type { Problem } from './types';
 
 const TOKEN_KEY = 'credit.token';
 
+// Токен живёт в sessionStorage: у каждой вкладки своя сессия, поэтому клиента и аналитика можно открыть
+// рядом в одном браузере, а закрытая вкладка не оставляет токен на диске.
 export const tokenStore = {
   get(): string | null {
     try {
-      return localStorage.getItem(TOKEN_KEY);
+      return sessionStorage.getItem(TOKEN_KEY);
     } catch {
       return null;
     }
   },
   set(token: string) {
     try {
-      localStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(TOKEN_KEY, token);
     } catch {
       /* приватный режим браузера — сессия живёт до перезагрузки */
     }
   },
   clear() {
     try {
-      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
     } catch {
       /* ignore */
     }

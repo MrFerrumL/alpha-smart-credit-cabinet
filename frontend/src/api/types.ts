@@ -355,7 +355,7 @@ export interface Terms {
 }
 
 export interface Assessment {
-  review_reason: 'manual_product' | 'grade' | 'source_failure' | 'other' | null;
+  review_reason: 'manual_product' | 'grade' | 'source_failure' | 'pipeline_failure' | 'other' | null;
   review_reason_title: string | null;
   scored: boolean;
   failed_sources: string[];

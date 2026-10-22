@@ -141,6 +141,8 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.ENRICHMENT, S.SCORING): frozenset({_SYS}),
     # Внешний источник так и не ответил — заявка не теряется, её разбирает специалист.
     (S.ENRICHMENT, S.MANUAL_REVIEW): frozenset({_SYS}),
+    # Шаг проверки так и не выполнился — заявку разбирает специалист, а не «зависает» в конвейере.
+    (S.VALIDATION, S.MANUAL_REVIEW): frozenset({_SYS}),
     (S.SCORING, S.APPROVED): frozenset({_SYS}),
     (S.SCORING, S.COUNTER_OFFER): frozenset({_SYS}),
     (S.SCORING, S.MANUAL_REVIEW): frozenset({_SYS}),

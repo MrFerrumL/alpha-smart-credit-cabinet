@@ -2108,7 +2108,7 @@
               }
             ],
             "title": "Review Reason",
-            "description": "manual_product | grade | source_failure | other; пусто, если заявка не у специалиста"
+            "description": "manual_product | grade | source_failure | pipeline_failure | other; пусто, если заявка не у специалиста"
           },
           "review_reason_title": {
             "anyOf": [

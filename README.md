@@ -25,6 +25,9 @@ docker compose up --build
 | API и Swagger | http://localhost:8000/api/docs |
 | Эмулятор ЕГРЮЛ/БКИ/ФНС | http://localhost:8001/docs |
 
+У каждой вкладки браузера свой вход: клиента и аналитика можно открыть рядом и смотреть, как решение
+аналитика сразу появляется у клиента. API и эмулятор доступны только с этой машины, наружу открыт кабинет.
+
 Файл `.env` не обязателен: у всех переменных есть безопасные для демо значения (см. `.env.example`).
 При первом запуске применяются миграции и загружаются синтетические демо-данные. Вместе с API стартует
 воркер конвейера — отправленные заявки он обрабатывает сам.
@@ -237,6 +240,12 @@ Swagger — http://localhost:8000/api/docs. Ошибки всегда прихо
 
 ```bash
 curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error","count":2}'
+```
+
+В Windows PowerShell (там `curl` — другая команда):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error","count":2}'
 ```
 
 ## План работ

@@ -15,6 +15,7 @@ stateDiagram-v2
     needs_info --> expired: system
     enrichment --> scoring: system
     enrichment --> manual_review: system
+    validation --> manual_review: system
     scoring --> approved: system
     scoring --> counter_offer: system
     scoring --> manual_review: system
@@ -89,6 +90,7 @@ stateDiagram-v2
 | `needs_info` | `expired` | система |
 | `enrichment` | `scoring` | система |
 | `enrichment` | `manual_review` | система |
+| `validation` | `manual_review` | система |
 | `scoring` | `approved` | система |
 | `scoring` | `counter_offer` | система |
 | `scoring` | `manual_review` | система |

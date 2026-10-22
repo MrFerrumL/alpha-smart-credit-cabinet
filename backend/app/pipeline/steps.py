@@ -261,6 +261,15 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
     )
 
 
+def step_exhausted(db: Session, app: Application, error: str) -> None:
+    """Проверка или оценка так и не выполнились (ошибка в данных или коде): заявка уходит специалисту
+    с пометкой, а не остаётся навсегда в «Проверяем данные» или «Оцениваем»."""
+    reason = "Автоматическая обработка не завершилась — заявку проверит специалист."
+    apply_transition(db, app, Status.MANUAL_REVIEW, Actor.SYSTEM, comment=reason, payload={"error": error})
+    app.decision = {"outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": [],
+                    "review_reason": "pipeline_failure"}
+
+
 def disburse_exhausted(db: Session, app: Application, error: str) -> None:
     """АБС долго не отвечает: договор уже подписан, поэтому выдача не отменяется, а продолжает повторяться
     с длинной паузой. Идемпотентность по номеру договора не даст выдать деньги дважды. Если же шаг падает
@@ -324,6 +333,8 @@ STEPS: dict[str, tuple[Status, Step]] = {
 
 # Что делать, если шаг так и не удалось выполнить за все попытки.
 ON_EXHAUSTED: dict[str, Callable[[Session, Application, str], None]] = {
+    "pipeline.validate": step_exhausted,
     "pipeline.enrich": enrich_exhausted,
+    "pipeline.score": step_exhausted,
     "pipeline.disburse": disburse_exhausted,
 }
