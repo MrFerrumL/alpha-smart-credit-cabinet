@@ -236,7 +236,7 @@ def test_financials_prefill_from_tax_data(client):
 
 def test_heavy_existing_debt_gets_an_overdraft_instead(client, mocks):
     # «Городская химчистка»: платежи по кредитам 485 тыс. при выручке 1 млн в месяц — «Экспресс-оборот» не проходит
-    # даже на минимальную сумму, а овердрафт с оплатой только процентов проходит.
+    # даже на минимальную сумму, а у овердрафта минимум ниже: 150 тыс. проходят по нагрузке.
     app_id, headers = submit(client, "clean@demo.local", amount=300_000)
     run_pipeline(mocks)
     app = get(client, app_id, headers)
