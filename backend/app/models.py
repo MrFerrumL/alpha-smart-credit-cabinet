@@ -274,7 +274,7 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(32))  # status | signing_code | info
+    kind: Mapped[str] = mapped_column(String(32))  # status | signing_code | signature_requested | info
     title: Mapped[str] = mapped_column(String(255))
     body: Mapped[str | None] = mapped_column(Text)
     link: Mapped[str | None] = mapped_column(String(255))
