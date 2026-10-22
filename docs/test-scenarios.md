@@ -49,6 +49,7 @@ docker compose up --build
 | E2E-02 | Банк просит выручку, клиент отвечает | `bakery@` | `approved` |
 | E2E-03 | Бухгалтер передаёт директору, директор подписывает | `buh@`, `bakery@` | `issued` |
 | E2E-04 | Контрпредложение 4,5 млн на 16 мес. | `sklad@` | `issued` на 4,5 млн |
+| E2E-04a | Контрпредложение другим продуктом: овердрафт 150 тыс. | `clean@` | `issued`, «Овердрафт» |
 | E2E-05 | Запрос выписки, специалист, одобрение аналитиком | `smirnova@`, `analyst@` | `approved` |
 | E2E-06 | Инвестиционный кредит: контрпредложение аналитика, условия выдачи | `vector@`, `analyst@` | `issued` после условий |
 | E2E-07 | Отказ с причинами и подсказками | `start@` | `rejected` |
@@ -120,8 +121,8 @@ docker compose up --build
 - **Автотесты:**
   `test_signing.py::test_accountant_hands_offer_to_the_director`,
   `test_signing.py::test_accountant_can_neither_accept_decline_nor_sign`,
-  `test_signing.py::test_signing_right_is_checked_against_the_registry_director`.
-  Отправка заявки самим бухгалтером — проверяется вручную.
+  `test_signing.py::test_signing_right_is_checked_against_the_registry_director`; в браузере —
+  `e2e/tests/personas.spec.ts` (buh: бухгалтер сам отправляет заявку и передаёт её, директор подписывает).
 
 ### E2E-04. Контрпредложение: сумма ограничена выручкой
 
@@ -146,7 +147,9 @@ docker compose up --build
   - Статус «Есть предложение»: в сравнении строка «Продукт: Экспресс-оборот → Овердрафт», 150 000 ₽ на 12 мес.
     под 26,9 % (грейд B). Первая причина: «По продукту «Экспресс-оборот» условия не проходят даже на минимальную
     сумму — под ваши показатели подходит «Овердрафт»: 150 000 ₽ на 12 мес.». Почему: действующие платежи по
-    кредитам (485 тыс. в месяц) съедают почти половину выручки, а у овердрафта платятся только проценты.
+    кредитам (485 тыс. в месяц) съедают почти половину выручки. Посильность овердрафта считается как у
+    кредита, гасимого за 12 мес., но его минимальная сумма ниже (100 тыс.), поэтому банк снижает сумму до
+    150 тыс., при которых нагрузка не больше 50 %.
   - В договоре и в «Мои кредиты» — «Овердрафт», 150 000 ₽.
 - **Автотесты:** `test_pipeline.py::test_heavy_existing_debt_gets_an_overdraft_instead`,
   `test_policy.py::test_other_product_is_offered_when_the_requested_one_does_not_fit`; в браузере —
@@ -166,7 +169,8 @@ docker compose up --build
   - Выручка подтверждена только выпиской, поэтому заявка идёт к специалисту, а не к автомату. В карточке:
     причина «Выручка подтверждена только выпиской — сверьте её с оборотами по счёту», источник выручки — выписка.
   - Клиент видит «Одобрено»: 500 000 ₽ под 22,9 %. Открытых запросов нет, в журнале событие загрузки документа.
-- **Автотест:** `test_pipeline.py::test_missing_tax_revenue_requests_statement_and_resumes`.
+- **Автотест:** `test_pipeline.py::test_missing_tax_revenue_requests_statement_and_resumes`; в браузере —
+  `e2e/tests/personas.spec.ts` (smirnova: выписка, специалист, одобрение аналитиком).
 
 ### E2E-06. Инвестиционный кредит: ручное рассмотрение, контрпредложение аналитика, условия выдачи
 
@@ -205,7 +209,8 @@ docker compose up --build
   `test_signing.py::test_conditions_close_when_the_contract_expires`,
   `test_signing.py::test_unsecured_loan_has_no_issue_conditions` (у кредита без залога условий нет),
   `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status` (живой статус).
-  Мгновенное появление решения у клиента во второй вкладке — проверяется вручную.
+  Появление решения аналитика у клиента без перезагрузки страницы — в браузере, `e2e/tests/personas.spec.ts`
+  (vector).
 
 ### E2E-07. Отказ с причинами и подсказками
 
@@ -238,8 +243,8 @@ docker compose up --build
   - Повторное подключение — 409 (компания уже подключена).
 - **Автотесты:** `test_api.py::test_new_client_links_company_by_inn` (подключение, право подписи, повтор — 409),
   `test_api.py::test_company_lookup_uses_registry` (карточка из ЕГРЮЛ, ИНН с неверной контрольной цифрой — 422),
-  `test_hardening.py::test_head_from_registry_can_always_join_and_sign`. Одобрение 2 млн после подключения —
-  проверяется вручную.
+  `test_hardening.py::test_head_from_registry_can_always_join_and_sign`; в браузере —
+  `e2e/tests/personas.spec.ts` (new: подключение по ИНН и одобрение).
 
 ### E2E-10. Трасса правил и воспроизведение решения
 
@@ -301,7 +306,8 @@ docker compose up --build
   `test_feed.py::test_feed_reacts_to_application_status`,
   `test_feed.py::test_rejection_and_manual_review_bring_the_explainer_to_the_top`,
   `test_feed.py::test_no_foreign_industry_news_even_with_matching_products`,
-  `test_feed.py::test_feed_is_for_clients_only`.
+  `test_feed.py::test_feed_is_for_clients_only`; в браузере — `e2e/tests/personas.spec.ts` (лента своя у
+  пекарни, «ТехноСклада» и «Вектора»; у Смирновой при запросе выписки наверху новость о документах).
 
 ### E2E-13. Профили риска по ИНН из эмулятора
 
@@ -605,20 +611,25 @@ cd backend
    - `python -m scripts.export_state_diagram --check` — диаграмма состояний в `docs/state-machine.md`;
    - `python -m scripts.export_collection --check` — коллекция запросов `docs/postman_collection.json`.
 2. **frontend** — `npm ci` и `npm run build` (сборка и проверка типов).
-3. **compose** — после двух первых: `docker compose build`, `docker compose up -d --wait` (ждёт healthcheck всех
-   сервисов, включая «пульс» воркера) и дымовой сценарий через nginx:
-   `python3 scripts/smoke.py http://localhost:8080 --timeout 180` — проверка готовности `/health/ready`,
-   демо-вход `bakery@`, заявка 3 000 000 ₽ на 12 мес., ожидание статуса «Одобрено»; при другом исходе скрипт
-   завершается с ошибкой. По окончании журналы при падении и `docker compose down -v`.
+3. **compose** — после двух первых, на чистом раннере ровно командой из README:
+   - `docker compose up --build -d --wait` (ждёт healthcheck всех сервисов, включая «пульс» воркера);
+   - дымовой сценарий через nginx `python3 scripts/smoke.py http://localhost:8080 --timeout 180`: проверка
+     готовности `/health/ready`, демо-вход `bakery@`, заявка 3 000 000 ₽ на 12 мес., ожидание «Одобрено»;
+   - коллекция запросов через newman (`e2e`, `npm run api`): папка «Сквозной сценарий: от заявки до выдачи»
+     целиком, от входа до кредита с графиком;
+   - сценарии в браузере (Playwright, `npm run ui`) для каждой демо-учётки из README: решения (одобрение,
+     контрпредложение, в том числе другим продуктом, специалист, отказы), подпись кодом, выдача и график,
+     кабинет аналитика (трасса, воспроизведение, решение, симулятор), лента новостей, сбой БКИ;
+   - при падении — отчёт Playwright и журналы сервисов; в конце `docker compose down -v`.
 
 Команды сверки с кодом можно выполнить локально из папки `backend` (без `--check` файлы пересобираются).
 
 ### Что не покрыто автотестами
 
-- Интерфейс (React): сценарии E2E проходятся вручную по таблицам выше, автотестов интерфейса нет; сборка
-  проверяется в CI.
+- В браузере не проверяются негативные и ролевые сценарии (NEG-…): они покрыты автотестами API.
 - Точные значения сроков в реальном времени (7 и 14 дней) и пауза повтора выдачи (60 с) — в тестах сдвигаются
   даты в БД.
 - Профили риска ИНН 5, 6, 8 и подключение произвольных ИНН через кабинет (см. E2E-13).
 - Попытка аналитика одобрить заявку со сработавшим стоп-фактором (NEG-44).
-- Отправка заявки бухгалтером и одобрение заявки `new@` после подключения (E2E-03, E2E-09).
+- Повторный прогон `npm run ui` на уже использованном стенде: `new@` подключает ИНН один раз, поэтому
+  сценарии в браузере запускаются на чистом стенде (`docker compose down -v`, затем `up`).

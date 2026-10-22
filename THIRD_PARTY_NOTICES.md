@@ -4,7 +4,7 @@
 и указание смоделированных интеграций. Версии и лицензии сверены с зафиксированными зависимостями
 (`backend/requirements.txt`, `mocks/requirements.txt`, `backend/requirements-dev.txt`,
 `frontend/package-lock.json`, `e2e/package-lock.json`); лицензии Python-пакетов взяты из метаданных установленных пакетов, лицензии
-npm-пакетов — из поля `license` в `frontend/package-lock.json`.
+npm-пакетов — из поля `license` в `frontend/package-lock.json` и `e2e/package-lock.json`.
 
 **Платных сервисов, платных API, купленных данных и закрытых лицензий решение не использует.**
 Все компоненты имеют открытые лицензии. Копилефт-лицензий сильного типа (GPL, AGPL, SSPL) в зависимостях решения
