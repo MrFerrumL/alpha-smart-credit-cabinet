@@ -100,11 +100,21 @@ export function useApplication(id: number) {
   });
 }
 
+/**
+ * Пока запрос с новым ключом (сменился статус заявки) загружается, показываем прежние данные той же заявки:
+ * иначе блок на мгновение пропадает, и, например, недописанный ответ на условие выдачи теряется.
+ */
+function sameApplication<T>(id: number) {
+  return (previous: T | undefined, query?: { queryKey: readonly unknown[] }) =>
+    query?.queryKey[1] === id ? previous : undefined;
+}
+
 export function useEvents(id: number, app?: Application) {
   return useQuery({
     queryKey: [...keys.events(id), app?.status.code],
     queryFn: () => api<ApplicationEvent[]>(`/applications/${id}/events`),
     enabled: !!app,
+    placeholderData: sameApplication<ApplicationEvent[]>(id),
   });
 }
 
@@ -170,6 +180,7 @@ export function useTasks(id: number, app?: Application) {
     queryKey: ['application', id, 'tasks', app?.status.code, app?.open_tasks],
     queryFn: () => api<ClientTask[]>(`/applications/${id}/tasks`),
     enabled: !!app && app.status.code !== 'draft',
+    placeholderData: sameApplication<ClientTask[]>(id),
   });
 }
 
@@ -186,6 +197,7 @@ export function useChecks(id: number, app?: Application) {
     queryKey: ['application', id, 'checks', app?.status.code],
     queryFn: () => api<SourceCheck[]>(`/applications/${id}/checks`),
     enabled: !!app && app.status.code !== 'draft' && app.status.code !== 'submitted',
+    placeholderData: sameApplication<SourceCheck[]>(id),
   });
 }
 
