@@ -2398,7 +2398,20 @@
                 "type": "null"
               }
             ],
-            "title": "Existing Payments"
+            "title": "Existing Payments",
+            "description": "Учтённые платежи по действующим кредитам в месяц: БКИ и кредиты этого банка или заявленные, если больше"
+          },
+          "declared_debt_payments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Debt Payments",
+            "description": "Платежи по кредитам, заявленные в анкете"
           },
           "monthly_profit": {
             "anyOf": [

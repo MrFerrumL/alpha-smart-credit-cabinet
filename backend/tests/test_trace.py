@@ -58,3 +58,9 @@ def test_replay_is_for_analysts_and_needs_scoring(client, mocks):
     analyst = auth(client, "analyst@demo.local")
     assert client.post(f"/api/applications/{app_id}/assessment/replay", headers=client_headers).status_code == 403
     assert client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).status_code == 409
+
+
+def test_features_saved_before_declared_debt_was_added_still_load():
+    # Снимки признаков в старых заявках не содержат declared_debt_payments: воспроизведение и симулятор их читают.
+    stored = {k: v for k, v in BASE.as_dict().items() if k != "declared_debt_payments"}
+    assert Features(**stored).declared_debt_payments is None

@@ -131,6 +131,7 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
         stop_checks=[StopCheckOut(title=c.title, passed=c.passed) for c in stop_checks(f)] if f else [],
         revenue=revenue,
         existing_payments=f.existing_payments if f else None,
+        declared_debt_payments=f.declared_debt_payments if f else None,
         monthly_profit=monthly_profit(f) if f else None,
         requested=_terms(product, f, int(app.amount), app.term_months, min_rate or product.rate),
         recommendation=_terms(product, f, rec["amount"], rec["term_months"], Decimal(rec["rate"])) if rec else None,

@@ -376,6 +376,7 @@ export interface Assessment {
     gap_pct: number | null;
   } | null;
   existing_payments: number | null;
+  declared_debt_payments: number | null;
   monthly_profit: number | null;
   requested: Terms;
   recommendation: Terms | null;

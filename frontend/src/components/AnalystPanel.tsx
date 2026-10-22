@@ -185,7 +185,8 @@ function AssessmentCard({ a }: { a: Assessment }) {
                     label={a.revenue.source === 'fns' ? 'Принято по ФНС' : 'Принято по выписке'}
                     value={a.revenue.confirmed_monthly ? moneyShort(a.revenue.confirmed_monthly) : '—'}
                   />
-                  <Stat label="Платежи по кредитам (БКИ)" value={a.existing_payments !== null ? money(a.existing_payments) : '—'} />
+                  <Stat label="Учтённые платежи по кредитам" value={a.existing_payments !== null ? money(a.existing_payments) : '—'} />
+                  <Stat label="Заявлено в анкете" value={a.declared_debt_payments ? money(a.declared_debt_payments) : '—'} />
                   <Stat
                     label="Расхождение с заявленным"
                     value={a.revenue.gap_pct !== null ? `${a.revenue.gap_pct > 0 ? '+' : ''}${a.revenue.gap_pct}%` : '—'}

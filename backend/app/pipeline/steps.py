@@ -190,6 +190,14 @@ def _apply_decision(
     )
 
 
+def _own_loans(db: Session, app: Application) -> tuple[int, int]:
+    """Платежи и долг по кредитам, которые этот банк уже выдал компании (погашение не моделируется)."""
+    rows = db.execute(
+        select(Loan.monthly_payment, Loan.amount).where(Loan.company_id == app.company_id, Loan.status == "active")
+    ).all()
+    return sum(int(r.monthly_payment) for r in rows), sum(int(r.amount) for r in rows)
+
+
 def score(db: Session, app: Application, _: ExternalSources) -> None:
     checks = _checks(db, app)
     product = PRODUCTS[app.product_code]
@@ -197,6 +205,7 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         select(Document.id).where(Document.application_id == app.id, Document.kind == "bank_statement").limit(1)
     ) is not None
     finance = (app.form or {}).get("finance") or {}
+    own_payments, own_debt = _own_loans(db, app)
     features = build_features(
         egrul=checks["egrul"].data,
         fns=checks["fns"].data,
@@ -206,6 +215,9 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         product=product,
         amount=int(app.amount),
         term_months=app.term_months,
+        own_payments=own_payments,
+        own_debt=own_debt,
+        declared_debt_payments=finance.get("debt_payments"),
     )
     result = rules.score(features)
     db.add(

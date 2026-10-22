@@ -501,7 +501,11 @@ class AssessmentOut(BaseModel):
     factors: list[FactorOut] = []
     stop_checks: list[StopCheckOut] = []
     revenue: RevenueOut | None = None
-    existing_payments: int | None = None
+    existing_payments: int | None = Field(
+        default=None,
+        description="Учтённые платежи по действующим кредитам в месяц: БКИ и кредиты этого банка или заявленные, если больше",
+    )
+    declared_debt_payments: int | None = Field(default=None, description="Платежи по кредитам, заявленные в анкете")
     monthly_profit: int | None = Field(default=None, description="Прибыль в месяц по данным ФНС")
     requested: TermsOut
     recommendation: TermsOut | None = None

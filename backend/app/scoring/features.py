@@ -15,7 +15,9 @@ class Features:
     revenue_source: str | None  # fns | statement
     declared_revenue_monthly: int | None
     margin: float | None  # (выручка − расходы) / выручка по данным ФНС
-    existing_payments: int  # платежи по действующим кредитам в месяц (БКИ)
+    # Платежи по действующим кредитам в месяц, которые учитывает банк: по БКИ вместе с кредитами, уже выданными
+    # этим банком, а если клиент указал в анкете больше — заявленные.
+    existing_payments: int
     total_debt: int
     has_credit_history: bool
     max_overdue_days_24m: int
@@ -28,6 +30,8 @@ class Features:
     blocked_accounts: bool
     requested_payment: int  # платёж по запрошенным сумме и сроку
     dsr: float | None  # доля выручки, которая уйдёт на все кредитные платежи
+    # Заявлено клиентом в анкете. Поле добавлено позже остальных: у сохранённых раньше признаков его нет.
+    declared_debt_payments: int | None = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -49,8 +53,12 @@ def build_features(
     product: Product,
     amount: int,
     term_months: int,
+    own_payments: int = 0,
+    own_debt: int = 0,
+    declared_debt_payments: int | None = None,
     today: date | None = None,
 ) -> Features:
+    """own_payments и own_debt — кредиты, уже выданные компании этим банком: эмулятор БКИ о них не знает."""
     today = today or date.today()
     summary = bki.get("summary", {})
 
@@ -65,7 +73,8 @@ def build_features(
     expenses_year = fns.get("expenses")
     margin = (revenue_year - expenses_year) / revenue_year if revenue_year and expenses_year is not None else None
 
-    existing = int(summary.get("monthly_payments", 0))
+    # Анкетой нагрузку не занизить: берётся большее из известного банку и заявленного клиентом.
+    existing = max(int(summary.get("monthly_payments", 0)) + own_payments, declared_debt_payments or 0)
     payment = int(monthly_payment(amount, product.rate, term_months, product.repayment))
 
     return Features(
@@ -76,7 +85,7 @@ def build_features(
         declared_revenue_monthly=declared_revenue,
         margin=round(margin, 4) if margin is not None else None,
         existing_payments=existing,
-        total_debt=int(summary.get("total_balance", 0)),
+        total_debt=int(summary.get("total_balance", 0)) + own_debt,
         has_credit_history=bool(bki.get("loans")),
         max_overdue_days_24m=int(summary.get("max_overdue_days_24m", 0)),
         current_overdue_days=int(summary.get("current_overdue_days", 0)),
@@ -88,4 +97,5 @@ def build_features(
         blocked_accounts=bool(fns.get("blocked_accounts")),
         requested_payment=payment,
         dsr=round((existing + payment) / revenue, 4) if revenue else None,
+        declared_debt_payments=declared_debt_payments,
     )
