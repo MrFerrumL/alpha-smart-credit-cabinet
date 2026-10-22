@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_client
+from app.api.deps import get_current_user, get_stream_user, require_client
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
 from app.models import ApplicationEvent, CheckResult, ClientTask, Document, User
@@ -187,7 +187,7 @@ def _snapshot(user: User, application_id: int) -> dict:
     response_description="Поток событий `update` с данными StreamSnapshot; комментарий-пинг раз в 15 секунд",
 )
 async def application_stream(
-    application_id: int, request: Request, user: User = Depends(get_current_user)
+    application_id: int, request: Request, user: User = Depends(get_stream_user)
 ) -> StreamingResponse:
     # Доступ проверяется до начала потока, чтобы чужая заявка давала обычный 404.
     first = await asyncio.to_thread(_snapshot, user, application_id)

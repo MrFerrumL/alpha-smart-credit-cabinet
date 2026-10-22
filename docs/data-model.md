@@ -50,7 +50,7 @@ erDiagram
         string status "см. state-machine.md"
         json form "анкета: финансы, залог, контакт, согласие на запрос в БКИ"
         json decision "итог конвейера: исход, причины, подсказки"
-        string submit_key UK "Idempotency-Key"
+        string submit_key "Idempotency-Key отправки"
         int version "оптимистическая блокировка"
         datetime submitted_at
         datetime decided_at

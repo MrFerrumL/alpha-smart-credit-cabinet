@@ -44,4 +44,6 @@ def create_token(user_id: int, role: str) -> str:
 
 
 def decode_token(token: str) -> dict:
-    return jwt.decode(token, get_settings().secret_key, algorithms=[_ALGORITHM])
+    return jwt.decode(
+        token, get_settings().secret_key, algorithms=[_ALGORITHM], options={"require": ["exp", "sub"]}
+    )

@@ -79,7 +79,8 @@ class Application(Base):
     # Итог конвейера: исход, причины и подсказки для клиента (см. app.scoring.decision).
     decision: Mapped[dict | None] = mapped_column(JsonType)
 
-    submit_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # Ключ идемпотентности отправки: повтор с тем же ключом возвращает уже отправленную заявку.
+    submit_key: Mapped[str | None] = mapped_column(String(64))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -107,13 +107,26 @@ export function useCreateApplication() {
   });
 }
 
+// Один ключ идемпотентности на заявку: повтор после сетевой ошибки отправляет тот же ключ, и сервер вернёт
+// уже отправленную заявку вместо 409. Одновременные запросы дополнительно отсекает блокировка версии заявки.
+const submitKeys = new Map<number, string>();
+
+function submitKey(id: number): string {
+  let key = submitKeys.get(id);
+  if (!key) {
+    key = requestId();
+    submitKeys.set(id, key);
+  }
+  return key;
+}
+
 function useApplicationAction(action: 'submit' | 'cancel') {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, comment }: { id: number; comment?: string }) =>
       api<Application>(`/applications/${id}/${action}`, {
         method: 'POST',
-        headers: action === 'submit' ? { 'Idempotency-Key': requestId() } : undefined,
+        headers: action === 'submit' ? { 'Idempotency-Key': submitKey(id) } : undefined,
         json: action === 'cancel' ? { comment: comment ?? null } : undefined,
       }),
     onSuccess: (app) => {

@@ -73,7 +73,9 @@ def test_new_client_links_company_by_inn(client):
     linked = client.post("/api/companies/link", json={"inn": "0077070071"}, headers=headers)
     assert linked.status_code == 200, linked.text
     assert linked.json()["short_name"] == "ООО «Новые горизонты»"
-    assert client.get("/api/auth/me", headers=headers).json()["company"]["inn"] == "0077070071"
+    me = client.get("/api/auth/me", headers=headers).json()
+    assert me["company"]["inn"] == "0077070071"
+    assert me["can_sign"] is True  # руководитель по ЕГРЮЛ
     again = client.post("/api/companies/link", json={"inn": "0077070071"}, headers=headers)
     assert again.status_code == 409
 
