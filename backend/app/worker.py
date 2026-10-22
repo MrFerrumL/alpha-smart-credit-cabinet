@@ -14,7 +14,7 @@ from app.db import SessionLocal
 from app.observability import configure_logging
 from app.pipeline.queue import recover_stale
 from app.pipeline.runner import process_next
-from app.pipeline.steps import expire_offers
+from app.pipeline.steps import expire_offers, expire_requests
 from app.services.integrations import get_sources
 
 log = logging.getLogger("app.worker")
@@ -43,7 +43,7 @@ def main() -> None:
         try:
             if time.monotonic() >= next_housekeeping:
                 with SessionLocal() as db:
-                    expired = expire_offers(db)
+                    expired = expire_offers(db) + expire_requests(db)
                     # Задачи упавшего соседнего воркера возвращаются в очередь и во время работы, не только на старте.
                     recovered = recover_stale(db)
                 if expired or recovered:

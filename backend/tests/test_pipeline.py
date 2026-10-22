@@ -55,7 +55,9 @@ def test_amount_above_revenue_limit_gets_counter_offer(client, mocks):
     assert app["status"]["code"] == "counter_offer"
     assert app["offer"]["kind"] == "counter"
     assert app["offer"]["amount"] == 4_500_000
-    assert app["offer"]["term_months"] == 12
+    # На 12 мес. платёж 423 тыс. при прибыли 417 тыс.; срок увеличен до самого короткого, при котором прибыль
+    # покрывает платёж в 1,2 раза (16 мес., ≈329 тыс.).
+    assert app["offer"]["term_months"] == 16
     assert any("выручкой" in r for r in app["decision"]["reasons"])
 
 
@@ -133,9 +135,21 @@ def test_missing_tax_revenue_requests_statement_and_resumes(client, mocks):
 
     run_pipeline(mocks)
     app = get(client, app_id, headers)
-    assert app["status"]["code"] == "approved"
+    # Выручку подтверждает только выписка — заявку сверяет специалист, а не автомат.
+    assert app["status"]["code"] == "manual_review"
     assert app["open_tasks"] == 0
     assert "document_uploaded" in events(client, app_id, headers)
+    analyst = auth(client, "analyst@demo.local")
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
+    assert card["review_reason"] == "unverified_revenue"
+    assert card["revenue"]["source"] == "statement"
+    approved = client.post(
+        f"/api/applications/{app_id}/decision",
+        json={"outcome": "approve", "comment": "Обороты по выписке совпадают с заявленной выручкой"},
+        headers=analyst,
+    )
+    assert approved.status_code == 200, approved.text
+    assert get(client, app_id, headers)["status"]["code"] == "approved"
 
 
 def test_incomplete_form_asks_for_revenue_and_continues(client, mocks):

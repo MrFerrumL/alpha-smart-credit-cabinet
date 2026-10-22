@@ -7,12 +7,14 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from app.domain.products import Product, monthly_payment
+from app.domain.products import CATALOGUE, Product, Purpose, monthly_payment
 from app.domain.statuses import Status
 from app.scoring.features import Features
 from app.scoring.rules import ScoreResult
 
+POLICY_VERSION = "policy-1.1"
 MAX_DSR = 0.5  # все кредитные платежи — не больше половины выручки
+MIN_DSCR = 1.2  # прибыль по данным ФНС покрывает платёж по новому кредиту с запасом 20 %
 STEP = 50_000  # шаг, с которым подбирается сумма
 
 RATE_PREMIUM = {"A": Decimal("0"), "B": Decimal("2"), "C": Decimal("4"), "D": Decimal("6"), "E": Decimal("8")}
@@ -90,13 +92,58 @@ def grade_rate(product: Product, grade: str) -> Decimal:
     return product.rate + RATE_PREMIUM[grade]
 
 
+def service_payment(product: Product, amount: int, term: int, rate: Decimal) -> int:
+    """Платёж, по которому проверяется посильность. Для продуктов с уплатой только процентов (овердрафт)
+    берётся аннуитет на тот же срок — как будто лимит гасится равными долями: иначе возврат всего долга в
+    конце срока не попал бы ни в нагрузку, ни в покрытие."""
+    return int(monthly_payment(amount, rate, term, "annuity"))
+
+
 def debt_service_ratio(f: Features, product: Product, amount: int, term: int, rate: Decimal) -> float | None:
     """Доля выручки, которая уйдёт на все кредитные платежи при этих условиях (без округления — для
     сравнения с политикой; округлять только для показа)."""
     if not f.revenue_monthly:
         return None
-    payment = int(monthly_payment(amount, rate, term, product.repayment))
-    return (f.existing_payments + payment) / f.revenue_monthly
+    return (f.existing_payments + service_payment(product, amount, term, rate)) / f.revenue_monthly
+
+
+def monthly_profit(f: Features) -> int | None:
+    """Прибыль в месяц по данным ФНС (выручка − расходы). Если в налоговой нет расходов, покрытие не считается."""
+    if f.revenue_source != "fns" or f.revenue_monthly is None or f.margin is None:
+        return None
+    return int(f.revenue_monthly * f.margin)
+
+
+def coverage(f: Features, product: Product, amount: int, term: int, rate: Decimal) -> float | None:
+    """Во сколько раз месячная прибыль по ФНС покрывает платёж по новому кредиту.
+
+    Это упрощённый показатель, а не полный DSCR: прибыль по ФНС уже за вычетом процентов по действующим
+    кредитам, но погашение их основного долга сюда не входит — его ограничивает нагрузка к выручке (≤ 50 %).
+    """
+    profit = monthly_profit(f)
+    if profit is None:
+        return None
+    payment = service_payment(product, amount, term, rate)
+    return profit / payment if payment else None
+
+
+def affordability_problem(f: Features, product: Product, amount: int, term: int, rate: Decimal) -> str | None:
+    """Почему условия не проходят по политике нагрузки, или None, если проходят. Общая проверка для конвейера
+    и для решения аналитика."""
+    dsr = debt_service_ratio(f, product, amount, term, rate)
+    if dsr is None:
+        return "Выручка компании не подтверждена"
+    if dsr > MAX_DSR:
+        return f"Платежи по кредитам составят {dsr:.0%} выручки при лимите политики {MAX_DSR:.0%}"
+    dscr = coverage(f, product, amount, term, rate)
+    if dscr is not None and dscr < MIN_DSCR:
+        return (
+            f"Прибыль по данным ФНС покрывает платёж только в {dscr:.2f} раза при минимуме {MIN_DSCR:.1f}".replace(".", ",")
+        )
+    profit = monthly_profit(f)
+    if profit is not None and profit <= 0:
+        return "По данным ФНС бизнес не приносит прибыли — платёж нечем обслуживать"
+    return None
 
 
 def revenue_limit(f: Features, product: Product, grade: str) -> int | None:
@@ -112,33 +159,39 @@ def _floor(value: float) -> int:
 
 
 def fit_terms(f: Features, s: ScoreResult, product: Product, amount: int, term: int) -> OfferTerms | None:
-    """Подбирает условия, которые банк готов предложить: в пределах лимита по выручке и так,
-    чтобы все платежи по кредитам были не больше половины выручки."""
+    """Подбирает условия, которые банк готов предложить: в пределах лимита по выручке, так, чтобы все
+    платежи по кредитам были не больше половины выручки, а прибыль покрывала новый платёж с запасом."""
     assert f.revenue_monthly
     revenue = f.revenue_monthly
     rate = grade_rate(product, s.grade)
     limit = revenue_limit(f, product, s.grade)
 
-    def dsr(a: int, t: int) -> float:
-        return (f.existing_payments + int(monthly_payment(a, rate, t, product.repayment))) / revenue
+    def ok(a: int, t: int) -> bool:
+        return affordability_problem(f, product, a, t, rate) is None
 
-    new_amount = min(amount, limit)
+    new_amount = min(amount, product.max_amount, limit)
     new_term = min(max(term, product.min_term), product.max_term)
-    if dsr(new_amount, new_term) > MAX_DSR and product.repayment == "annuity":
-        new_term = product.max_term
-    while dsr(new_amount, new_term) > MAX_DSR and new_amount - STEP >= product.min_amount:
+    if not ok(new_amount, new_term) and product.repayment == "annuity":
+        # Сначала самый короткий срок, при котором условия проходят: клиент не переплачивает лишнего.
+        new_term = next((t for t in range(new_term, product.max_term + 1) if ok(new_amount, t)), product.max_term)
+    while not ok(new_amount, new_term) and new_amount - STEP >= product.min_amount:
         new_amount -= STEP
-    if new_amount < product.min_amount or dsr(new_amount, new_term) > MAX_DSR:
+    if new_amount < product.min_amount or not ok(new_amount, new_term):
         return None
 
     explanation = []
     if new_amount < amount:
-        if new_amount == limit:
+        if new_amount == product.max_amount and new_amount < limit:
+            explanation.append(f"Максимальная сумма по этому продукту — {_money(product.max_amount)}")
+        elif new_amount == limit:
             explanation.append(
                 f"Сумма ограничена выручкой: при {_money(revenue)} в месяц по этому продукту доступно до {_money(limit)}"
             )
         else:
-            explanation.append("Сумма уменьшена, чтобы платежи по кредитам не превышали половины выручки")
+            explanation.append(
+                "Сумма уменьшена, чтобы платежи по кредитам не превышали половины выручки, а прибыль бизнеса "
+                "покрывала ежемесячный платёж с запасом"
+            )
     if new_term != term:
         explanation.append(f"Срок увеличен до {new_term} мес., чтобы ежемесячный платёж был посильным")
     if rate > product.rate:
@@ -149,7 +202,33 @@ def fit_terms(f: Features, s: ScoreResult, product: Product, amount: int, term: 
     return OfferTerms(kind, product.code, new_amount, new_term, rate, payment, explanation)
 
 
-def decide(f: Features, s: ScoreResult, product: Product, amount: int, term: int) -> Decision:
+def other_product_terms(
+    f: Features, s: ScoreResult, product: Product, amount: int, term: int, purpose: Purpose | None
+) -> OfferTerms | None:
+    """Запрошенный продукт не подходит даже на минимальную сумму — ищем другой продукт под ту же цель,
+    который банк готов предложить автоматически. Берём вариант с наибольшей суммой."""
+    best: OfferTerms | None = None
+    for other in CATALOGUE:
+        if other.code == product.code or other.decision != "auto" or (purpose and purpose not in other.purposes):
+            continue
+        wanted = min(max(amount, other.min_amount), other.max_amount)
+        terms = fit_terms(f, s, other, wanted, min(max(term, other.min_term), other.max_term))
+        if terms and (best is None or terms.amount > best.amount):
+            best = terms
+    if best is None:
+        return None
+    other = next(p for p in CATALOGUE if p.code == best.product_code)
+    why = (
+        f"По продукту «{product.name}» условия не проходят даже на минимальную сумму — под ваши "
+        f"показатели подходит «{other.name}»: {_money(best.amount)} на {best.term_months} мес."
+    )
+    return OfferTerms("counter", best.product_code, best.amount, best.term_months, best.rate, best.monthly_payment,
+                      [why, *best.explanation])
+
+
+def decide(
+    f: Features, s: ScoreResult, product: Product, amount: int, term: int, purpose: Purpose | None = None
+) -> Decision:
     stops = stop_factors(f)
     if stops:
         return Decision(Status.REJECTED, reasons=stops, stop_factors=stops)
@@ -189,24 +268,36 @@ def decide(f: Features, s: ScoreResult, product: Product, amount: int, term: int
         else None
     )
 
-    if product.decision == "manual" or s.grade in ("C", "D"):
-        reason = (
-            "По этому продукту решение принимает кредитный специалист"
-            if product.decision == "manual"
-            else "Заявке нужен взгляд специалиста — автоматической оценки недостаточно"
-        )
-        return Decision(
-            Status.MANUAL_REVIEW,
-            reasons=[reason],
-            recommendation=recommendation,
-            review_reason="manual_product" if product.decision == "manual" else "grade",
-        )
+    # Поводы для ручного рассмотрения — по порядку: первый сработавший и есть причина.
+    manual = [
+        (f.current_overdue_days > 0, "current_overdue",
+         "По действующему кредиту есть текущая просрочка — заявку проверит специалист"),
+        (f.revenue_source == "statement", "unverified_revenue",
+         "Выручка подтверждена только выпиской — специалист сверит её с оборотами по счёту"),
+        (f.revenue_source == "fns" and f.margin is None, "no_expenses",
+         "В налоговой нет данных о расходах — прибыльность бизнеса оценит специалист"),
+        (product.decision == "manual", "manual_product", "По этому продукту решение принимает кредитный специалист"),
+        (s.grade in ("C", "D"), "grade", "Заявке нужен взгляд специалиста — автоматической оценки недостаточно"),
+    ]
+    for triggered, code, reason in manual:
+        if triggered:
+            return Decision(Status.MANUAL_REVIEW, reasons=[reason], recommendation=recommendation, review_reason=code)
 
     if terms is None:
+        alternative = other_product_terms(f, s, product, amount, term, purpose)
+        if alternative is not None:
+            return Decision(Status.COUNTER_OFFER, reasons=alternative.explanation, offer=alternative)
+        profit = monthly_profit(f)
+        if profit is not None and profit <= 0:
+            return Decision(
+                Status.REJECTED,
+                reasons=["По данным налоговой бизнес не приносит прибыли — платёж по кредиту нечем обслуживать"],
+                tips=["Когда бизнес выйдет в плюс по итогам года, подайте заявку снова"],
+            )
         return Decision(
             Status.REJECTED,
             reasons=["Текущая выручка не позволяет обслуживать кредит даже минимальной суммы по этому продукту"],
-            tips=["Попробуйте овердрафт или меньшую сумму", "Погасите часть действующих кредитов"],
+            tips=["Попробуйте меньшую сумму или более долгий срок", "Погасите часть действующих кредитов"],
         )
 
     if terms.kind == "approved":

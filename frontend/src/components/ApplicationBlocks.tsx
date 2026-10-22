@@ -30,7 +30,7 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAnswerTask, useUploadDocument } from '../api/hooks';
+import { useAnswerTask, useProducts, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, SourceCheck, UploadedDocument } from '../api/types';
 import { date, money, moneyShort, months, rate } from '../lib/format';
 import { OfferActions } from './Signing';
@@ -52,7 +52,11 @@ function OfferGrid({ app }: { app: Application }) {
 
 function CompareTable({ app }: { app: Application }) {
   const offer = app.offer!;
+  const products = useProducts();
+  const otherProduct = offer.product_code !== app.product.code;
+  const offeredName = products.data?.find((p) => p.code === offer.product_code)?.name ?? offer.product_code;
   const rows: [string, string, string, boolean][] = [
+    ...(otherProduct ? ([['Продукт', app.product.name, offeredName, true]] as [string, string, string, boolean][]) : []),
     ['Сумма', moneyShort(app.amount), moneyShort(offer.amount), app.amount !== offer.amount],
     ['Срок', months(app.term_months), months(offer.term_months), app.term_months !== offer.term_months],
     ['Ставка', `от ${rate(app.product.rate)}`, rate(offer.rate), app.product.rate !== offer.rate],
@@ -215,7 +219,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
   const upload = useUploadDocument(app.id);
   const [value, setValue] = useState<string | number>('');
   const done = task.status === 'done';
-  const canAnswer = !done && !readOnly;
+  const canAnswer = task.status === 'open' && !readOnly;
 
   return (
     <Paper withBorder p="md" radius="md" bg={done ? 'gray.0' : 'white'}>
@@ -231,6 +235,10 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
         {done ? (
           <Badge color="teal" variant="light" leftSection={<IconCheck size={12} />} style={{ flex: '0 0 auto' }}>
             Готово
+          </Badge>
+        ) : task.status === 'expired' ? (
+          <Badge color="gray" variant="light" style={{ flex: '0 0 auto' }}>
+            Запрос закрыт
           </Badge>
         ) : (
           <Badge color="orange" variant="light" style={{ flex: '0 0 auto' }}>

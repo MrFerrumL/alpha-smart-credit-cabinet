@@ -2224,6 +2224,18 @@
             ],
             "title": "Existing Payments"
           },
+          "monthly_profit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Profit",
+            "description": "Прибыль в месяц по данным ФНС"
+          },
           "requested": {
             "$ref": "#/components/schemas/TermsOut"
           },
@@ -2252,6 +2264,16 @@
           "max_dsr": {
             "type": "number",
             "title": "Max Dsr"
+          },
+          "min_coverage": {
+            "type": "number",
+            "title": "Min Coverage",
+            "description": "Минимальное покрытие платежа прибылью (DSCR)"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version",
+            "description": "Версия правил кредитного решения"
           },
           "authority_limit": {
             "type": "integer",
@@ -2293,6 +2315,8 @@
           "failed_sources",
           "requested",
           "max_dsr",
+          "min_coverage",
+          "policy_version",
           "authority_limit",
           "repayment",
           "product_limits",
@@ -4337,6 +4361,18 @@
             ],
             "title": "Dsr",
             "description": "Доля выручки на все кредитные платежи при этих условиях"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage",
+            "description": "Во сколько раз прибыль по ФНС покрывает новый платёж"
           }
         },
         "type": "object",

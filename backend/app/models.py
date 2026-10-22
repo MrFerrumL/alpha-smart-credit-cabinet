@@ -185,7 +185,7 @@ class ClientTask(Base):
     # document: {"document_kind": ...}; field: {"field": "finance.monthly_revenue", "input": "money"}
     payload: Mapped[dict | None] = mapped_column(JsonType)
     description: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(16), default="open")  # open | done
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open | done | expired
     answer: Mapped[str | None] = mapped_column(Text)
     created_by_type: Mapped[str] = mapped_column(String(16))  # system | analyst
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

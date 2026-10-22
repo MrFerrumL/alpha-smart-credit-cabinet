@@ -34,7 +34,11 @@ def test_analyst_card_explains_why_and_what_the_pipeline_recommends(client, mock
     assert card["scored"] is True and card["grade"] == "C"
     assert card["factors"] and all({"points", "client_text"} <= set(f) for f in card["factors"])
     assert card["stop_checks"] and all(c["passed"] for c in card["stop_checks"])
-    assert card["recommendation"]["amount"] == 25_000_000
+    # 25 млн на 48 мес.: прибыль покрывает платёж лишь в 0,82 раза — конвейер предлагает 19,5 млн на 60 мес.
+    assert card["requested"]["coverage"] == 0.82
+    assert (card["recommendation"]["amount"], card["recommendation"]["term_months"]) == (19_500_000, 60)
+    assert card["recommendation"]["coverage"] >= card["min_coverage"] == 1.2
+    assert card["policy_version"] == "policy-1.1"
     assert card["min_rate"] == 23.5
     assert card["revenue"]["source"] == "fns"
     assert card["can_decide"] is True
@@ -42,17 +46,19 @@ def test_analyst_card_explains_why_and_what_the_pipeline_recommends(client, mock
     assert decide(client, app_id, client_headers, outcome="approve").status_code == 403
 
 
-def test_analyst_approval_reaches_client_with_offer_and_private_comment(client, mocks):
+def test_analyst_decision_reaches_client_with_offer_and_private_comment(client, mocks):
     app_id, client_headers = vector_in_review(client, mocks)
     analyst = auth(client, "analyst@demo.local")
-    response = decide(client, app_id, analyst, outcome="approve", client_message="Одобрено специалистом")
+    assert decide(client, app_id, analyst, outcome="approve").status_code == 422  # не покрывается прибылью
+    response = decide(client, app_id, analyst, outcome="counter_offer", amount=19_500_000, term_months=60,
+                      client_message="Одобрено 19,5 млн на 5 лет — так платёж покрывается прибылью")
     assert response.status_code == 200, response.text
 
     app = get(client, app_id, client_headers)
-    assert app["status"]["code"] == "approved"
-    assert app["offer"]["amount"] == 25_000_000 and app["offer"]["rate"] == 23.5
+    assert app["status"]["code"] == "counter_offer"
+    assert app["offer"]["amount"] == 19_500_000 and app["offer"]["rate"] == 23.5
     assert "accept_offer" in app["allowed_actions"]
-    assert app["decision"]["reasons"] == ["Одобрено специалистом"]
+    assert app["decision"]["reasons"] == ["Одобрено 19,5 млн на 5 лет — так платёж покрывается прибылью"]
 
     client_view = client.get(f"/api/applications/{app_id}/events", headers=client_headers).json()
     assert all(e["internal_comment"] is None for e in client_view)
@@ -62,24 +68,25 @@ def test_analyst_approval_reaches_client_with_offer_and_private_comment(client, 
     assert decision_event["internal_comment"] == COMMENT
     assert decision_event["actor_name"] == "Мария Кредитова"
 
-    assert decide(client, app_id, analyst, outcome="approve").status_code == 409  # решение уже принято
+    assert decide(client, app_id, analyst, outcome="reject", reasons=["x"]).status_code == 409  # решение уже принято
 
 
 def test_counter_offer_by_analyst_is_flagged_as_deviation(client, mocks):
     app_id, client_headers = vector_in_review(client, mocks)
     analyst = auth(client, "analyst@demo.local")
-    response = decide(client, app_id, analyst, outcome="counter_offer", amount=20_000_000, term_months=60)
+    response = decide(client, app_id, analyst, outcome="counter_offer", amount=17_000_000, term_months=48)
     assert response.status_code == 200, response.text
     app = get(client, app_id, client_headers)
     assert app["status"]["code"] == "counter_offer"
-    assert (app["offer"]["amount"], app["offer"]["term_months"]) == (20_000_000, 60)
+    assert (app["offer"]["amount"], app["offer"]["term_months"]) == (17_000_000, 48)
     from app.db import SessionLocal
     from app.models import ApplicationEvent
 
     with SessionLocal() as db:
         event = db.query(ApplicationEvent).filter_by(application_id=app_id, event="analyst_decision").one()
         assert event.payload["deviation"] is True
-        assert event.payload["terms"]["amount"] == 20_000_000
+        assert event.payload["deviations"] == ["term"]
+        assert event.payload["terms"]["amount"] == 17_000_000
 
 
 def test_analyst_cannot_break_credit_policy(client, mocks):
@@ -161,7 +168,8 @@ def test_analyst_cannot_exceed_revenue_limit_or_requested_amount(client, mocks):
     assert "лимита по выручке" in over.json()["detail"]
     bigger = decide(client, app_id, analyst, outcome="counter_offer", amount=31_000_000, term_months=60)
     assert bigger.status_code == 422
-    within = decide(client, app_id, analyst, outcome="counter_offer", amount=28_800_000, term_months=60)
+    rec = card["recommendation"]
+    within = decide(client, app_id, analyst, outcome="counter_offer", amount=rec["amount"], term_months=rec["term_months"])
     assert within.status_code == 200, within.text
 
 
@@ -175,7 +183,8 @@ def test_approval_without_pipeline_recommendation_is_a_deviation(client, mocks):
         app.decision = dict(app.decision) | {"recommendation": None}
         db.commit()
     analyst = auth(client, "analyst@demo.local")
-    assert decide(client, app_id, analyst, outcome="approve").status_code == 200
+    response = decide(client, app_id, analyst, outcome="counter_offer", amount=17_000_000, term_months=48)
+    assert response.status_code == 200, response.text
     with SessionLocal() as db:
         event = db.query(ApplicationEvent).filter_by(application_id=app_id, event="analyst_decision").one()
         assert event.payload["deviation"] is True

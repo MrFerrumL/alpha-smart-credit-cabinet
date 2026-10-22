@@ -21,10 +21,10 @@ verification, docs, a full review of the branch against the case and the release
 | P0.3 | SSE session (B3), idempotency (B4), token `sub` (B14), company ownership on link (N1) | done `496f420` |
 | CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | pushed `86c1418`, first run not yet inspected |
 | P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes `5228957`; request collection generator `d44b901` |
-| P0.2 | Analyst card and decision (B2, B9) | implemented, verified in the browser on a local stack; under review |
-| P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | pending |
-| P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | pending |
-| P1.6 | Offer expiry (B7) | pending |
+| P0.2 | Analyst card and decision (B2, B9) | done `5807d2e`, verified in the browser on a local stack |
+| P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | done `35dd827` |
+| P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | implemented, under review |
+| P1.6 | Offer expiry (B7), unanswered bank requests | implemented with P1.5, under review |
 | B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | pending |
 | G | Risk profiles in the mock generator (N10) together with B5 | pending |
 | News | Feed from `news.json`, tagged by OKVED, product, status | pending |
@@ -201,6 +201,25 @@ purpose so the stages are visible.
 - Note: a dev database migrated on the branch between `496f420` and `b327da1` is stamped `0003` with the
   old per-application-key migration and will skip the teammate's `0003`; recreate such local databases.
   Clean clones and CI are unaffected.
+- D9 (23.10) Credit policy `policy-1.1`:
+  - affordability = DSR ≤ 50 % of revenue AND FNS monthly profit ≥ 1.2 × new payment (skipped when FNS
+    has no expenses); one function shared by the pipeline and the analyst;
+  - manual triggers before terms: current overdue ≤ 60 days, statement-only revenue, manual product, C/D;
+  - other-product counter-offer when the requested product cannot fit its minimum amount;
+  - N8 kept as documented: the scorecard's debt-load factor uses the base rate because the grade (and
+    hence the grade rate) is not known yet at scoring time; affordability checks use the grade rate;
+  - persona outcomes now: sklad counter 4.5 M / 16 mo (shortest passing term); vector recommendation
+    19.5 M / 60 mo;
+    smirnova after the statement goes to a specialist (the "information request answered" demo path that
+    ends automatically is bakery with the revenue field left empty);
+  - unanswered bank requests expire after `NEEDS_INFO_TTL_DAYS` (14).
+- D10 (23.10) Policy review follow-ups: interest-only products (overdraft) are checked with an annuity
+  equivalent so the limit's repayment counts; coverage stays "profit vs new payment" and docs state it is
+  not a full DSCR (existing principal is only bounded by DSR) — a full DSCR would make the vector persona
+  unfinanceable with the current synthetic data; shortest passing term instead of the maximum; zero or
+  negative profit → specific rejection; FNS without expenses → specialist; offers show a product change;
+  expired bank requests show as closed. Not done: the analyst cannot counter-offer a different product
+  (recommendation stays None when the requested product does not fit) — roadmap.
 
 ## Verification commands
 

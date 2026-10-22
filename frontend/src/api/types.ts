@@ -223,7 +223,7 @@ export interface ClientTask {
   kind: 'document' | 'field' | 'question';
   title: string;
   description: string | null;
-  status: 'open' | 'done';
+  status: 'open' | 'done' | 'expired';
   answer: string | null;
   payload: { document_kind?: string; field?: string; input?: string } | null;
   created_at: string;
@@ -352,6 +352,7 @@ export interface Terms {
   rate: number;
   monthly_payment: number;
   dsr: number | null;
+  coverage: number | null;
 }
 
 export interface Assessment {
@@ -373,10 +374,13 @@ export interface Assessment {
     gap_pct: number | null;
   } | null;
   existing_payments: number | null;
+  monthly_profit: number | null;
   requested: Terms;
   recommendation: Terms | null;
   min_rate: number | null;
   max_dsr: number;
+  min_coverage: number;
+  policy_version: string;
   authority_limit: number;
   revenue_limit: number | null;
   repayment: 'annuity' | 'interest_only';

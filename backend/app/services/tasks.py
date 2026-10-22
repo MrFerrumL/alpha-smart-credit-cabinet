@@ -58,6 +58,8 @@ def _resolve(db: Session, app: Application, task: ClientTask, user: User, answer
     task.status = "done"
     task.answer = answer
     task.resolved_at = utcnow()
+    # Версия заявки растёт: истечение срока запроса не перезапишет только что данный ответ.
+    app.updated_at = utcnow()
     record_event(db, app, "task_answered", Actor.CLIENT, actor_id=user.id, payload={"task": task.title})
 
 

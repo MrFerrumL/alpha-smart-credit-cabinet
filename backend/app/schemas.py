@@ -467,6 +467,7 @@ class TermsOut(BaseModel):
     rate: float
     monthly_payment: int
     dsr: float | None = Field(description="Доля выручки на все кредитные платежи при этих условиях")
+    coverage: float | None = Field(default=None, description="Во сколько раз прибыль по ФНС покрывает новый платёж")
 
 
 class RevenueOut(BaseModel):
@@ -494,10 +495,13 @@ class AssessmentOut(BaseModel):
     stop_checks: list[StopCheckOut] = []
     revenue: RevenueOut | None = None
     existing_payments: int | None = None
+    monthly_profit: int | None = Field(default=None, description="Прибыль в месяц по данным ФНС")
     requested: TermsOut
     recommendation: TermsOut | None = None
     min_rate: float | None = Field(default=None, description="Минимальная ставка для грейда")
     max_dsr: float
+    min_coverage: float = Field(description="Минимальное покрытие платежа прибылью (DSCR)")
+    policy_version: str = Field(description="Версия правил кредитного решения")
     authority_limit: int = Field(description="Максимальная сумма, которую аналитик одобряет сам")
     revenue_limit: int | None = Field(default=None, description="Лимит по выручке для грейда")
     repayment: str = Field(description="annuity | interest_only")

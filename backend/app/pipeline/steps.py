@@ -9,12 +9,12 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.domain.products import PRODUCTS
+from app.domain.products import PRODUCTS, Purpose
 from app.domain.statuses import Actor, Status
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
-from app.scoring.decision import Decision, decide
+from app.scoring.decision import POLICY_VERSION, Decision, decide
 from app.scoring.features import build_features
 from app.services.integrations import ExternalSources, NotInSource, SourceUnavailable
 from app.services.state_machine import apply_transition, record_event
@@ -173,6 +173,7 @@ def _apply_decision(db: Session, app: Application, decision: Decision, result: r
         "stop_factors": decision.stop_factors,
         "recommendation": decision.recommendation,
         "review_reason": decision.review_reason,
+        "policy_version": POLICY_VERSION,
         "grade": result.grade,
         "score": result.score,
     }
@@ -216,7 +217,7 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         )
     )
     record_event(db, app, "scored", Actor.SYSTEM, payload={"grade": result.grade, "score": result.score})
-    decision = decide(features, result, product, int(app.amount), app.term_months)
+    decision = decide(features, result, product, int(app.amount), app.term_months, Purpose(app.purpose))
     _apply_decision(db, app, decision, result)
 
 
@@ -284,7 +285,7 @@ def disburse_exhausted(db: Session, app: Application, error: str) -> None:
 
 def expire_offers(db: Session) -> int:
     """Закрывает предложения, срок которых истёк: и не принятые, и принятые, но не подписанные. Заявка
-    переходит в «Срок предложения истёк». Сбой на одной заявке (например, клиент как раз принял
+    переходит в «Срок истёк». Сбой на одной заявке (например, клиент как раз принял
     предложение) не мешает остальным."""
     now = utcnow()
     query = (
@@ -317,6 +318,36 @@ def expire_offers(db: Session) -> int:
         except Exception:  # noqa: BLE001 — гонка с действием клиента: заявку пропускаем до следующего прохода
             db.rollback()
             log.warning("offer expiry skipped", extra={"status": f"application {app_id}"})
+    return expired
+
+
+def expire_requests(db: Session) -> int:
+    """Закрывает заявки, по которым клиент так и не ответил на запрос банка за `NEEDS_INFO_TTL_DAYS`."""
+    deadline = utcnow() - timedelta(days=get_settings().needs_info_ttl_days)
+    stale = (
+        select(ClientTask.application_id)
+        .join(Application, Application.id == ClientTask.application_id)
+        .where(Application.status == Status.NEEDS_INFO.value, ClientTask.status == "open",
+               ClientTask.created_at < deadline)
+        .distinct()
+    )
+    expired = 0
+    for app_id in db.scalars(stale).all():
+        try:
+            app = db.get(Application, app_id)
+            if app.status != Status.NEEDS_INFO.value:
+                db.rollback()
+                continue
+            for task in db.scalars(select(ClientTask).where(ClientTask.application_id == app_id,
+                                                             ClientTask.status == "open")):
+                task.status = "expired"
+            apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM,
+                             comment="Банк не получил ответ на запрос вовремя — заявка закрыта")
+            db.commit()
+            expired += 1
+        except Exception:  # noqa: BLE001 — гонка с ответом клиента: заявку пропускаем до следующего прохода
+            db.rollback()
+            log.warning("request expiry skipped", extra={"status": f"application {app_id}"})
     return expired
 
 

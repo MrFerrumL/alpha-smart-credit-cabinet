@@ -21,7 +21,18 @@ from app.models import Application, CheckResult, ClientTask, Offer, ScoringResul
 from app.pipeline.queue import enqueue
 from app.pipeline.steps import SOURCE_TITLES, SOURCES
 from app.schemas import AnalystDecisionIn, AssessmentOut, FactorOut, RevenueOut, StopCheckOut, TermsOut
-from app.scoring.decision import MAX_DSR, debt_service_ratio, grade_rate, revenue_limit, stop_checks
+from app.scoring.decision import (
+    MAX_DSR,
+    MIN_DSCR,
+    POLICY_VERSION,
+    affordability_problem,
+    coverage,
+    debt_service_ratio,
+    grade_rate,
+    monthly_profit,
+    revenue_limit,
+    stop_checks,
+)
 from app.scoring.features import Features
 from app.services.state_machine import apply_transition
 
@@ -30,6 +41,9 @@ REVIEW_REASONS = {
     "grade": "Оценка в серой зоне (грейд C или D) — автоматического решения недостаточно",
     "source_failure": "Внешний источник не ответил — оценки нет, сначала повторите проверки",
     "pipeline_failure": "Автоматическая обработка не завершилась — оценки нет; разберите заявку вручную",
+    "current_overdue": "По действующему кредиту есть текущая просрочка",
+    "unverified_revenue": "Выручка подтверждена только выпиской — сверьте её с оборотами по счёту",
+    "no_expenses": "В налоговой нет данных о расходах — оцените прибыльность по отчётности",
     "other": "Заявка передана специалисту",
 }
 
@@ -70,6 +84,7 @@ def _terms(product: Product, f: Features | None, amount: int, term: int, rate: D
         rate=float(rate),
         monthly_payment=int(monthly_payment(amount, rate, term, product.repayment)),
         dsr=_dsr(debt_service_ratio(f, product, amount, term, rate)) if f else None,
+        coverage=round(c, 2) if f and (c := coverage(f, product, amount, term, rate)) is not None else None,
     )
 
 
@@ -112,10 +127,13 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
         stop_checks=[StopCheckOut(title=c.title, passed=c.passed) for c in stop_checks(f)] if f else [],
         revenue=revenue,
         existing_payments=f.existing_payments if f else None,
+        monthly_profit=monthly_profit(f) if f else None,
         requested=_terms(product, f, int(app.amount), app.term_months, min_rate or product.rate),
         recommendation=_terms(product, f, rec["amount"], rec["term_months"], Decimal(rec["rate"])) if rec else None,
         min_rate=float(min_rate) if min_rate is not None else None,
         max_dsr=MAX_DSR,
+        min_coverage=MIN_DSCR,
+        policy_version=decision.get("policy_version") or ("policy-1.0" if scoring else POLICY_VERSION),
         authority_limit=settings.analyst_authority_limit,
         revenue_limit=revenue_limit(f, product, scoring.grade) if f and scoring else None,
         repayment=product.repayment,
@@ -169,15 +187,11 @@ def _offer_terms(
     rate = Decimal(str(data.rate)).quantize(Decimal("0.01")) if data.rate is not None else floor
     if rate < floor:
         raise _invalid("rate", f"Ставка для грейда {scoring.grade} — не ниже {str(floor).replace('.', ',')}%")
-    dsr = debt_service_ratio(f, product, amount, term, rate)
-    if dsr is None:
+    if debt_service_ratio(f, product, amount, term, rate) is None:
         raise Conflict("Выручка компании не подтверждена — запросите выписку")
-    if dsr > MAX_DSR:
-        raise _invalid(
-            "amount",
-            f"Платежи по кредитам составят {dsr:.0%} выручки при лимите политики {MAX_DSR:.0%}. "
-            "Уменьшите сумму или увеличьте срок",
-        )
+    problem = affordability_problem(f, product, amount, term, rate)
+    if problem:
+        raise _invalid("amount", f"{problem}. Уменьшите сумму или увеличьте срок")
     return amount, term, rate
 
 
@@ -191,7 +205,8 @@ def decide(db: Session, user: User, app: Application, data: AnalystDecisionIn) -
     f = _features(scoring)
     previous = dict(app.decision or {})
     message = (data.client_message or "").strip() or DEFAULT_CLIENT_MESSAGE[data.outcome]
-    audit = {"outcome": data.outcome, "internal_comment": data.comment, "analyst_id": user.id}
+    audit = {"outcome": data.outcome, "internal_comment": data.comment, "analyst_id": user.id,
+             "policy_version": POLICY_VERSION}
 
     if data.outcome == "retry_checks":
         if not _failed_sources(db, app):

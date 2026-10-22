@@ -58,6 +58,15 @@ function DsrBadge({ dsr, max }: { dsr: number | null; max: number }) {
   );
 }
 
+function CoverageBadge({ value, min }: { value: number | null; min: number }) {
+  if (value === null) return <Text fz="sm">нет данных ФНС</Text>;
+  return (
+    <Badge color={value < min ? 'red' : value < min * 1.25 ? 'yellow' : 'teal'} variant="light">
+      ×{value.toFixed(2).replace('.', ',')}
+    </Badge>
+  );
+}
+
 function TermsTable({ a }: { a: Assessment }) {
   const rows: [string, (t: Terms) => React.ReactNode][] = [
     ['Сумма', (t) => moneyShort(t.amount)],
@@ -65,6 +74,7 @@ function TermsTable({ a }: { a: Assessment }) {
     ['Ставка', (t) => rate(t.rate)],
     ['Платёж в месяц', (t) => money(t.monthly_payment)],
     ['Нагрузка', (t) => <DsrBadge dsr={t.dsr} max={a.max_dsr} />],
+    ['Покрытие платежа прибылью', (t) => <CoverageBadge value={t.coverage} min={a.min_coverage} />],
   ];
   return (
     <Table verticalSpacing="xs" withRowBorders={false}>
@@ -100,7 +110,7 @@ function AssessmentCard({ a }: { a: Assessment }) {
         <div>
           <Title order={4}>Оценка заявки</Title>
           <Text fz="sm" c="dimmed">
-            {a.scored ? `Модель ${a.model_version}` : 'Оценки ещё нет'}
+            {a.scored ? `Скоринг ${a.model_version} · правила решения ${a.policy_version}` : 'Оценки ещё нет'}
           </Text>
         </div>
         {a.grade && (
@@ -192,7 +202,8 @@ function AssessmentCard({ a }: { a: Assessment }) {
           <Divider my="lg" />
           <TermsTable a={a} />
           <Text fz="xs" c="dimmed" mt="xs">
-            Политика: нагрузка не выше {pct(a.max_dsr)} выручки, ставка для грейда — от{' '}
+            Политика: нагрузка не выше {pct(a.max_dsr)} выручки, прибыль покрывает платёж не меньше чем в{' '}
+            {a.min_coverage.toFixed(1).replace('.', ',')} раза, ставка для грейда — от{' '}
             {a.min_rate !== null ? rate(a.min_rate) : '—'}, лимит по выручке —{' '}
             {a.revenue_limit !== null ? `до ${moneyShort(a.revenue_limit)}` : 'не рассчитан'}, полномочия аналитика — до{' '}
             {moneyShort(a.authority_limit)}.
@@ -230,6 +241,7 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
   const payment = monthlyPayment(offerAmount, rateValue, offerTerm, repayment);
   const revenue = a.revenue?.confirmed_monthly ?? null;
   const dsr = revenue ? ((a.existing_payments ?? 0) + payment) / revenue : null;
+  const cover = a.monthly_profit !== null && payment > 0 ? a.monthly_profit / payment : null;
   const deviates =
     !a.recommendation ||
     offerAmount > a.recommendation.amount ||
@@ -309,6 +321,12 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
                   Нагрузка при этих условиях
                 </Text>
                 <DsrBadge dsr={dsr} max={a.max_dsr} />
+              </div>
+              <div>
+                <Text fz="xs" c="dimmed">
+                  Покрытие прибылью
+                </Text>
+                <CoverageBadge value={cover} min={a.min_coverage} />
               </div>
               {deviates && (
                 <Badge color="orange" variant="light" size="lg">

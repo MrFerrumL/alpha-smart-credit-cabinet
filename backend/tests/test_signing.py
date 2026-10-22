@@ -308,3 +308,20 @@ def test_notifications_can_be_marked_read(client, mocks):
     assert any(n["read_at"] is None for n in client.get("/api/notifications", headers=headers).json())
     assert client.post("/api/notifications/read-all", headers=headers).status_code == 204
     assert all(n["read_at"] for n in client.get("/api/notifications", headers=headers).json())
+
+
+def test_unanswered_bank_request_closes_the_application(client, mocks):
+    from app.models import Application, ClientTask
+    from app.pipeline.steps import expire_requests
+
+    app_id, headers = submit(client, "bakery@demo.local", form={"consent_bki": True})
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "needs_info"
+    with SessionLocal() as db:
+        assert expire_requests(db) == 0  # срок ещё не вышел
+        for task in db.scalars(select(ClientTask).where(ClientTask.application_id == app_id)):
+            task.created_at = utcnow() - timedelta(days=15)
+        db.commit()
+        assert expire_requests(db) == 1
+        assert db.get(Application, app_id).status == "expired"
+    assert get(client, app_id, headers)["open_tasks"] == 0
