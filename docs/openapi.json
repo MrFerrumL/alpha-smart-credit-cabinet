@@ -887,6 +887,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/assessment/replay": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)",
+        "operationId": "replay_decision_api_applications__application_id__assessment_replay_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/decision": {
       "post": {
         "tags": [
@@ -2388,6 +2435,15 @@
           "can_decide": {
             "type": "boolean",
             "title": "Can Decide"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/TraceStepOut"
+            },
+            "type": "array",
+            "title": "Trace",
+            "description": "Как конвейер принял решение: правила по порядку",
+            "default": []
           }
         },
         "type": "object",
@@ -4150,6 +4206,64 @@
         ],
         "title": "PurposeOut"
       },
+      "ReplayOut": {
+        "properties": {
+          "matches": {
+            "type": "boolean",
+            "title": "Matches"
+          },
+          "differences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Differences"
+          },
+          "stored": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored"
+          },
+          "replayed": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Replayed"
+          },
+          "policy_version_stored": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version Stored"
+          },
+          "policy_version_current": {
+            "type": "string",
+            "title": "Policy Version Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches",
+          "differences",
+          "stored",
+          "replayed",
+          "policy_version_stored",
+          "policy_version_current"
+        ],
+        "title": "ReplayOut",
+        "description": "Воспроизведение решения конвейера на сохранённом снимке признаков текущими правилами."
+      },
       "RevenueOut": {
         "properties": {
           "declared_monthly": {
@@ -4533,6 +4647,30 @@
           "user"
         ],
         "title": "TokenOut"
+      },
+      "TraceStepOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result",
+            "description": "pass | fail | info | triggered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "detail",
+          "result"
+        ],
+        "title": "TraceStepOut"
       },
       "UserOut": {
         "properties": {

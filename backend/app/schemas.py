@@ -478,6 +478,12 @@ class RevenueOut(BaseModel):
     gap_pct: float | None = Field(description="Насколько заявленная выручка выше принятой, %")
 
 
+class TraceStepOut(BaseModel):
+    title: str
+    detail: str
+    result: str = Field(description="pass | fail | info | triggered")
+
+
 class AssessmentOut(BaseModel):
     """Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."""
 
@@ -508,6 +514,7 @@ class AssessmentOut(BaseModel):
     repayment: str = Field(description="annuity | interest_only")
     product_limits: dict
     can_decide: bool
+    trace: list[TraceStepOut] = Field(default=[], description="Как конвейер принял решение: правила по порядку")
 
 
 class AnalystDecisionIn(BaseModel):
@@ -542,3 +549,14 @@ class FeedItemOut(BaseModel):
     summary: str
     reasons: list[str] = Field(description="Почему новость показана этому клиенту")
     is_synthetic: bool = Field(description="Новость синтетическая — источник смоделирован")
+
+
+class ReplayOut(BaseModel):
+    """Воспроизведение решения конвейера на сохранённом снимке признаков текущими правилами."""
+
+    matches: bool
+    differences: list[str]
+    stored: dict | None
+    replayed: dict
+    policy_version_stored: str | None
+    policy_version_current: str

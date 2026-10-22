@@ -317,3 +317,89 @@ def decide(
         why = [x.client_text for x in s.positives[:3]]
         return Decision(Status.APPROVED, reasons=why, offer=OfferTerms(**{**terms.__dict__, "explanation": why}))
     return Decision(Status.COUNTER_OFFER, reasons=terms.explanation, offer=terms, recommendation=recommendation)
+
+
+def explain(f: Features, s: ScoreResult, product: Product, amount: int, term: int, d: Decision) -> list[dict]:
+    """Трасса решения для аналитика и аудита: какие правила проверены по порядку и с каким результатом.
+    Строится теми же функциями, что и само решение, поэтому расходиться с ним не может."""
+    trace: list[dict] = []
+
+    def step(title: str, detail: str, result: str) -> None:
+        trace.append({"title": title, "detail": detail, "result": result})
+
+    for check in stop_checks(f):
+        step(f"Стоп-фактор: {check.title}", "пройден" if check.passed else check.client_text,
+             "pass" if check.passed else "fail")
+    if any(not c.passed for c in stop_checks(f)):
+        step("Итог", "Отказ по стоп-фактору", "fail")
+        return trace
+
+    if f.revenue_monthly is None:
+        step("Выручка подтверждена", "В налоговой нет данных о выручке, выписки нет — запрос выписки", "fail")
+        step("Итог", "Запрос информации", "info")
+        return trace
+    source = "по данным ФНС" if f.revenue_source == "fns" else "по выписке"
+    step("Выручка подтверждена", f"{_money(f.revenue_monthly)} в месяц {source}", "pass")
+
+    step("Скоринг", f"балл {s.score}, грейд {s.grade} ({s.version})", "fail" if s.grade == "E" else "pass")
+    if s.grade == "E":
+        step("Итог", "Грейд E — отказ с причинами и подсказками", "fail")
+        return trace
+
+    limit = revenue_limit(f, product, s.grade)
+    step("Лимит по выручке",
+         f"{_money(f.revenue_monthly)} × {str(product.revenue_multiplier).replace('.', ',')} × "
+         f"{str(LIMIT_SHARE[s.grade]).replace('.', ',')} (грейд {s.grade}) = {_money(limit)}, округлено вниз до "
+         f"{_money(STEP)}"
+         + (f", не больше максимума продукта {_money(product.max_amount)}" if limit == product.max_amount else ""),
+         "pass" if amount <= limit else "info")
+    rate = grade_rate(product, s.grade)
+    # Срок приводится к рамкам продукта так же, как при подборе условий.
+    term = min(max(term, product.min_term), product.max_term)
+    dsr = debt_service_ratio(f, product, amount, term, rate)
+    step("Нагрузка при запрошенных условиях", f"{dsr:.1%} выручки при лимите {MAX_DSR:.0%}".replace(".", ","),
+         "pass" if dsr is not None and dsr <= MAX_DSR else "fail")
+    dscr = coverage(f, product, amount, term, rate)
+    step("Покрытие платежа прибылью",
+         "нет данных о расходах в ФНС" if dscr is None
+         else f"×{dscr:.2f} при минимуме ×{MIN_DSCR:.1f}".replace(".", ","),
+         "info" if dscr is None else ("pass" if dscr >= MIN_DSCR else "fail"))
+
+    if d.outcome == Status.MANUAL_REVIEW:
+        step("Повод для специалиста", d.reasons[0] if d.reasons else "—", "triggered")
+    terms = d.offer or (OfferTerms("counter", product.code, d.recommendation["amount"], d.recommendation["term_months"],
+                                   Decimal(d.recommendation["rate"]), d.recommendation["monthly_payment"], [])
+                        if d.recommendation else None)
+    if terms is not None:
+        other = "" if terms.product_code == product.code else f" по другому продукту ({terms.product_code})"
+        step("Подобранные условия" if d.offer else "Рекомендация для специалиста",
+             f"{_money(terms.amount)} на {terms.term_months} мес. под {str(terms.rate).replace('.', ',')}%{other}", "info")
+    elif d.outcome == Status.MANUAL_REVIEW:
+        step("Рекомендация для специалиста", "Условия не проходят политику даже на минимальную сумму", "fail")
+    elif d.outcome == Status.REJECTED:
+        step("Подобранные условия", d.reasons[0] if d.reasons else "Условия не подобраны", "fail")
+    titles = {
+        Status.APPROVED: "Одобрение", Status.COUNTER_OFFER: "Контрпредложение", Status.MANUAL_REVIEW: "Специалист",
+        Status.REJECTED: "Отказ", Status.NEEDS_INFO: "Запрос информации",
+    }
+    step("Итог", titles.get(d.outcome, d.outcome.value), "fail" if d.outcome == Status.REJECTED else "pass")
+    return trace
+
+
+def snapshot(d: Decision, s: ScoreResult) -> dict:
+    """Итог конвейера в сравнимом виде — для воспроизведения решения на сохранённых признаках."""
+    terms = d.offer
+    rec = d.recommendation
+    return {
+        "outcome": d.outcome.value,
+        "grade": s.grade,
+        "score": s.score,
+        "terms": (
+            {"product_code": terms.product_code, "amount": terms.amount, "term_months": terms.term_months,
+             "rate": str(terms.rate)}
+            if terms
+            else ({"product_code": None, **{k: rec[k] for k in ("amount", "term_months", "rate")}} if rec else None)
+        ),
+        "policy_version": POLICY_VERSION,
+        "scorecard_version": s.version,
+    }

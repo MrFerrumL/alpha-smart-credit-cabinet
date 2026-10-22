@@ -19,7 +19,7 @@ verification, docs, a full review of the branch against the case and the release
 |---|---|---|
 | — | Analysis: case, code, runtime checks, gap list, decision memo | done |
 | P0.3 | SSE session (B3), idempotency (B4), token `sub` (B14), company ownership on link (N1) | done `496f420` |
-| CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | pushed `86c1418`, first run not yet inspected |
+| CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | green since `af7eaff` (run 39850005361) |
 | P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes `5228957`; request collection generator `d44b901` |
 | P0.2 | Analyst card and decision (B2, B9) | done `5807d2e`, verified in the browser on a local stack |
 | P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | done `35dd827` |
@@ -27,8 +27,8 @@ verification, docs, a full review of the branch against the case and the release
 | P1.6 | Offer expiry (B7), unanswered bank requests | done `17165e4` |
 | B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done `385d3c6`, reviewed |
 | G | Risk profiles in the mock generator (N10) together with B5 | done `9834575` |
-| News | Feed from `news.json`, tagged by OKVED, product, status | done (this commit), reviewed |
-| A | Decision rule trace, policy version, replay | pending |
+| News | Feed from `news.json`, tagged by OKVED, product, status | done `189b0dd` |
+| A | Decision rule trace, policy version, replay | done (this commit), reviewed |
 | C | Policy impact simulator | pending |
 | E | Product-dependent conditions before issue | pending |
 | Rel | 25.10: e2e verification, full review, `rc` tag | pending |
@@ -233,6 +233,11 @@ purpose so the stages are visible.
   +0.5; foreign sector, legal form or region excluded. UI refreshes the feed when application statuses
   change.
 
+- D13 (23.10) CI had been red on every push since `86c1418`: pytest on PostgreSQL and the frontend build
+  passed, but `docker compose up --wait` rejects a service with a disabled healthcheck (the worker). Fix
+  `af7eaff`: the worker touches a heartbeat file each loop; compose checks it is younger than 60 s. From
+  now on every push is followed by `gh run watch` and the next item starts only on green. Remaining CI
+  warning: actions/checkout@v4, setup-python@v5, setup-node@v4 run on Node 20 (deprecated) — cosmetic.
 ## Verification commands
 
 ```bash

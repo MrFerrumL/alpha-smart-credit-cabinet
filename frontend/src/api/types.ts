@@ -388,6 +388,20 @@ export interface Assessment {
   repayment: 'annuity' | 'interest_only';
   product_limits: { min_amount: number; max_amount: number; min_term: number; max_term: number };
   can_decide: boolean;
+  trace: TraceStep[];
+}
+
+export interface TraceStep {
+  title: string;
+  detail: string;
+  result: 'pass' | 'fail' | 'info' | 'triggered';
+}
+
+export interface Replay {
+  matches: boolean;
+  differences: string[];
+  policy_version_stored: string | null;
+  policy_version_current: string;
 }
 
 export type DecisionOutcome = 'approve' | 'counter_offer' | 'request_info' | 'reject' | 'retry_checks';

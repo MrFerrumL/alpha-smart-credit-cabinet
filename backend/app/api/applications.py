@@ -14,6 +14,7 @@ from app.pipeline.steps import SOURCE_TITLES, SOURCES
 from app.schemas import (
     AnalystDecisionIn,
     AssessmentOut,
+    ReplayOut,
     ApplicationCreate,
     ApplicationOut,
     ApplicationUpdate,
@@ -112,6 +113,17 @@ def application_assessment(
     application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
 ) -> AssessmentOut:
     return decisions_svc.assessment(db, user, svc.get_for_user(db, user, application_id))
+
+
+@router.post(
+    "/{application_id}/assessment/replay",
+    response_model=ReplayOut,
+    summary="Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)",
+)
+def replay_decision(
+    application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
+) -> ReplayOut:
+    return decisions_svc.replay(db, svc.get_for_user(db, user, application_id))
 
 
 @router.post(

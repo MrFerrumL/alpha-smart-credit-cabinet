@@ -14,13 +14,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.domain.products import PRODUCTS, Product, monthly_payment
+from app.domain.products import PRODUCTS, Product, Purpose, monthly_payment
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden
 from app.models import Application, CheckResult, ClientTask, Offer, ScoringResult, User, utcnow
 from app.pipeline.queue import enqueue
 from app.pipeline.steps import SOURCE_TITLES, SOURCES
-from app.schemas import AnalystDecisionIn, AssessmentOut, FactorOut, RevenueOut, StopCheckOut, TermsOut
+from app.schemas import AnalystDecisionIn, AssessmentOut, FactorOut, ReplayOut, RevenueOut, StopCheckOut, TermsOut
 from app.scoring.decision import (
     MAX_DSR,
     MIN_DSCR,
@@ -28,11 +28,14 @@ from app.scoring.decision import (
     affordability_problem,
     coverage,
     debt_service_ratio,
+    decide as pipeline_decide,
     grade_rate,
     monthly_profit,
     revenue_limit,
+    snapshot,
     stop_checks,
 )
+from app.scoring import rules
 from app.scoring.features import Features
 from app.services.state_machine import apply_transition
 
@@ -145,6 +148,45 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
             "max_term": product.max_term,
         },
         can_decide=user.role == "analyst" and app.status == Status.MANUAL_REVIEW.value,
+        trace=decision.get("trace") or [],
+    )
+
+
+def replay(db: Session, app: Application) -> ReplayOut:
+    """Прогоняет скоринг и правила решения заново на сохранённом снимке признаков и сравнивает с тем, что
+    решил конвейер. Ничего не меняет в заявке: это проверка воспроизводимости для аудита и модельного риска."""
+    scoring = latest_scoring(db, app)
+    try:
+        f = _features(scoring)
+    except TypeError as exc:  # снимок признаков от другой версии кода
+        raise Conflict("Снимок признаков сохранён в другой версии модели — воспроизвести его нельзя") from exc
+    if f is None:
+        raise Conflict("Оценки ещё нет — воспроизводить нечего")
+    product = PRODUCTS[app.product_code]
+    result = rules.score(f)
+    decision = pipeline_decide(f, result, product, int(app.amount), app.term_months, Purpose(app.purpose))
+    replayed = snapshot(decision, result)
+    stored = (app.decision or {}).get("pipeline")
+    differences = []
+    if stored is None:
+        differences.append(
+            "Сохранённого итога конвейера нет: автоматическая обработка не завершилась или решение принималось "
+            "до версии с трассой"
+        )
+    else:
+        labels = {"outcome": "исход", "grade": "грейд", "score": "балл", "terms": "условия"}
+        differences = [
+            f"{label}: было {stored.get(key)}, сейчас {replayed[key]}"
+            for key, label in labels.items()
+            if stored.get(key) != replayed[key]
+        ]
+    return ReplayOut(
+        matches=not differences,
+        differences=differences,
+        stored=stored,
+        replayed=replayed,
+        policy_version_stored=(stored or {}).get("policy_version"),
+        policy_version_current=POLICY_VERSION,
     )
 
 

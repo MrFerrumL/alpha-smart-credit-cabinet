@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  Replay,
   FeedItem,
   AnalystDecision,
   Assessment,
@@ -357,4 +358,8 @@ export function useAnalystDecision(id: number) {
 /** Лента новостей; version — снимок статусов заявок, чтобы лента пересчитывалась при их смене. */
 export function useFeed(version: string) {
   return useQuery({ queryKey: ['feed', version], queryFn: () => api<FeedItem[]>('/feed'), placeholderData: keepPreviousData });
+}
+
+export function useReplay(id: number) {
+  return useMutation({ mutationFn: () => api<Replay>(`/applications/${id}/assessment/replay`, { method: 'POST' }) });
 }

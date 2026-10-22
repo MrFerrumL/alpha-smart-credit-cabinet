@@ -237,3 +237,30 @@ def test_amount_above_analyst_authority_goes_to_credit_committee(client, mocks):
     response = decide(client, app_id, analyst, outcome="approve")
     assert response.status_code == 403
     assert "комитета" in response.json()["detail"]
+
+
+def test_card_shows_rule_trace_and_replay_reproduces_the_decision(client, mocks):
+    app_id, _ = vector_in_review(client, mocks)
+    analyst = auth(client, "analyst@demo.local")
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
+    titles = [s["title"] for s in card["trace"]]
+    assert titles[0].startswith("Стоп-фактор") and titles[-1] == "Итог"
+    assert any(s["title"] == "Лимит по выручке" and "28,8 млн" in s["detail"] for s in card["trace"])
+    assert any(s["result"] == "triggered" for s in card["trace"])
+    replay = client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).json()
+    assert replay["matches"] is True, replay
+    assert replay["replayed"]["outcome"] == "manual_review" and replay["replayed"]["grade"] == "C"
+    assert replay["policy_version_current"] == replay["policy_version_stored"] == "policy-1.1"
+
+
+def test_replay_reports_a_difference_when_the_policy_changed(client, mocks, monkeypatch):
+    from app.scoring import decision as policy
+
+    app_id, headers = submit(client, "bakery@demo.local")
+    run_pipeline(mocks)
+    analyst = auth(client, "analyst@demo.local")
+    monkeypatch.setattr(policy, "MAX_DSR", 0.05)  # как если бы риск-менеджер ужесточил политику
+    replay = client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).json()
+    assert replay["matches"] is False
+    assert any(d.startswith("исход") for d in replay["differences"])
+    assert get(client, app_id, headers)["status"]["code"] == "approved"  # заявка не изменилась

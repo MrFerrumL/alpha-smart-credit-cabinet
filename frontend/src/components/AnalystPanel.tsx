@@ -17,12 +17,12 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconAlertTriangle, IconCheck, IconGavel, IconX } from '@tabler/icons-react';
+import { IconAlertTriangle, IconArrowRight, IconCheck, IconGavel, IconInfoCircle, IconRepeat, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 
 import { ApiError } from '../api/client';
-import { useAnalystDecision, useAssessment } from '../api/hooks';
-import type { Application, Assessment, DecisionOutcome, Terms } from '../api/types';
+import { useAnalystDecision, useAssessment, useReplay } from '../api/hooks';
+import type { Application, Assessment, DecisionOutcome, Terms, TraceStep } from '../api/types';
 import { monthlyPayment } from '../lib/finance';
 import { money, moneyShort, months, rate } from '../lib/format';
 import { Stat } from './ui';
@@ -218,7 +218,10 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
   const decide = useAnalystDecision(app.id);
   const rec = a.recommendation ?? a.requested;
   const sameAsRequest = rec.amount === a.requested.amount && rec.term_months === a.requested.term_months;
-  const [outcome, setOutcome] = useState<DecisionOutcome>(a.scored ? 'approve' : 'retry_checks');
+  // По умолчанию — то, что предложил бы конвейер: одобрение, если рекомендация совпадает с запросом, иначе контрпредложение.
+  const [outcome, setOutcome] = useState<DecisionOutcome>(
+    !a.scored ? 'retry_checks' : !a.recommendation ? 'reject' : !sameAsRequest ? 'counter_offer' : 'approve',
+  );
   // Для контрпредложения по умолчанию — рекомендация конвейера, а если она совпадает с запросом — меньшая сумма.
   const [amount, setAmount] = useState<number>(
     sameAsRequest ? Math.max(a.product_limits.min_amount, Math.floor((rec.amount * 0.8) / 50_000) * 50_000) : rec.amount,
@@ -391,6 +394,68 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
   );
 }
 
+const TRACE_ICON: Record<TraceStep['result'], { color: string; icon: React.ReactNode }> = {
+  pass: { color: 'teal', icon: <IconCheck size={14} /> },
+  fail: { color: 'red', icon: <IconX size={14} /> },
+  info: { color: 'gray', icon: <IconInfoCircle size={14} /> },
+  triggered: { color: 'orange', icon: <IconArrowRight size={14} /> },
+};
+
+/** Как конвейер принял решение: правила по порядку и проверка воспроизводимости на сохранённых признаках. */
+function TraceCard({ app, a }: { app: Application; a: Assessment }) {
+  const replay = useReplay(app.id);
+  if (!a.scored) return null;
+  return (
+    <Card p={{ base: 'lg', sm: 'xl' }}>
+      <Group justify="space-between" align="flex-start">
+        <div>
+          <Title order={4}>Как принималось решение</Title>
+          <Text fz="sm" c="dimmed">
+            Правила {a.policy_version} по порядку — ровно те проверки, что прошла заявка в конвейере.
+          </Text>
+        </div>
+        <Button variant="light" leftSection={<IconRepeat size={16} />} loading={replay.isPending} onClick={() => replay.mutate()}>
+          Воспроизвести решение
+        </Button>
+      </Group>
+      {replay.error && (
+        <Alert mt="md" radius="md" variant="light" color="red">
+          {replay.error instanceof ApiError ? replay.error.message : 'Не удалось воспроизвести решение'}
+        </Alert>
+      )}
+      {!a.trace.length && (
+        <Text fz="sm" c="dimmed" mt="md">
+          Трасса не сохранена: решение принималось до версии с трассой. Воспроизведение всё равно доступно.
+        </Text>
+      )}
+      {replay.data && (
+        <Alert mt="md" radius="md" variant="light" color={replay.data.matches ? 'teal' : 'orange'}>
+          {replay.data.matches
+            ? `Совпадает: на сохранённых признаках правила ${replay.data.policy_version_current} дают тот же исход, грейд и условия.`
+            : `Расхождение с сохранённым решением (${replay.data.policy_version_stored ?? 'версия неизвестна'} → ${replay.data.policy_version_current}): ${replay.data.differences.join('; ')}.`}
+        </Alert>
+      )}
+      <Stack gap={8} mt="lg">
+        {a.trace.map((s, i) => (
+          <Group key={i} gap="sm" wrap="nowrap" align="flex-start">
+            <ThemeIcon size={22} radius="xl" variant="light" color={TRACE_ICON[s.result].color}>
+              {TRACE_ICON[s.result].icon}
+            </ThemeIcon>
+            <div>
+              <Text fz="sm" fw={600}>
+                {s.title}
+              </Text>
+              <Text fz="xs" c="dimmed">
+                {s.detail}
+              </Text>
+            </div>
+          </Group>
+        ))}
+      </Stack>
+    </Card>
+  );
+}
+
 /** Рабочее место аналитика на странице заявки: оценка и, если заявка у специалиста, — решение. */
 export function AnalystPanel({ app }: { app: Application }) {
   const assessment = useAssessment(app.id, app.status.code !== 'draft');
@@ -401,6 +466,7 @@ export function AnalystPanel({ app }: { app: Application }) {
     <Stack gap="lg">
       {a.can_decide && <DecisionForm key={app.status.code} app={app} a={a} />}
       <AssessmentCard a={a} />
+      <TraceCard app={app} a={a} />
     </Stack>
   );
 }

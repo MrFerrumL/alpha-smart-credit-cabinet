@@ -857,6 +857,28 @@
           "response": []
         },
         {
+          "name": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/assessment/replay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "assessment",
+                "replay"
+              ]
+            },
+            "description": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)"
+          },
+          "response": []
+        },
+        {
           "name": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
           "request": {
             "method": "POST",

@@ -14,7 +14,7 @@ from app.domain.statuses import Actor, Status
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
-from app.scoring.decision import POLICY_VERSION, Decision, decide
+from app.scoring.decision import POLICY_VERSION, Decision, decide, explain, snapshot
 from app.scoring.features import build_features
 from app.services.integrations import ExternalSources, NotInSource, SourceUnavailable
 from app.services.state_machine import apply_transition, record_event
@@ -138,7 +138,9 @@ def enrich_exhausted(db: Session, app: Application, error: str) -> None:
     }
 
 
-def _apply_decision(db: Session, app: Application, decision: Decision, result: rules.ScoreResult) -> None:
+def _apply_decision(
+    db: Session, app: Application, decision: Decision, result: rules.ScoreResult, trace: list[dict]
+) -> None:
     settings = get_settings()
     if decision.offer:
         o = decision.offer
@@ -174,6 +176,8 @@ def _apply_decision(db: Session, app: Application, decision: Decision, result: r
         "recommendation": decision.recommendation,
         "review_reason": decision.review_reason,
         "policy_version": POLICY_VERSION,
+        "trace": trace,
+        "pipeline": snapshot(decision, result),
         "grade": result.grade,
         "score": result.score,
     }
@@ -218,7 +222,8 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
     )
     record_event(db, app, "scored", Actor.SYSTEM, payload={"grade": result.grade, "score": result.score})
     decision = decide(features, result, product, int(app.amount), app.term_months, Purpose(app.purpose))
-    _apply_decision(db, app, decision, result)
+    trace = explain(features, result, product, int(app.amount), app.term_months, decision)
+    _apply_decision(db, app, decision, result, trace)
 
 
 def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
