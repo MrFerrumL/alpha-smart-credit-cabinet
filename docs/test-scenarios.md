@@ -91,7 +91,9 @@ docker compose up --build
 
 - **Роли:** клиент-директор (`bakery@demo.local`).
 - **Шаги:**
-  1. Та же заявка, что в E2E-01 (3 000 000 ₽, 12 мес.), но поле «Выручка в месяц» очистить.
+  1. Через API (анкета в кабинете не пропустит пустую выручку): та же заявка, что в E2E-01
+     (3 000 000 ₽, 12 мес.), без поля `finance.monthly_revenue` — например, запросами из папки «Сквозной
+     сценарий» коллекции с изменённым телом черновика.
   2. Дождаться статуса «Нужна информация»: в кабинете появился запрос банка (поле).
   3. Ответить `4 500 000`.
 - **Ожидается:** после ответа в анкете выручка 4 500 000, проверка продолжается сама,
@@ -211,7 +213,7 @@ docker compose up --build
 
 - **Роли:** новый клиент (`new@demo.local`, Никита Новиков).
 - **Шаги:**
-  1. В кабинете клиента без компании ввести ИНН `0077070071` → «Подключить».
+  1. В кабинете клиента без компании ввести ИНН `0077070071` → «Найти» → «Да, это моя компания».
   2. Подать «Экспресс-оборот», 2 000 000 ₽, 12 мес.
   3. Попробовать подключить тот же ИНН ещё раз (по API: `POST /api/companies/link`).
 - **Ожидается:**
@@ -361,8 +363,8 @@ docker compose up --build
 Bash / Git Bash:
 
 ```bash
-# БКИ: короткий сбой — ответит ошибкой 2 раза, дальше работает
-curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error","count":2}'
+# БКИ: короткий сбой — ответит ошибкой 3 раза (все попытки одного шага), дальше работает
+curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error","count":3}'
 # БКИ: лежит постоянно
 curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error"}'
 # АБС банка: лежит постоянно (для выдачи)
@@ -376,7 +378,7 @@ curl localhost:8001/admin/faults
 Windows PowerShell (там `curl` — другая команда):
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error","count":2}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error","count":3}'
 Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error"}'
 Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"abs","mode":"error"}'
 Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"all","mode":"none"}'

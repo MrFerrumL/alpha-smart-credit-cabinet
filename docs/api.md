@@ -387,7 +387,7 @@ POST /api/applications/{id}/decision
 
 ```bash
 # два ближайших запроса к БКИ вернут 503: конвейер повторит их, а при неудаче отправит заявку специалисту
-curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error","count":2}'
+curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"bki","mode":"error","count":3}'
 
 # банк не выдаёт деньги, пока сбой не снят
 curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"abs","mode":"error"}'
@@ -396,7 +396,7 @@ curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d 
 curl -X POST localhost:8001/admin/faults -H "Content-Type: application/json" -d '{"source":"all","mode":"none"}'
 ```
 
-В PowerShell: `Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error","count":2}'`.
+В PowerShell: `Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentType 'application/json' -Body '{"source":"bki","mode":"error","count":3}'`.
 
 Сбой ЕГРЮЛ виден и через публичное API: `GET /api/companies/lookup` ответит `503 integration_unavailable`.
 Задержку ответов задаёт переменная `MOCK_LATENCY_MS`.

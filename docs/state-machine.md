@@ -1,7 +1,7 @@
 # Диаграмма состояний заявки
 
 > Файл собран из кода: `backend/app/domain/statuses.py` — единственный источник правды о жизненном цикле заявки.
-> Пересобрать диаграмму: `python -m app.domain.statuses`. Тест `test_mermaid_diagram_lists_every_transition`
+> Пересобрать диаграмму: `cd backend && python -m scripts.export_state_diagram` (CI проверяет её с `--check`). Тест `test_mermaid_diagram_lists_every_transition`
 > проверяет, что каждый переход из кода попадает в диаграмму.
 
 ```mermaid
@@ -57,7 +57,7 @@ stateDiagram-v2
 специалисту (`manual_review`), а не теряется. Предложения с истёкшим сроком воркер переводит в `expired`.
 
 Клиент переводит заявку из `approved`/`counter_offer` в `signing`, приняв предложение; подпись договора кодом
-не меняет статус, а ставит в очередь выдачу. После подписи отозвать заявку нельзя.
+не меняет статус, а ставит в очередь выдачу. До подписи договора заявку можно отозвать, после подписи — нет: деньги уже в пути.
 
 ## Статусы
 
@@ -100,6 +100,7 @@ stateDiagram-v2
 | `manual_review` | `counter_offer` | аналитик |
 | `manual_review` | `rejected` | аналитик |
 | `manual_review` | `needs_info` | аналитик |
+| `manual_review` | `enrichment` | аналитик |
 | `approved` | `signing` | клиент |
 | `approved` | `expired` | система |
 | `counter_offer` | `signing` | клиент |
