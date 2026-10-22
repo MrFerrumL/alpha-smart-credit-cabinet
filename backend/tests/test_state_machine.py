@@ -75,3 +75,15 @@ def test_every_recorded_event_has_a_readable_title():
                 assert isinstance(node.args[2], ast.Constant), f"{path}:{node.lineno}"
                 names.add(node.args[2].value)
     assert names and names <= set(EVENT_TITLES), names - set(EVENT_TITLES)
+
+
+def test_history_titles_read_the_same_for_every_viewer():
+    # Историю видят клиент, его коллеги и аналитик: «Вы ответили…» неверно для двух из трёх, а глагол прошедшего
+    # времени после названия источника не согласуется с «Бюро» и «ФНС».
+    from app.pipeline.steps import SOURCE_TITLES
+    from app.services.applications import EVENT_TITLES
+
+    assert not [title for title in EVENT_TITLES.values() if title.startswith("Вы ")]
+    assert EVENT_TITLES["check_retry"].format(source=SOURCE_TITLES["bki"]) == (
+        "Бюро кредитных историй: нет ответа — повторяем запрос"
+    )

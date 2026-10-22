@@ -395,7 +395,8 @@ def test_signing_right_is_checked_against_the_registry_director(client, mocks):
     former = {"Authorization": f"Bearer {token['access_token']}"}
     response = client.post(f"/api/applications/{app_id}/offer/accept", headers=former)
     assert response.status_code == 403
-    assert "Северова Ольга Николаевна" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert "Северова Ольга Николаевна" in detail and " он" not in detail  # пол руководителя по ФИО не известен
     actions = get(client, app_id, former)["allowed_actions"]
     assert "handoff_to_signer" in actions and not {"accept_offer", "decline_offer", "cancel"} & set(actions)
     assert client.post(f"/api/applications/{app_id}/offer/decline", headers=former).status_code == 403

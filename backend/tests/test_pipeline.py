@@ -174,6 +174,8 @@ def test_short_outage_is_retried_transparently(client, mocks):
     run_pipeline(mocks)
     assert get(client, app_id, headers)["status"]["code"] == "approved"
     assert "check_retry" in events(client, app_id, headers)
+    titles = [e["title"] for e in client.get(f"/api/applications/{app_id}/events", headers=headers).json()]
+    assert "Бюро кредитных историй: нет ответа — повторяем запрос" in titles
 
 
 def test_long_outage_hands_application_to_specialist(client, mocks):

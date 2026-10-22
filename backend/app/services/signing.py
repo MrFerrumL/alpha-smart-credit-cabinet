@@ -58,7 +58,8 @@ def _require_signer(user: User, app: Application | None = None) -> None:
     director = app.company.director if app is not None else None
     if not may_sign(user.full_name, user.can_sign, director):
         raise Forbidden(
-            f"По данным ЕГРЮЛ руководитель компании — {director}. Подписать договор от её имени может только он"
+            f"По данным ЕГРЮЛ руководитель компании — {director}. "
+            "Подписать договор от имени компании может только руководитель"
         )
 
 

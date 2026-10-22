@@ -14,6 +14,6 @@ test('сбой БКИ: повтор запроса виден в истории,
   expect(fault.ok()).toBeTruthy();
   await login(page, 'Ольга Северова');
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 1_000_000, term: 12 });
-  await expect(page.getByText('Бюро кредитных историй не ответил — повторяем запрос').first()).toBeVisible();
+  await expect(page.getByText('Бюро кредитных историй: нет ответа — повторяем запрос').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
 });

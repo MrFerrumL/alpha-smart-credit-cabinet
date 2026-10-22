@@ -53,11 +53,12 @@ export function OfferActions({ app }: { app: Application }) {
     <>
       {!canAccept && (
         <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
+          {/* Пол руководителя по ФИО не знаем — текст без «он/она». */}
           {app.awaiting_signer
-            ? `Предложение передано руководителю${user?.company?.director ? ` — ${user.company.director}` : ''}: он получил уведомление в кабинете и подпишет договор.`
+            ? `Предложение передано руководителю${user?.company?.director ? ` — ${user.company.director}` : ''}: уведомление уже в кабинете руководителя, осталось принять предложение и подписать договор.`
             : `Принять предложение, отказаться от него и подписать договор может только руководитель компании${
                 user?.company?.director ? ` — ${user.company.director}` : ''
-              }. Передайте ему предложение — он получит уведомление в кабинете.`}
+              }. Передайте предложение руководителю — уведомление придёт в кабинет.`}
         </Alert>
       )}
       {canHandoff && (
