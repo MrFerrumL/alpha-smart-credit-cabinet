@@ -249,11 +249,16 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-State on 23.10 early morning: everything up to C is on `feat/e2e-completion`, CI green on `d063bbc`
-(`gh` installed at `C:\Program Files\GitHub CLI\gh.exe`, logged in). Next: E — product-dependent
-conditions before issue (investment loan: collateral documents and owner guarantee as client tasks; issue
-waits until they are closed). Then 25.10: end-to-end verification, README walkthrough with exact inputs,
-`docs/test-scenarios.md`, `docs/api.md`, RELEASE.md, CHANGELOG.md, NOTICES check against lock files,
-"Допущения" and "Развитие" sections, full branch review against the case and the submission checklist,
-`rc` tag only on Kirill's go-ahead. Open question to Kirill: how jurors can try generated INNs in the UI
-(recommended: extra demo heads for the README sample INNs).
+23.10: all features through E are on `feat/e2e-completion` (`4f23678`, CI green; README rewritten).
+Submission preparation, agreed with Kirill:
+1. `docs/test-scenarios.md` (E2E per persona with exact inputs, negative and role scenarios), `docs/api.md`
+   (roles, errors, idempotency, SSE, examples), THIRD_PARTY_NOTICES checked against
+   `backend/requirements.txt`, `mocks/requirements.txt`, `frontend/package-lock.json` — subagents, separate
+   files.
+2. RELEASE.md (version identifier, how to verify), CHANGELOG.md, README section "Проверка за 10 минут".
+3. Commit, push, wait for green CI (`gh run watch`).
+4. Full review of the branch against the case (`.notes/research/case/case.txt`) and the submission
+   checklist (`.notes/research/submission-checklist.md`); fix findings.
+5. Propose the `rc` tag and commands; tag/merge only on Kirill's go-ahead; remind about `alfa-hack-2026`
+   access if the repository is private.
+Open question to Kirill: how jurors can try generated INNs in the UI.
