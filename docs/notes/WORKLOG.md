@@ -31,7 +31,7 @@ verification, docs, a full review of the branch against the case and the release
 | A | Decision rule trace, policy version, replay | done `f81366e` |
 | C | Policy impact simulator | done `d063bbc` |
 | E | Product-dependent conditions before issue | done, reviewed (commit after `d063bbc`) |
-| Rel | 25.10: e2e verification, full review, `rc` tag | pending |
+| Rel | `v1.0.0-rc1` on `b166e97` (23.10); end-to-end verification for rc2 | in progress |
 
 Every P0 item and every differentiator gets a code review of its diff before the next item starts.
 
@@ -238,6 +238,22 @@ purpose so the stages are visible.
   `af7eaff`: the worker touches a heartbeat file each loop; compose checks it is younger than 60 s. From
   now on every push is followed by `gh run watch` and the next item starts only on green. Remaining CI
   warning: actions/checkout@v4, setup-python@v5, setup-node@v4 run on Node 20 (deprecated) — cosmetic.
+- D14 (23.10) End-to-end verification before rc2 (Kirill's five steps):
+  - CI compose job starts the stack exactly as README says (`docker compose up --build -d --wait`), then the
+    smoke script, newman on the collection's end-to-end folder and Playwright scenarios for every demo account
+    (`e2e/`, workers 1, no retries: scenarios change stand data);
+  - running the collection exposed two real defects: the Runner/newman run never waited for `approved`/`issued`,
+    and newman stopped on a redeclared `const data`; fixed in the generator (`ebb4dc3`);
+  - Playwright exposed a UI defect: the tasks card unmounted while a status change reloaded tasks, losing a
+    half-typed answer (`2becd18`);
+  - no demo account showed the other-product counter-offer in the cabinet, only a test with patched mocks did;
+    added `clean@demo.local` (ООО «Городская химчистка», INN 0077090092) (`a70e2bb`); 0077080087 was taken by a
+    test-generated INN;
+  - requirements table (154 items) and a docs-vs-code review; fixes `16c88d1`, `fba7fcc`, `bce4567`,
+    `b2b2d78`, `09adbd4`, `d0c02c7`; open items are Kirill's (access, main, tag, docs/notes, stale branch).
+  - local stack note: stale uvicorn/worker processes from 22.10 were still bound to 8000/8001 with old code;
+    always stop old processes before starting a local stack.
+
 ## Verification commands
 
 ```bash
@@ -249,12 +265,7 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-25.10: submission preparation done on `feat/e2e-completion` (`48a6be1` submission docs, `8b38a57` final
-review fixes, version 1.0.0; CI green on both). The branch is 19 commits ahead of `origin/main` and
-fast-forwards onto it.
-Waiting for Kirill:
-1. Go-ahead for the `v1.0.0-rc1` tag on the branch head, then merge to `main` (fast-forward) and `v1.0.0`.
-2. Read access for `alfa-hack-2026` (repository is private).
-3. Whether to delete the stale remote branch `confident-mccarthy-bv4por`.
-4. Whether `docs/notes/` stays in the release tree.
-5. How jurors can try generated INNs in the UI (option: extra demo users that head those companies).
+23.10 night: end-to-end verification on `feat/e2e-completion`; waiting for CI on the pushed head, then the
+adversarial jury pass findings. Then report to Kirill. Still his calls: read access for `alfa-hack-2026`,
+merge to `main` and `v1.0.0-rc2`/`v1.0.0`, deleting `confident-mccarthy-bv4por`, whether `docs/notes/` stays in the
+release tree.
