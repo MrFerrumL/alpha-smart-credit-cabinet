@@ -94,7 +94,7 @@ function StatusPanel({ app, live }: { app: Application; live: boolean }) {
           )}
           {can('cancel') && !can('decline_offer') && (
             <Button size="md" variant="default" leftSection={<IconX size={18} />} onClick={() => setCancelOpened(true)}>
-              {app.status.code === 'draft' ? 'Удалить черновик' : 'Отозвать заявку'}
+              {app.status.code === 'draft' ? 'Закрыть черновик' : 'Отозвать заявку'}
             </Button>
           )}
         </Group>
