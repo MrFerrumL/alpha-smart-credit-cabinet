@@ -111,7 +111,8 @@ Authorization: Bearer <access_token>
 | Значение | Кому и когда | Ручка |
 |---|---|---|
 | `edit`, `submit` | Клиент, статус `draft` | `PATCH`, `submit` |
-| `answer_tasks` | Клиент, статус `needs_info` или условия выдачи при `signing` | `tasks/{id}/answer`, `documents` |
+| `answer_tasks` | Клиент, статус `needs_info` или условия выдачи при `signing` (вопрос о поручительстве — только с `confirm_guarantee`) | `tasks/{id}/answer`, `documents` |
+| `confirm_guarantee` | Клиент с правом подписи, статус `signing`, есть открытые условия выдачи | `tasks/{id}/answer` (вопрос о поручительстве собственника) |
 | `accept_offer`, `decline_offer` | Клиент с правом подписи, статус `approved`/`counter_offer`, предложение активно | `offer/accept`, `offer/decline` |
 | `handoff_to_signer` | Клиент без права подписи, то же состояние (пропадает, когда уже передано; в заявке `awaiting_signer = true`) | `offer/handoff` |
 | `sign` | Клиент с правом подписи, статус `signing`, договор не подписан | `signing/code`, `signing/confirm` |

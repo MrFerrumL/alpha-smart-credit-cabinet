@@ -156,6 +156,7 @@ export type ApplicationAction =
   | 'submit'
   | 'cancel'
   | 'answer_tasks'
+  | 'confirm_guarantee'
   | 'accept_offer'
   | 'decline_offer'
   | 'handoff_to_signer'
@@ -227,7 +228,7 @@ export interface ClientTask {
   description: string | null;
   status: 'open' | 'done' | 'expired';
   answer: string | null;
-  payload: { document_kind?: string; field?: string; input?: string } | null;
+  payload: { document_kind?: string; field?: string; input?: string; condition?: string } | null;
   created_at: string;
   resolved_at: string | null;
 }

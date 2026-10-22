@@ -417,7 +417,7 @@ def test_secured_loan_is_issued_only_after_issue_conditions_are_closed(client, m
     run_pipeline(mocks)
     app = get(client, app_id, headers)
     assert app["status"]["code"] == "signing" and app["open_tasks"] == 2  # подписан, но денег нет
-    assert "answer_tasks" in app["allowed_actions"]
+    assert {"answer_tasks", "confirm_guarantee"} <= set(app["allowed_actions"])
     assert "issue_waiting_conditions" in [e["event"] for e in client.get(
         f"/api/applications/{app_id}/events", headers=headers).json()]
 
@@ -471,6 +471,40 @@ def test_collateral_documents_from_the_form_are_not_requested_again(client, mock
     app = get(client, app_id, headers)
     assert app["status"]["code"] == "signing" and app["open_tasks"] == 1
     assert len(client.get(f"/api/applications/{app_id}/documents", headers=headers).json()) == 1
+
+
+def test_only_the_director_confirms_the_owner_guarantee(client, mocks):
+    app_id, accountant = submit(
+        client, "buh@demo.local", product_code="invest", purpose="equipment", amount=5_000_000, term_months=48,
+        form={"finance": {"monthly_revenue": 4_500_000}, "collateral": {"kind": "equipment", "value": 6_000_000},
+              "consent_bki": True},
+    )
+    run_pipeline(mocks)
+    assert get(client, app_id, accountant)["status"]["code"] == "manual_review"
+    decided = client.post(f"/api/applications/{app_id}/decision", headers=auth(client, "analyst@demo.local"),
+                          json={"outcome": "approve", "comment": "Залог покрывает сумму, нагрузка в пределах политики"})
+    assert decided.status_code == 200, decided.text
+    owner = auth(client, "bakery@demo.local")
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=owner).status_code == 200
+
+    # Бухгалтер закрывает документы, но формы поручительства у него нет — это действие руководителя.
+    actions = get(client, app_id, accountant)["allowed_actions"]
+    assert "answer_tasks" in actions and "confirm_guarantee" not in actions
+    assert "confirm_guarantee" in get(client, app_id, owner)["allowed_actions"]
+    tasks = client.get(f"/api/applications/{app_id}/tasks", headers=accountant).json()
+    document = next(t for t in tasks if t["kind"] == "document")
+    question = next(t for t in tasks if t["kind"] == "question")
+    refused = client.post(f"/api/applications/{app_id}/tasks/{question['id']}/answer", headers=accountant,
+                          json={"answer": "Северова Ольга Николаевна"})
+    assert refused.status_code == 403 and refused.json()["code"] == "forbidden"
+    uploaded = client.post(f"/api/applications/{app_id}/documents", headers=accountant,
+                           files={"file": ("zalog.pdf", b"%PDF-1.4 collateral", "application/pdf")},
+                           data={"kind": "collateral", "task_id": str(document["id"])})
+    assert uploaded.status_code == 201, uploaded.text
+    answered = client.post(f"/api/applications/{app_id}/tasks/{question['id']}/answer", headers=owner,
+                           json={"answer": "Северова Ольга Николаевна"})
+    assert answered.status_code == 200, answered.text
+    assert get(client, app_id, owner)["open_tasks"] == 0
 
 
 def test_unsecured_loan_has_no_issue_conditions(client, mocks):

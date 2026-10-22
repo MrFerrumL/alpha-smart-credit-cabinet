@@ -87,6 +87,8 @@ def allowed_actions(app: Application, user: User, offer: Offer | None = None, op
             actions += ["edit", "submit"]
         if status == Status.NEEDS_INFO or (status == Status.SIGNING and offer is not None and open_tasks):
             actions.append("answer_tasks")
+            if status == Status.SIGNING and signer:
+                actions.append("confirm_guarantee")  # поручительство подтверждает только руководитель (tasks.answer_task)
         if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
             if signer:
                 actions += ["accept_offer", "decline_offer"]

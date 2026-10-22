@@ -219,7 +219,10 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
   const upload = useUploadDocument(app.id);
   const [value, setValue] = useState<string | number>('');
   const done = task.status === 'done';
-  const canAnswer = task.status === 'open' && !readOnly && app.allowed_actions.includes('answer_tasks');
+  // Поручительство собственника (условие выдачи) подтверждает только руководитель — сервер даёт ему отдельное действие.
+  const signerOnly = task.kind === 'question' && task.payload?.condition === 'before_issue';
+  const canAnswer =
+    task.status === 'open' && !readOnly && app.allowed_actions.includes(signerOnly ? 'confirm_guarantee' : 'answer_tasks');
 
   return (
     <Paper withBorder p="md" radius="md" bg={done ? 'gray.0' : 'white'}>
@@ -300,6 +303,11 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
             </Button>
           </Group>
         </Stack>
+      )}
+      {signerOnly && task.status === 'open' && !readOnly && !canAnswer && (
+        <Text fz="sm" c="dimmed" mt="md">
+          Поручительство подтверждает руководитель компании — пункт ждёт его в кабинете.
+        </Text>
       )}
     </Paper>
   );

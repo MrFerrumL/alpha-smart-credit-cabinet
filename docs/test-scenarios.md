@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 138 автотестов на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 139 автотестов на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -36,7 +36,7 @@ docker compose up --build
 |---|---|
 | E2E — сквозные сценарии | E2E-01 … E2E-15 |
 | Отказоустойчивость | FAIL-01 … FAIL-05 |
-| NEG — негативные и ролевые сценарии | NEG-01 … NEG-56 |
+| NEG — негативные и ролевые сценарии | NEG-01 … NEG-57 |
 | Автотесты и CI | запуск и проверки в CI |
 
 ---
@@ -210,6 +210,7 @@ docker compose up --build
   `test_signing.py::test_disburse_step_refuses_while_conditions_are_open`,
   `test_signing.py::test_conditions_close_when_the_contract_expires`,
   `test_signing.py::test_collateral_documents_from_the_form_are_not_requested_again`,
+  `test_signing.py::test_only_the_director_confirms_the_owner_guarantee` (поручительство — только руководитель),
   `test_signing.py::test_unsecured_loan_has_no_issue_conditions` (у кредита без залога условий нет),
   `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status` (живой статус).
   Появление решения аналитика у клиента без перезагрузки страницы — в браузере, `e2e/tests/personas.spec.ts`
@@ -528,6 +529,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-26 | Ответ на запрос чужой компании | Ответить на запрос банка в заявке другой компании | 404 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
 | NEG-27 | Пустой ответ на запрос | `POST …/tasks/{task_id}/answer` с `{"answer": "   "}` | 422 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
 | NEG-56 | Номер вне диапазона ключей | `GET /api/applications/99999999999999999999` (и `…/events`, `…/stream`), `GET /api/loans/…`, `POST …/tasks/{task_id}/answer` и загрузка документа с таким `task_id` | 404 `not_found`, не 500 | `test_hardening.py::test_ids_outside_the_key_range_are_not_found` |
+| NEG-57 | Бухгалтер и поручительство | `buh@` в заявке на кредит с залогом после принятия предложения: ответить на вопрос о поручительстве; загрузить документы по залогу | 403 «…только руководитель компании»; в `allowed_actions` нет `confirm_guarantee`, формы ответа нет; загрузка — 201; руководитель отвечает — 200 | `test_signing.py::test_only_the_director_confirms_the_owner_guarantee` |
 
 ### Подписание
 
@@ -582,7 +584,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 138 тестов; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 139 тестов; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 
