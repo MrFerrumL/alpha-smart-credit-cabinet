@@ -34,6 +34,7 @@ import { useApplicationStream } from '../api/stream';
 import type { Application, ApplicationAction, ApplicationEvent } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { ChecksCard, DecisionCard, DocumentList, TasksCard } from '../components/ApplicationBlocks';
+import { AnalystPanel } from '../components/AnalystPanel';
 import { IssuedCard, SigningCard } from '../components/Signing';
 import { StageProgress } from '../components/StageProgress';
 import { Stat, StatusBadge, toneColor } from '../components/ui';
@@ -61,6 +62,8 @@ function LiveIndicator({ live }: { live: boolean }) {
 }
 
 function StatusPanel({ app, live }: { app: Application; live: boolean }) {
+  const { user } = useAuth();
+  const bank = user?.role === 'analyst';
   const cancel = useCancelApplication();
   const [cancelOpened, setCancelOpened] = useState(false);
   const [comment, setComment] = useState('');
@@ -77,9 +80,9 @@ function StatusPanel({ app, live }: { app: Application; live: boolean }) {
     >
       <Group justify="space-between" align="flex-start" gap="lg">
         <div style={{ flex: 1, minWidth: 260 }}>
-          <Title order={3}>{app.status.title}</Title>
+          <Title order={3}>{bank && app.allowed_actions.includes('decide') ? 'Ждёт вашего решения' : app.status.title}</Title>
           <Text mt={6} c="dimmed" maw={620}>
-            {app.status.hint}
+            {bank ? `Клиент видит: «${app.status.hint}»` : app.status.hint}
           </Text>
           {moving && <LiveIndicator live={live} />}
         </div>
@@ -151,6 +154,11 @@ function History({ events }: { events: ApplicationEvent[] }) {
               «{ev.comment}»
             </Text>
           )}
+          {ev.internal_comment && (
+            <Text fz="xs" mt={4} c="orange.8">
+              Обоснование (видит только банк): {ev.internal_comment}
+            </Text>
+          )}
         </Timeline.Item>
       ))}
     </Timeline>
@@ -214,6 +222,8 @@ export function ApplicationPage() {
       </div>
 
       <StatusPanel app={app} live={live} />
+
+      {user?.role === 'analyst' && <AnalystPanel app={app} />}
 
       {hasOpenTasks && <TasksCard app={app} tasks={tasks.data ?? []} readOnly={readOnly} />}
       {app.status.code === 'issued' && <IssuedCard app={app} />}

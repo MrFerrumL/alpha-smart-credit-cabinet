@@ -24,6 +24,7 @@ stateDiagram-v2
     manual_review --> counter_offer: analyst
     manual_review --> rejected: analyst
     manual_review --> needs_info: analyst
+    manual_review --> enrichment: analyst
     approved --> signing: client
     approved --> expired: system
     counter_offer --> signing: client

@@ -150,6 +150,8 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.MANUAL_REVIEW, S.COUNTER_OFFER): frozenset({_A}),
     (S.MANUAL_REVIEW, S.REJECTED): frozenset({_A}),
     (S.MANUAL_REVIEW, S.NEEDS_INFO): frozenset({_A}),
+    # Источник не ответил: аналитик отправляет заявку на повторную проверку, а не решает без данных.
+    (S.MANUAL_REVIEW, S.ENRICHMENT): frozenset({_A}),
     (S.APPROVED, S.SIGNING): frozenset({_C}),
     (S.APPROVED, S.EXPIRED): frozenset({_SYS}),
     (S.COUNTER_OFFER, S.SIGNING): frozenset({_C}),

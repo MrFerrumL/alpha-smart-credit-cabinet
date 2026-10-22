@@ -1,9 +1,9 @@
 """Контракты API (pydantic). Из них FastAPI собирает OpenAPI-спецификацию (/api/openapi.json)."""
 
 from datetime import date, datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.products import Purpose
 
@@ -291,6 +291,7 @@ class EventOut(BaseModel):
     from_status: str | None
     to_status: str | None
     comment: str | None
+    internal_comment: str | None = Field(default=None, description="Обоснование аналитика — только для банка")
 
 
 class TaskOut(Out):
@@ -441,3 +442,84 @@ class NotificationOut(Out):
     link: str | None
     created_at: UtcDatetime
     read_at: UtcDatetime | None
+
+
+# --- Кабинет аналитика -----------------------------------------------------------------------
+
+
+class FactorOut(BaseModel):
+    code: str
+    title: str
+    value: str
+    points: int
+    client_text: str
+    tip: str | None = None
+
+
+class StopCheckOut(BaseModel):
+    title: str
+    passed: bool
+
+
+class TermsOut(BaseModel):
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+    dsr: float | None = Field(description="Доля выручки на все кредитные платежи при этих условиях")
+
+
+class RevenueOut(BaseModel):
+    declared_monthly: int | None = Field(description="Заявлено клиентом в анкете")
+    confirmed_monthly: int | None = Field(description="Принято банком: по данным ФНС или подтверждено выпиской")
+    source: str | None = Field(description="fns | statement")
+    gap_pct: float | None = Field(description="Насколько заявленная выручка выше принятой, %")
+
+
+class AssessmentOut(BaseModel):
+    """Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."""
+
+    review_reason: str | None = Field(description="manual_product | grade | source_failure | other; пусто, если заявка не у специалиста")
+    review_reason_title: str | None
+    scored: bool
+    failed_sources: list[str]
+    method: str | None = None
+    model_version: str | None = None
+    score: int | None = None
+    grade: str | None = None
+    probability_default: float | None = None
+    factors: list[FactorOut] = []
+    stop_checks: list[StopCheckOut] = []
+    revenue: RevenueOut | None = None
+    existing_payments: int | None = None
+    requested: TermsOut
+    recommendation: TermsOut | None = None
+    min_rate: float | None = Field(default=None, description="Минимальная ставка для грейда")
+    max_dsr: float
+    authority_limit: int = Field(description="Максимальная сумма, которую аналитик одобряет сам")
+    revenue_limit: int | None = Field(default=None, description="Лимит по выручке для грейда")
+    repayment: str = Field(description="annuity | interest_only")
+    product_limits: dict
+    can_decide: bool
+
+
+class AnalystDecisionIn(BaseModel):
+    outcome: Literal["approve", "counter_offer", "request_info", "reject", "retry_checks"]
+    comment: str = Field(min_length=10, max_length=2000, description="Обоснование для журнала аудита, клиент его не видит")
+    client_message: str | None = Field(default=None, max_length=1000, description="Что увидит клиент")
+    amount: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    term_months: int | None = Field(default=None, ge=1, le=120)
+    rate: float | None = Field(default=None, gt=0, lt=100)
+    reasons: list[Annotated[str, Field(max_length=300)]] = Field(default=[], max_length=5, description="Причины отказа для клиента")
+    tips: list[Annotated[str, Field(max_length=300)]] = Field(default=[], max_length=5)
+
+    @field_validator("comment")
+    @classmethod
+    def _comment_has_content(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 10:
+            raise ValueError("Опишите обоснование решения — не короче 10 символов")
+        return value
+    task_kind: Literal["document", "question"] = "document"
+    task_title: str | None = Field(default=None, max_length=255)
+    task_description: str | None = Field(default=None, max_length=1000)

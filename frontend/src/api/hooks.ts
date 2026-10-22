@@ -3,6 +3,8 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  AnalystDecision,
+  Assessment,
   AppNotification,
   Application,
   ApplicationEvent,
@@ -322,5 +324,27 @@ export function useReadAllNotifications() {
   return useMutation({
     mutationFn: () => api<void>('/notifications/read-all', { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// --- Кабинет аналитика ---------------------------------------------------------------------
+
+export function useAssessment(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['application', id, 'assessment'],
+    queryFn: () => api<Assessment>(`/applications/${id}/assessment`),
+    enabled,
+  });
+}
+
+export function useAnalystDecision(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AnalystDecision) => api<Application>(`/applications/${id}/decision`, { method: 'POST', json: body }),
+    onSuccess: (app) => {
+      qc.setQueryData(keys.application(app.id), app);
+      qc.invalidateQueries({ queryKey: ['application', id] });
+      qc.invalidateQueries({ queryKey: ['applications'] });
+    },
   });
 }

@@ -121,7 +121,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     )
 
 
-def event_out(ev: ApplicationEvent) -> EventOut:
+def event_out(ev: ApplicationEvent, for_bank: bool = False) -> EventOut:
     if ev.event in EVENT_TITLES:
         payload = ev.payload or {}
         title = EVENT_TITLES[ev.event].format(
@@ -142,6 +142,7 @@ def event_out(ev: ApplicationEvent) -> EventOut:
         from_status=ev.from_status,
         to_status=ev.to_status,
         comment=ev.comment,
+        internal_comment=(ev.payload or {}).get("internal_comment") if for_bank else None,
     )
 
 

@@ -47,6 +47,7 @@ class Decision:
     tasks: list[TaskSpec] = field(default_factory=list)
     recommendation: dict | None = None  # для аналитика: какие условия предложил бы конвейер
     stop_factors: list[str] = field(default_factory=list)
+    review_reason: str | None = None  # почему заявка ушла специалисту: manual_product | grade
 
 
 def _money(value: int) -> str:
@@ -56,19 +57,54 @@ def _money(value: int) -> str:
     return f"{value:,} ₽".replace(",", " ")
 
 
+@dataclass(frozen=True)
+class StopCheck:
+    title: str  # что проверяется — для аналитика
+    passed: bool
+    client_text: str  # причина отказа для клиента, если проверка не пройдена
+
+
+def stop_checks(f: Features) -> list[StopCheck]:
+    """Стоп-факторы как чек-лист: аналитик видит и пройденные проверки, клиент — только причины отказа."""
+    return [
+        StopCheck("Компания действующая по ЕГРЮЛ", f.company_status == "active",
+                  "Компания находится в стадии ликвидации — таким компаниям банк не выдаёт кредиты"),
+        StopCheck("Руководитель не дисквалифицирован", not f.disqualified_director,
+                  "Руководитель компании дисквалифицирован"),
+        StopCheck("Счета не заблокированы налоговой", not f.blocked_accounts,
+                  "Счета компании заблокированы налоговой"),
+        StopCheck("Нет текущей просрочки больше 60 дней", f.current_overdue_days <= 60,
+                  "Просрочка по действующему кредиту больше 60 дней"),
+        StopCheck("Компании больше трёх месяцев",
+                  f.business_age_years is None or f.business_age_years >= 0.25,
+                  "Компания зарегистрирована меньше трёх месяцев назад"),
+    ]
+
+
 def stop_factors(f: Features) -> list[str]:
-    reasons = []
-    if f.company_status != "active":
-        reasons.append("Компания находится в стадии ликвидации — таким компаниям банк не выдаёт кредиты")
-    if f.disqualified_director:
-        reasons.append("Руководитель компании дисквалифицирован")
-    if f.blocked_accounts:
-        reasons.append("Счета компании заблокированы налоговой")
-    if f.current_overdue_days > 60:
-        reasons.append("Просрочка по действующему кредиту больше 60 дней")
-    if f.business_age_years is not None and f.business_age_years < 0.25:
-        reasons.append("Компания зарегистрирована меньше трёх месяцев назад")
-    return reasons
+    return [check.client_text for check in stop_checks(f) if not check.passed]
+
+
+def grade_rate(product: Product, grade: str) -> Decimal:
+    """Минимальная ставка для грейда: ниже неё условия не может предложить ни конвейер, ни аналитик."""
+    return product.rate + RATE_PREMIUM[grade]
+
+
+def debt_service_ratio(f: Features, product: Product, amount: int, term: int, rate: Decimal) -> float | None:
+    """Доля выручки, которая уйдёт на все кредитные платежи при этих условиях (без округления — для
+    сравнения с политикой; округлять только для показа)."""
+    if not f.revenue_monthly:
+        return None
+    payment = int(monthly_payment(amount, rate, term, product.repayment))
+    return (f.existing_payments + payment) / f.revenue_monthly
+
+
+def revenue_limit(f: Features, product: Product, grade: str) -> int | None:
+    """Лимит по выручке: выручка × множитель продукта × доля по грейду, не больше максимума продукта."""
+    if not f.revenue_monthly:
+        return None
+    raw = f.revenue_monthly * float(product.revenue_multiplier) * LIMIT_SHARE[grade]
+    return min(_floor(raw), product.max_amount)
 
 
 def _floor(value: float) -> int:
@@ -80,8 +116,8 @@ def fit_terms(f: Features, s: ScoreResult, product: Product, amount: int, term: 
     чтобы все платежи по кредитам были не больше половины выручки."""
     assert f.revenue_monthly
     revenue = f.revenue_monthly
-    rate = product.rate + RATE_PREMIUM[s.grade]
-    limit = min(_floor(revenue * float(product.revenue_multiplier) * LIMIT_SHARE[s.grade]), product.max_amount)
+    rate = grade_rate(product, s.grade)
+    limit = revenue_limit(f, product, s.grade)
 
     def dsr(a: int, t: int) -> float:
         return (f.existing_payments + int(monthly_payment(a, rate, t, product.repayment))) / revenue
@@ -159,7 +195,12 @@ def decide(f: Features, s: ScoreResult, product: Product, amount: int, term: int
             if product.decision == "manual"
             else "Заявке нужен взгляд специалиста — автоматической оценки недостаточно"
         )
-        return Decision(Status.MANUAL_REVIEW, reasons=[reason], recommendation=recommendation)
+        return Decision(
+            Status.MANUAL_REVIEW,
+            reasons=[reason],
+            recommendation=recommendation,
+            review_reason="manual_product" if product.decision == "manual" else "grade",
+        )
 
     if terms is None:
         return Decision(

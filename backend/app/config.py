@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     pipeline_max_attempts: int = 5
     worker_poll_interval_s: float = 0.5
     offer_valid_days: int = 7
+    # Сумма, которую кредитный аналитик одобряет сам; выше — решение кредитного комитета.
+    analyst_authority_limit: int = 30_000_000
     housekeeping_interval_s: float = 60.0  # как часто воркер закрывает просроченные предложения
 
     # Подписание договора одноразовым кодом из уведомлений кабинета.

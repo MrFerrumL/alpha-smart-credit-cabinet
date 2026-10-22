@@ -840,6 +840,110 @@
         }
       }
     },
+    "/api/applications/{application_id}/assessment": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
+        "operationId": "application_assessment_api_applications__application_id__assessment_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/decision": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
+        "operationId": "analyst_decision_api_applications__application_id__decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalystDecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/tasks": {
       "get": {
         "tags": [
@@ -1550,6 +1654,140 @@
   },
   "components": {
     "schemas": {
+      "AnalystDecisionIn": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "counter_offer",
+              "request_info",
+              "reject",
+              "retry_checks"
+            ],
+            "title": "Outcome"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Comment",
+            "description": "Обоснование для журнала аудита, клиент его не видит"
+          },
+          "client_message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Message",
+            "description": "Что увидит клиент"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "term_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term Months"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "reasons": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Reasons",
+            "description": "Причины отказа для клиента",
+            "default": []
+          },
+          "tips": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Tips",
+            "default": []
+          },
+          "task_kind": {
+            "type": "string",
+            "enum": [
+              "document",
+              "question"
+            ],
+            "title": "Task Kind",
+            "default": "document"
+          },
+          "task_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Title"
+          },
+          "task_description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "comment"
+        ],
+        "title": "AnalystDecisionIn"
+      },
       "ApplicationCreate": {
         "properties": {
           "product_code": {
@@ -1857,6 +2095,211 @@
         },
         "type": "object",
         "title": "ApplicationUpdate"
+      },
+      "AssessmentOut": {
+        "properties": {
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason",
+            "description": "manual_product | grade | source_failure | other; пусто, если заявка не у специалиста"
+          },
+          "review_reason_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason Title"
+          },
+          "scored": {
+            "type": "boolean",
+            "title": "Scored"
+          },
+          "failed_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failed Sources"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "probability_default": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability Default"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/FactorOut"
+            },
+            "type": "array",
+            "title": "Factors",
+            "default": []
+          },
+          "stop_checks": {
+            "items": {
+              "$ref": "#/components/schemas/StopCheckOut"
+            },
+            "type": "array",
+            "title": "Stop Checks",
+            "default": []
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevenueOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "existing_payments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Payments"
+          },
+          "requested": {
+            "$ref": "#/components/schemas/TermsOut"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Rate",
+            "description": "Минимальная ставка для грейда"
+          },
+          "max_dsr": {
+            "type": "number",
+            "title": "Max Dsr"
+          },
+          "authority_limit": {
+            "type": "integer",
+            "title": "Authority Limit",
+            "description": "Максимальная сумма, которую аналитик одобряет сам"
+          },
+          "revenue_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Limit",
+            "description": "Лимит по выручке для грейда"
+          },
+          "repayment": {
+            "type": "string",
+            "title": "Repayment",
+            "description": "annuity | interest_only"
+          },
+          "product_limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Product Limits"
+          },
+          "can_decide": {
+            "type": "boolean",
+            "title": "Can Decide"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_reason",
+          "review_reason_title",
+          "scored",
+          "failed_sources",
+          "requested",
+          "max_dsr",
+          "authority_limit",
+          "repayment",
+          "product_limits",
+          "can_decide"
+        ],
+        "title": "AssessmentOut",
+        "description": "Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."
       },
       "Body_upload_document_api_applications__application_id__documents_post": {
         "properties": {
@@ -2636,6 +3079,18 @@
               }
             ],
             "title": "Comment"
+          },
+          "internal_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Comment",
+            "description": "Обоснование аналитика — только для банка"
           }
         },
         "type": "object",
@@ -2651,6 +3106,50 @@
           "comment"
         ],
         "title": "EventOut"
+      },
+      "FactorOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "client_text": {
+            "type": "string",
+            "title": "Client Text"
+          },
+          "tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "value",
+          "points",
+          "client_text"
+        ],
+        "title": "FactorOut"
       },
       "FinanceForm": {
         "properties": {
@@ -3500,6 +3999,66 @@
         ],
         "title": "PurposeOut"
       },
+      "RevenueOut": {
+        "properties": {
+          "declared_monthly": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Monthly",
+            "description": "Заявлено клиентом в анкете"
+          },
+          "confirmed_monthly": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Monthly",
+            "description": "Принято банком: по данным ФНС или подтверждено выпиской"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "fns | statement"
+          },
+          "gap_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Pct",
+            "description": "Насколько заявленная выручка выше принятой, %"
+          }
+        },
+        "type": "object",
+        "required": [
+          "declared_monthly",
+          "confirmed_monthly",
+          "source",
+          "gap_pct"
+        ],
+        "title": "RevenueOut"
+      },
       "ScheduleRowOut": {
         "properties": {
           "n": {
@@ -3632,6 +4191,24 @@
         ],
         "title": "StatusInfoOut"
       },
+      "StopCheckOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "passed"
+        ],
+        "title": "StopCheckOut"
+      },
       "TaskAnswerIn": {
         "properties": {
           "answer": {
@@ -3730,6 +4307,47 @@
           "resolved_at"
         ],
         "title": "TaskOut"
+      },
+      "TermsOut": {
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          },
+          "dsr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dsr",
+            "description": "Доля выручки на все кредитные платежи при этих условиях"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "term_months",
+          "rate",
+          "monthly_payment",
+          "dsr"
+        ],
+        "title": "TermsOut"
       },
       "TokenOut": {
         "properties": {

@@ -133,7 +133,9 @@ def enrich_exhausted(db: Session, app: Application, error: str) -> None:
     failed = [SOURCE_TITLES[s] for s, c in _checks(db, app).items() if c.status != "ok"]
     reason = f"Не удалось получить данные: {', '.join(failed) or 'внешний источник'}. Заявку проверит специалист."
     apply_transition(db, app, Status.MANUAL_REVIEW, Actor.SYSTEM, comment=reason, payload={"error": error})
-    app.decision = {"outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": []}
+    app.decision = {
+        "outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": [], "review_reason": "source_failure"
+    }
 
 
 def _apply_decision(db: Session, app: Application, decision: Decision, result: rules.ScoreResult) -> None:
@@ -170,6 +172,7 @@ def _apply_decision(db: Session, app: Application, decision: Decision, result: r
         "tips": decision.tips,
         "stop_factors": decision.stop_factors,
         "recommendation": decision.recommendation,
+        "review_reason": decision.review_reason,
         "grade": result.grade,
         "score": result.score,
     }

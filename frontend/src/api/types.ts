@@ -194,6 +194,7 @@ export interface ApplicationEvent {
   from_status: string | null;
   to_status: string | null;
   comment: string | null;
+  internal_comment: string | null;
 }
 
 export interface Offer {
@@ -332,4 +333,69 @@ export interface AppNotification {
   link: string | null;
   created_at: string;
   read_at: string | null;
+}
+
+// --- Кабинет аналитика ---------------------------------------------------------------------
+
+export interface ScoreFactor {
+  code: string;
+  title: string;
+  value: string;
+  points: number;
+  client_text: string;
+  tip: string | null;
+}
+
+export interface Terms {
+  amount: number;
+  term_months: number;
+  rate: number;
+  monthly_payment: number;
+  dsr: number | null;
+}
+
+export interface Assessment {
+  review_reason: 'manual_product' | 'grade' | 'source_failure' | 'other' | null;
+  review_reason_title: string | null;
+  scored: boolean;
+  failed_sources: string[];
+  method: string | null;
+  model_version: string | null;
+  score: number | null;
+  grade: string | null;
+  probability_default: number | null;
+  factors: ScoreFactor[];
+  stop_checks: { title: string; passed: boolean }[];
+  revenue: {
+    declared_monthly: number | null;
+    confirmed_monthly: number | null;
+    source: 'fns' | 'statement' | null;
+    gap_pct: number | null;
+  } | null;
+  existing_payments: number | null;
+  requested: Terms;
+  recommendation: Terms | null;
+  min_rate: number | null;
+  max_dsr: number;
+  authority_limit: number;
+  revenue_limit: number | null;
+  repayment: 'annuity' | 'interest_only';
+  product_limits: { min_amount: number; max_amount: number; min_term: number; max_term: number };
+  can_decide: boolean;
+}
+
+export type DecisionOutcome = 'approve' | 'counter_offer' | 'request_info' | 'reject' | 'retry_checks';
+
+export interface AnalystDecision {
+  outcome: DecisionOutcome;
+  comment: string;
+  client_message?: string;
+  amount?: number;
+  term_months?: number;
+  rate?: number;
+  reasons?: string[];
+  tips?: string[];
+  task_kind?: 'document' | 'question';
+  task_title?: string;
+  task_description?: string;
 }

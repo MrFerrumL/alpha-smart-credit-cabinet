@@ -836,6 +836,57 @@
           "response": []
         },
         {
+          "name": "Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/assessment",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "assessment"
+              ]
+            },
+            "description": "Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация"
+          },
+          "response": []
+        },
+        {
+          "name": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"approve\",\n  \"comment\": \"Комментарий к заявке\",\n  \"client_message\": \"string\",\n  \"amount\": 3000000,\n  \"term_months\": 12,\n  \"rate\": 1.0,\n  \"reasons\": [],\n  \"tips\": [],\n  \"task_kind\": \"document\",\n  \"task_title\": \"string\",\n  \"task_description\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/decision",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "decision"
+              ]
+            },
+            "description": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки"
+          },
+          "response": []
+        },
+        {
           "name": "Запросы банка по заявке",
           "request": {
             "method": "GET",

@@ -20,8 +20,8 @@ verification, docs, a full review of the branch against the case and the release
 | — | Analysis: case, code, runtime checks, gap list, decision memo | done |
 | P0.3 | SSE session (B3), idempotency (B4), token `sub` (B14), company ownership on link (N1) | done `496f420` |
 | CI | GitHub Actions: pytest on PostgreSQL, frontend build, OpenAPI drift, compose smoke | pushed `86c1418`, first run not yet inspected |
-| P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes from the spec review in the working tree, under review |
-| P0.2 | Analyst card and decision (B2, B9) | pending |
+| P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes `5228957`; request collection generator `d44b901` |
+| P0.2 | Analyst card and decision (B2, B9) | implemented, verified in the browser on a local stack; under review |
 | P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | pending |
 | P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | pending |
 | P1.6 | Offer expiry (B7) | pending |
@@ -187,6 +187,20 @@ purpose so the stages are visible.
     company (otherwise a founder connecting first locks the director out);
   - overdraft contract text describes a limit; the amortising model of the overdraft is documented as a
     simplification.
+- D8 (22.10) P0.2 analyst cabinet is ours (agreed with the teammate). Design:
+  - the pipeline records why a case went to a person (`review_reason`: manual product, grade C/D, source
+    failure); the card is built from the stored feature snapshot and scoring result;
+  - stop factors became an explicit checklist (`stop_checks`), shared by the pipeline and the card;
+  - analyst outcomes: approve (requested terms), counter-offer, request info (analyst task), reject,
+    retry checks (`manual_review → enrichment`, only after a source failure);
+  - the analyst is bound by the same policy as the pipeline: no override of stop factors or grade E,
+    rate ≥ grade rate, DSR ≤ policy, amount ≤ `ANALYST_AUTHORITY_LIMIT` (above → credit committee, 403);
+  - mandatory internal justification kept in the event payload and shown to the bank only; deviation
+    from the pipeline recommendation flagged; double decisions blocked by the version lock;
+  - "take in work" assignment and four-eyes approval left for the roadmap.
+- Note: a dev database migrated on the branch between `496f420` and `b327da1` is stamped `0003` with the
+  old per-application-key migration and will skip the teammate's `0003`; recreate such local databases.
+  Clean clones and CI are unaffected.
 
 ## Verification commands
 

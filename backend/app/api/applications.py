@@ -6,12 +6,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_stream_user, require_client
+from app.api.deps import get_current_user, get_stream_user, require_analyst, require_client
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
 from app.models import ApplicationEvent, CheckResult, ClientTask, Document, User
 from app.pipeline.steps import SOURCE_TITLES, SOURCES
 from app.schemas import (
+    AnalystDecisionIn,
+    AssessmentOut,
     ApplicationCreate,
     ApplicationOut,
     ApplicationUpdate,
@@ -27,6 +29,7 @@ from app.schemas import (
     TaskOut,
 )
 from app.services import applications as svc
+from app.services import decisions as decisions_svc
 from app.services import signing as signing_svc
 from app.services import tasks as tasks_svc
 
@@ -97,7 +100,33 @@ def application_events(
     application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[EventOut]:
     app = svc.get_for_user(db, user, application_id)
-    return [svc.event_out(ev) for ev in app.events]
+    return [svc.event_out(ev, for_bank=user.role == "analyst") for ev in app.events]
+
+
+@router.get(
+    "/{application_id}/assessment",
+    response_model=AssessmentOut,
+    summary="Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
+)
+def application_assessment(
+    application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
+) -> AssessmentOut:
+    return decisions_svc.assessment(db, user, svc.get_for_user(db, user, application_id))
+
+
+@router.post(
+    "/{application_id}/decision",
+    response_model=ApplicationOut,
+    summary="Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
+)
+def analyst_decision(
+    application_id: int,
+    data: AnalystDecisionIn,
+    user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    return svc.to_out(decisions_svc.decide(db, user, app, data), user, db)
 
 
 @router.get("/{application_id}/tasks", response_model=list[TaskOut], summary="Запросы банка по заявке")
