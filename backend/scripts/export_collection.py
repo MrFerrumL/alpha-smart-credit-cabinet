@@ -59,6 +59,23 @@ BODY_OVERRIDES: dict[str, Any] = {
     "ApplicationUpdate": {"amount": 2500000, "term_months": 18},
     "CompanyLinkIn": {"inn": "0077070071"},
     "CancelIn": {"comment": "Передумали: нужна другая сумма"},
+    "PolicySimulationIn": {"max_dsr": 0.45, "min_coverage": 1.3},
+    # Исполнимый пример: запрос документа проходит при любом грейде, одобрение ограничено ставкой грейда.
+    "AnalystDecisionIn": {
+        "outcome": "request_info",
+        "comment": "Нужна выписка за 6 месяцев",
+        "task_kind": "document",
+        "task_title": "Выписка по счёту за 6 месяцев",
+    },
+}
+# Под какой учёткой выполнять запрос, если токена из сквозного сценария (bakery@) для него недостаточно.
+LOGIN_HINTS: dict[tuple[str, str], str] = {
+    ("post", "/api/companies/link"): "Выполняйте под `new@demo.local` (вход — папка «Вход»): у пекарни компания "
+    "уже подключена, и запрос вернёт `409`.",
+    ("post", "/api/applications/{application_id}/decision"): "Нужен токен аналитика (`analyst@demo.local`) и "
+    "заявка в статусе «Рассматривает специалист», например `vector@demo.local` с инвестиционным кредитом.",
+    ("post", "/api/applications/{application_id}/assessment/replay"): "Нужен токен аналитика (`analyst@demo.local`).",
+    ("post", "/api/policy/simulate"): "Нужен токен аналитика (`analyst@demo.local`).",
 }
 
 # Что делает каждая из ручек сквозного сценария: (метод, путь) должны быть в спецификации.
@@ -158,7 +175,9 @@ def example_for(spec: dict, schema: dict, field: str | None = None, depth: int =
 
 
 def _script(lines: list[str]) -> dict:
-    return {"listen": "test", "script": {"type": "text/javascript", "exec": lines}}
+    # Блок даёт каждому скрипту свою область видимости: newman выполняет скрипты в общем контексте,
+    # и повторное `const data` в следующем запросе иначе было бы ошибкой.
+    return {"listen": "test", "script": {"type": "text/javascript", "exec": ["{", *lines, "}"]}}
 
 
 def _url(path: str, query: list[dict] | None = None) -> dict:
@@ -171,6 +190,24 @@ def _url(path: str, query: list[dict] | None = None) -> dict:
     if query:
         url["query"] = query
     return url
+
+
+def _poll(target: str, extra: list[str] | None = None) -> list[str]:
+    """Тест шага-опроса: в Runner и newman шаг повторяется раз в секунду, пока статус не станет target."""
+    return [
+        "const data = pm.response.json();",
+        "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
+        *(extra or []),
+        "const tries = Number(pm.collectionVariables.get('poll_tries') || 0);",
+        f"if (data.status.code !== '{target}' && !data.status.terminal && tries < 90) {{",
+        "  pm.collectionVariables.set('poll_tries', tries + 1);",
+        "  postman.setNextRequest(pm.info.requestName);",
+        "  setTimeout(() => {}, 1000);",
+        "} else {",
+        "  pm.collectionVariables.set('poll_tries', 0);",
+        f"  pm.test('Статус {target}', () => pm.expect(data.status.code).to.eql('{target}'));",
+        "}",
+    ]
 
 
 def _json_body(text: str) -> dict:
@@ -258,12 +295,9 @@ def _flow(spec: dict) -> dict:
             "get",
             app_path,
             "Конвейер работает в фоне, решение появляется примерно через 10 секунд. "
-            "Повторяйте запрос, пока `status.code` не станет `approved`.",
-            test=[
-                "const data = pm.response.json();",
-                "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
-                "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));",
-            ],
+            "В Runner и newman шаг повторяется сам раз в секунду, пока `status.code` не станет `approved`; "
+            "вручную — повторяйте запрос.",
+            test=_poll("approved"),
         ),
         _item(
             "5. Принять предложение банка",
@@ -304,14 +338,9 @@ def _flow(spec: dict) -> dict:
             "9. Статус заявки (повторять до issued)",
             "get",
             app_path,
-            "Выдача занимает несколько секунд. Повторяйте запрос, пока `status.code` не станет `issued`; "
-            "тогда в поле `loan_id` появится идентификатор кредита (сохраняется в `loan_id`).",
-            test=[
-                "const data = pm.response.json();",
-                "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
-                "if (data.loan_id) { pm.collectionVariables.set('loan_id', data.loan_id); }",
-                "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));",
-            ],
+            "Выдача занимает несколько секунд. В Runner и newman шаг повторяется сам, пока `status.code` не "
+            "станет `issued`; тогда в поле `loan_id` появится идентификатор кредита (сохраняется в `loan_id`).",
+            test=_poll("issued", ["if (data.loan_id) { pm.collectionVariables.set('loan_id', data.loan_id); }"]),
         ),
         _item(
             "10. Кредит и график платежей",
@@ -324,8 +353,8 @@ def _flow(spec: dict) -> dict:
     return {
         "name": "Сквозной сценарий: от заявки до выдачи",
         "description": (
-            "Последовательный сценарий для запуска по порядку (Runner / «Run collection»). "
-            "Шаги 4 и 9 — опрос: повторяйте их, пока статус не достигнет нужного значения. "
+            "Последовательный сценарий для запуска по порядку (Runner / «Run collection» или newman). "
+            "Шаги 4 и 9 — опрос: в Runner они повторяются сами, пока статус не достигнет нужного значения. "
             "Учётка `bakery@demo.local`, продукт «Экспресс-оборот» одобряется автоматически."
         ),
         "item": items,
@@ -333,6 +362,7 @@ def _flow(spec: dict) -> dict:
 
 
 def _operation_item(spec: dict, method: str, path: str, op: dict) -> dict:
+    hint = LOGIN_HINTS.get((method, path))
     query: list[dict] = []
     headers: list[dict] = []
     for param in op.get("parameters", []):
@@ -378,6 +408,8 @@ def _operation_item(spec: dict, method: str, path: str, op: dict) -> dict:
     parts = [op.get("summary", "")]
     if op.get("description"):
         parts.append(op["description"])
+    if hint:
+        parts.append(hint)
     if method == "get" and path.endswith("/stream"):
         parts.append("Поток Server-Sent Events: ответ не завершается, события приходят по мере изменения статуса.")
     if body is not None and body["mode"] == "formdata":

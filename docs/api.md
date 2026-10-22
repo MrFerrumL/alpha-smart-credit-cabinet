@@ -29,8 +29,10 @@
 2. Переменные коллекции: `base_url` (по умолчанию `http://localhost:8080`; для прямого доступа — `http://localhost:8000`),
    `token`, `application_id`, `challenge_id`, `signing_code`, `loan_id`, `task_id`, `code` (код продукта, по умолчанию `express`).
    `token`, `application_id`, `challenge_id`, `signing_code` и `loan_id` заполняют тест-скрипты сами.
-3. Папка «Сквозной сценарий: от заявки до выдачи» — 10 запросов по порядку (или целиком через Runner). Шаги 4 и 9 —
-   опрос статуса, повторяйте, пока не будет `approved` и `issued`. Учётка `bakery@demo.local`, продукт `express`.
+3. Папка «Сквозной сценарий: от заявки до выдачи» — 10 запросов по порядку (или целиком через Runner либо
+   `newman run docs/postman_collection.json --folder "Сквозной сценарий: от заявки до выдачи"`). Шаги 4 и 9 —
+   опрос статуса: в Runner и newman они повторяются сами раз в секунду, пока не будет `approved` и `issued`;
+   при ручном запуске повторяйте их. Учётка `bakery@demo.local`, продукт `express`.
 4. Остальные папки — по одной на раздел API.
 
 ## 2. Аутентификация

@@ -59,7 +59,7 @@
   "item": [
     {
       "name": "Сквозной сценарий: от заявки до выдачи",
-      "description": "Последовательный сценарий для запуска по порядку (Runner / «Run collection»). Шаги 4 и 9 — опрос: повторяйте их, пока статус не достигнет нужного значения. Учётка `bakery@demo.local`, продукт «Экспресс-оборот» одобряется автоматически.",
+      "description": "Последовательный сценарий для запуска по порядку (Runner / «Run collection» или newman). Шаги 4 и 9 — опрос: в Runner они повторяются сами, пока статус не достигнет нужного значения. Учётка `bakery@demo.local`, продукт «Экспресс-оборот» одобряется автоматически.",
       "item": [
         {
           "name": "1. Вход под тестовой учёткой",
@@ -98,9 +98,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "pm.test('Вход выполнен', () => pm.response.to.have.status(200));",
                   "const data = pm.response.json();",
-                  "pm.collectionVariables.set('token', data.access_token);"
+                  "pm.collectionVariables.set('token', data.access_token);",
+                  "}"
                 ]
               }
             }
@@ -139,9 +141,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "pm.test('Черновик создан', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
                   "const data = pm.response.json();",
-                  "pm.collectionVariables.set('application_id', data.id);"
+                  "pm.collectionVariables.set('application_id', data.id);",
+                  "}"
                 ]
               }
             }
@@ -179,7 +183,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Заявка отправлена', () => pm.response.to.have.status(200));"
+                  "{",
+                  "pm.test('Заявка отправлена', () => pm.response.to.have.status(200));",
+                  "}"
                 ]
               }
             }
@@ -201,7 +207,7 @@
                 "{{application_id}}"
               ]
             },
-            "description": "Конвейер работает в фоне, решение появляется примерно через 10 секунд. Повторяйте запрос, пока `status.code` не станет `approved`."
+            "description": "Конвейер работает в фоне, решение появляется примерно через 10 секунд. В Runner и newman шаг повторяется сам раз в секунду, пока `status.code` не станет `approved`; вручную — повторяйте запрос."
           },
           "response": [],
           "event": [
@@ -210,9 +216,19 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "const data = pm.response.json();",
                   "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
-                  "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));"
+                  "const tries = Number(pm.collectionVariables.get('poll_tries') || 0);",
+                  "if (data.status.code !== 'approved' && !data.status.terminal && tries < 90) {",
+                  "  pm.collectionVariables.set('poll_tries', tries + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "  setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "  pm.collectionVariables.set('poll_tries', 0);",
+                  "  pm.test('Статус approved', () => pm.expect(data.status.code).to.eql('approved'));",
+                  "}",
+                  "}"
                 ]
               }
             }
@@ -245,7 +261,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Предложение принято', () => pm.response.to.have.status(200));"
+                  "{",
+                  "pm.test('Предложение принято', () => pm.response.to.have.status(200));",
+                  "}"
                 ]
               }
             }
@@ -277,7 +295,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Договор получен', () => pm.response.to.have.status(200));"
+                  "{",
+                  "pm.test('Договор получен', () => pm.response.to.have.status(200));",
+                  "}"
                 ]
               }
             }
@@ -310,10 +330,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "pm.test('Код выдан', () => pm.response.to.have.status(200));",
                   "const data = pm.response.json();",
                   "pm.collectionVariables.set('challenge_id', data.challenge_id);",
-                  "pm.collectionVariables.set('signing_code', data.demo_code);"
+                  "pm.collectionVariables.set('signing_code', data.demo_code);",
+                  "}"
                 ]
               }
             }
@@ -355,7 +377,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Договор подписан', () => pm.response.to.have.status(200));"
+                  "{",
+                  "pm.test('Договор подписан', () => pm.response.to.have.status(200));",
+                  "}"
                 ]
               }
             }
@@ -377,7 +401,7 @@
                 "{{application_id}}"
               ]
             },
-            "description": "Выдача занимает несколько секунд. Повторяйте запрос, пока `status.code` не станет `issued`; тогда в поле `loan_id` появится идентификатор кредита (сохраняется в `loan_id`)."
+            "description": "Выдача занимает несколько секунд. В Runner и newman шаг повторяется сам, пока `status.code` не станет `issued`; тогда в поле `loan_id` появится идентификатор кредита (сохраняется в `loan_id`)."
           },
           "response": [],
           "event": [
@@ -386,10 +410,20 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "const data = pm.response.json();",
                   "console.log('Статус заявки:', data.status.code, '-', data.status.title);",
                   "if (data.loan_id) { pm.collectionVariables.set('loan_id', data.loan_id); }",
-                  "pm.test('Статус получен', () => pm.expect(data.status.code).to.be.a('string'));"
+                  "const tries = Number(pm.collectionVariables.get('poll_tries') || 0);",
+                  "if (data.status.code !== 'issued' && !data.status.terminal && tries < 90) {",
+                  "  pm.collectionVariables.set('poll_tries', tries + 1);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "  setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "  pm.collectionVariables.set('poll_tries', 0);",
+                  "  pm.test('Статус issued', () => pm.expect(data.status.code).to.eql('issued'));",
+                  "}",
+                  "}"
                 ]
               }
             }
@@ -420,7 +454,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Кредит найден', () => pm.response.to.have.status(200));"
+                  "{",
+                  "pm.test('Кредит найден', () => pm.response.to.have.status(200));",
+                  "}"
                 ]
               }
             }
@@ -469,8 +505,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "{",
                   "pm.test('Вход выполнен', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('token', pm.response.json().access_token);"
+                  "pm.collectionVariables.set('token', pm.response.json().access_token);",
+                  "}"
                 ]
               }
             }
@@ -698,7 +736,7 @@
                 "link"
               ]
             },
-            "description": "Привязать компанию к учётной записи нового клиента\n\nПодключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже\nподключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться\nбез доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель."
+            "description": "Привязать компанию к учётной записи нового клиента\n\nПодключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже\nподключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться\nбез доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель.\n\nВыполняйте под `new@demo.local` (вход — папка «Вход»): у пекарни компания уже подключена, и запрос вернёт `409`."
           },
           "response": []
         },
@@ -874,7 +912,7 @@
                 "replay"
               ]
             },
-            "description": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)"
+            "description": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)\n\nНужен токен аналитика (`analyst@demo.local`)."
           },
           "response": []
         },
@@ -885,7 +923,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"outcome\": \"approve\",\n  \"comment\": \"Комментарий к заявке\",\n  \"client_message\": \"string\",\n  \"amount\": 3000000,\n  \"term_months\": 12,\n  \"rate\": 1.0,\n  \"reasons\": [],\n  \"tips\": [],\n  \"task_kind\": \"document\",\n  \"task_title\": \"string\",\n  \"task_description\": \"string\"\n}",
+              "raw": "{\n  \"outcome\": \"request_info\",\n  \"comment\": \"Нужна выписка за 6 месяцев\",\n  \"task_kind\": \"document\",\n  \"task_title\": \"Выписка по счёту за 6 месяцев\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -904,7 +942,7 @@
                 "decision"
               ]
             },
-            "description": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки"
+            "description": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки\n\nНужен токен аналитика (`analyst@demo.local`) и заявка в статусе «Рассматривает специалист», например `vector@demo.local` с инвестиционным кредитом."
           },
           "response": []
         },
@@ -1182,7 +1220,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"max_dsr\": 0.1,\n  \"min_coverage\": 0.5\n}",
+              "raw": "{\n  \"max_dsr\": 0.45,\n  \"min_coverage\": 1.3\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1200,7 +1238,7 @@
                 "simulate"
               ]
             },
-            "description": "Что если изменить пороги политики: пересчёт сохранённых заявок без изменения данных"
+            "description": "Что если изменить пороги политики: пересчёт сохранённых заявок без изменения данных\n\nНужен токен аналитика (`analyst@demo.local`)."
           },
           "response": []
         }
