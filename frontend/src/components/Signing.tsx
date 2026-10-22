@@ -27,6 +27,7 @@ import {
   useConfirmSigning,
   useContract,
   useDeclineOffer,
+  useInterestOnly,
   useRequestSigningCode,
 } from '../api/hooks';
 import type { Application, SigningCode } from '../api/types';
@@ -245,6 +246,7 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
 /** Этап «Подписание»: договор, согласие и подпись кодом; после подписи — ожидание выдачи. */
 export function SigningCard({ app }: { app: Application }) {
   const contract = useContract(app.id, true);
+  const interestOnly = useInterestOnly(app.offer?.product_code);
   const [agreed, setAgreed] = useState(false);
   const [modalOpened, setModalOpened] = useState(false);
   const signed = app.offer?.status === 'signed';
@@ -270,7 +272,7 @@ export function SigningCard({ app }: { app: Application }) {
           <Stat label="Сумма" value={moneyShort(c.amount)} />
           <Stat label="Срок" value={months(c.term_months)} />
           <Stat label="Ставка" value={rate(c.rate)} />
-          <Stat label="Платёж в месяц" value={money(c.monthly_payment)} accent />
+          <Stat label={interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'} value={money(c.monthly_payment)} accent />
         </SimpleGrid>
       )}
 
@@ -323,6 +325,7 @@ export function SigningCard({ app }: { app: Application }) {
 /** Финал: деньги на счёте. */
 export function IssuedCard({ app }: { app: Application }) {
   const offer = app.offer;
+  const interestOnly = useInterestOnly(offer?.product_code);
   return (
     <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in hero" radius="lg">
       <Stack gap="sm" style={{ position: 'relative', zIndex: 1 }}>
@@ -336,8 +339,17 @@ export function IssuedCard({ app }: { app: Application }) {
         </Group>
         {offer && (
           <Text c="rgba(255,255,255,0.92)" fz="lg">
-            {money(offer.amount)} зачислены на расчётный счёт компании. Первый платёж — {money(offer.monthly_payment)}{' '}
-            через месяц.
+            {interestOnly ? (
+              <>
+                Лимит овердрафта {money(offer.amount)} открыт на расчётном счёте компании. Через месяц — первый
+                платёж: проценты {money(offer.monthly_payment)}; основной долг возвращается в конце срока.
+              </>
+            ) : (
+              <>
+                {money(offer.amount)} зачислены на расчётный счёт компании. Первый платёж — {money(offer.monthly_payment)}{' '}
+                через месяц.
+              </>
+            )}
           </Text>
         )}
         {app.loan_id && (

@@ -250,7 +250,7 @@ export function ApplicationPage() {
                 <Stat label="Сумма" value={moneyShort(terms.amount)} />
                 <Stat label="Срок" value={months(terms.term)} />
                 <Stat label="Ставка" value={terms.rate} />
-                <Stat label="Платёж" value={terms.payment} accent />
+                <Stat label={terms.interestOnly ? 'Проценты в месяц' : 'Платёж'} value={terms.payment} accent />
                 <Stat label="Цель" value={<Text fw={700}>{app.purpose_title}</Text>} />
               </SimpleGrid>
               {terms.asked && (

@@ -2,7 +2,7 @@ import { Anchor, Button, Card, Group, SimpleGrid, Skeleton, Stack, Table, Text, 
 import { IconArrowLeft, IconCalendarDue, IconCreditCard, IconPrinter } from '@tabler/icons-react';
 import { Link, useParams } from 'react-router';
 
-import { useLoan, useLoans } from '../api/hooks';
+import { useInterestOnly, useLoan, useLoans } from '../api/hooks';
 import { LoanCard } from '../components/LoanCard';
 import { EmptyState, Stat } from '../components/ui';
 import { date, money, months, rate } from '../lib/format';
@@ -45,6 +45,7 @@ export function LoanPage() {
   const { id } = useParams();
   const loan = useLoan(Number(id));
   const l = loan.data;
+  const interestOnly = useInterestOnly(l?.product_code);
 
   if (loan.isLoading) return <Skeleton h={480} radius="lg" />;
   if (!l) {
@@ -95,7 +96,7 @@ export function LoanPage() {
           <Stat label="Ставка" value={rate(l.rate)} />
           <Stat label="Срок" value={months(l.term_months)} />
           <Stat label="Остаток долга" value={money(l.balance)} />
-          <Stat label="Ежемесячный платёж" value={money(l.monthly_payment)} accent />
+          <Stat label={interestOnly ? 'Проценты в месяц' : 'Ежемесячный платёж'} value={money(l.monthly_payment)} accent />
           <Stat label="Переплата" value={money(overpayment)} />
           <Stat label="Всего к выплате" value={money(l.total_payments)} />
           <Stat label="Оплачено" value={`${l.paid_payments} из ${l.term_months}`} />

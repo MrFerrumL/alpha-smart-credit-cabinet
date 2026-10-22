@@ -54,6 +54,12 @@ export function useProducts() {
   return useQuery({ queryKey: keys.products, queryFn: () => api<Product[]>('/products'), staleTime: Infinity });
 }
 
+/** У овердрафта каждый месяц платятся только проценты, а основной долг возвращается в конце срока. */
+export function useInterestOnly(code: string | undefined): boolean {
+  const products = useProducts();
+  return products.data?.find((p) => p.code === code)?.repayment === 'interest_only';
+}
+
 export function useDemoAccounts() {
   return useQuery({ queryKey: ['demo-accounts'], queryFn: () => api<DemoAccount[]>('/auth/demo-accounts') });
 }

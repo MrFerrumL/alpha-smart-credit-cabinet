@@ -63,10 +63,14 @@ test('clean: контрпредложение другим продуктом �
   await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('150 тыс. ₽');
   await expect(compare.getByRole('row', { name: /Срок/ })).toContainText('12 месяцев');
   await expect(compare.getByRole('row', { name: /Ставка/ })).toContainText('26,9%');
+  // У овердрафта в месяц платятся только проценты, а лимит возвращается в конце срока.
+  await expect(compare.getByRole('row', { name: /Платёж в месяц/ })).toContainText('только проценты');
+  await expect(page.getByText(/возвращается в конце срока/)).toBeVisible();
   await expect(page.getByText(/подходит «Овердрафт»/)).toBeVisible();
   await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
   await sign(page);
   await expect(page.getByRole('heading', { name: 'Деньги на счёте!' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Лимит овердрафта/)).toBeVisible();
   // После выдачи заявка показывает условия кредита, а не то, что просили.
   const terms = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Условия кредита' }) });
   await expect(terms).toContainText('Овердрафт');
@@ -75,6 +79,7 @@ test('clean: контрпредложение другим продуктом �
   await page.getByRole('link', { name: 'Кредит и график платежей' }).click();
   await expect(page.getByRole('heading', { name: 'Овердрафт' })).toBeVisible();
   await expect(page.getByText('Сумма кредита').locator('..')).toContainText('150 000 ₽');
+  await expect(page.getByText('Проценты в месяц').locator('..')).toContainText('3 363 ₽');
   await expect(page.locator('table tbody tr')).toHaveCount(12);
 });
 

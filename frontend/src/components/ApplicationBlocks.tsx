@@ -30,7 +30,7 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAnswerTask, useProducts, useUploadDocument } from '../api/hooks';
+import { useAnswerTask, useInterestOnly, useProducts, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, Product, SourceCheck, UploadedDocument } from '../api/types';
 import { date, money, moneyShort, months, rate } from '../lib/format';
 import { OfferActions } from './Signing';
@@ -47,10 +47,11 @@ export function shownTerms(app: Application, products?: Product[]) {
   if (offer && (offer.status === 'accepted' || offer.status === 'signed')) {
     const sameProduct = offer.product_code === app.product.code;
     const asked = !sameProduct || offer.amount !== app.amount || offer.term_months !== app.term_months;
+    const product = products?.find((p) => p.code === offer.product_code);
     return {
       agreed: true,
-      product:
-        products?.find((p) => p.code === offer.product_code)?.name ?? (sameProduct ? app.product.name : offer.product_code),
+      product: product?.name ?? (sameProduct ? app.product.name : offer.product_code),
+      interestOnly: product?.repayment === 'interest_only',
       amount: offer.amount,
       term: offer.term_months,
       rate: rate(offer.rate),
@@ -61,6 +62,7 @@ export function shownTerms(app: Application, products?: Product[]) {
   return {
     agreed: false,
     product: app.product.name,
+    interestOnly: products?.find((p) => p.code === app.product.code)?.repayment === 'interest_only',
     amount: app.amount,
     term: app.term_months,
     rate: `от ${rate(app.product.rate)}`,
@@ -69,15 +71,29 @@ export function shownTerms(app: Application, products?: Product[]) {
   };
 }
 
+/** Овердрафт: в месяц платятся только проценты, а сам лимит возвращается в конце срока. */
+function InterestOnlyNote({ amount }: { amount: number }) {
+  return (
+    <Text fz="sm" c="dimmed" mt="sm">
+      Каждый месяц платятся только проценты (при полном использовании лимита), основной долг {money(amount)}{' '}
+      возвращается в конце срока.
+    </Text>
+  );
+}
+
 function OfferGrid({ app }: { app: Application }) {
   const offer = app.offer!;
+  const interestOnly = useInterestOnly(offer.product_code);
   return (
-    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg" mt="lg">
-      <Stat label="Сумма" value={moneyShort(offer.amount)} />
-      <Stat label="Срок" value={months(offer.term_months)} />
-      <Stat label="Ставка" value={rate(offer.rate)} />
-      <Stat label="Платёж в месяц" value={money(offer.monthly_payment)} accent />
-    </SimpleGrid>
+    <>
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg" mt="lg">
+        <Stat label="Сумма" value={moneyShort(offer.amount)} />
+        <Stat label="Срок" value={months(offer.term_months)} />
+        <Stat label="Ставка" value={rate(offer.rate)} />
+        <Stat label={interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'} value={money(offer.monthly_payment)} accent />
+      </SimpleGrid>
+      {interestOnly && <InterestOnlyNote amount={offer.amount} />}
+    </>
   );
 }
 
@@ -85,45 +101,51 @@ function CompareTable({ app }: { app: Application }) {
   const offer = app.offer!;
   const products = useProducts();
   const otherProduct = offer.product_code !== app.product.code;
-  const offeredName = products.data?.find((p) => p.code === offer.product_code)?.name ?? offer.product_code;
+  const offered = products.data?.find((p) => p.code === offer.product_code);
+  const offeredName = offered?.name ?? offer.product_code;
+  const interestOnly = offered?.repayment === 'interest_only';
+  const offeredPayment = interestOnly ? `${money(offer.monthly_payment)} — только проценты` : money(offer.monthly_payment);
   const rows: [string, string, string, boolean][] = [
     ...(otherProduct ? ([['Продукт', app.product.name, offeredName, true]] as [string, string, string, boolean][]) : []),
     ['Сумма', moneyShort(app.amount), moneyShort(offer.amount), app.amount !== offer.amount],
     ['Срок', months(app.term_months), months(offer.term_months), app.term_months !== offer.term_months],
     ['Ставка', `от ${rate(app.product.rate)}`, rate(offer.rate), app.product.rate !== offer.rate],
-    ['Платёж в месяц', `≈ ${money(app.monthly_payment)}`, money(offer.monthly_payment), app.monthly_payment !== offer.monthly_payment],
+    ['Платёж в месяц', `≈ ${money(app.monthly_payment)}`, offeredPayment, app.monthly_payment !== offer.monthly_payment],
   ];
   return (
-    <Table mt="lg" verticalSpacing="sm" withRowBorders>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th />
-          <Table.Th>Вы просили</Table.Th>
-          <Table.Th>Банк предлагает</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {rows.map(([label, asked, offered, changed]) => (
-          <Table.Tr key={label}>
-            <Table.Td>
-              <Text fz="sm" c="dimmed">
-                {label}
-              </Text>
-            </Table.Td>
-            <Table.Td>
-              <Text fz="sm" td={changed ? 'line-through' : undefined} c={changed ? 'dimmed' : undefined}>
-                {asked}
-              </Text>
-            </Table.Td>
-            <Table.Td>
-              <Text fz="sm" fw={800} c={changed ? 'brand.6' : undefined}>
-                {offered}
-              </Text>
-            </Table.Td>
+    <>
+      <Table mt="lg" verticalSpacing="sm" withRowBorders>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th />
+            <Table.Th>Вы просили</Table.Th>
+            <Table.Th>Банк предлагает</Table.Th>
           </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map(([label, asked, offered, changed]) => (
+            <Table.Tr key={label}>
+              <Table.Td>
+                <Text fz="sm" c="dimmed">
+                  {label}
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fz="sm" td={changed ? 'line-through' : undefined} c={changed ? 'dimmed' : undefined}>
+                  {asked}
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <Text fz="sm" fw={800} c={changed ? 'brand.6' : undefined}>
+                  {offered}
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
+      {interestOnly && <InterestOnlyNote amount={offer.amount} />}
+    </>
   );
 }
 
