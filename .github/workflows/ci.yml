@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests on PostgreSQL, OpenAPI drift
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.9-alpine
+        env:
+          POSTGRES_DB: credit
+          POSTGRES_USER: credit
+          POSTGRES_PASSWORD: credit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U credit -d credit"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://credit:credit@localhost:5432/credit
+      TEST_DATABASE_URL: postgresql+psycopg://credit:credit@localhost:5432/credit
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Migrations apply on PostgreSQL and match the models
+        run: |
+          alembic upgrade head
+          alembic check
+      - name: Tests (on the migrated PostgreSQL schema)
+        run: python -m pytest -q
+      - name: docs/openapi.json matches the code
+        run: python -m scripts.export_openapi --check
+      - name: State diagram in docs matches the code
+        run: python -m scripts.export_state_diagram --check
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  compose:
+    name: docker compose up from a clean checkout + smoke test
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: docker compose -p potok-ci build
+      - name: Start the stack and wait for healthchecks
+        run: docker compose -p potok-ci up -d --wait --wait-timeout 300
+      - name: Smoke test through nginx (demo login → application → approved)
+        run: python3 scripts/smoke.py http://localhost:8080 --timeout 180
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -p potok-ci logs --no-color --tail 200
+      - name: Stop and remove volumes
+        if: always()
+        run: docker compose -p potok-ci down -v
