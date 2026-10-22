@@ -71,20 +71,46 @@ jobs:
       - run: npm run build
 
   compose:
-    name: docker compose up from a clean checkout + smoke test
+    name: Clean start from README, smoke, request collection and browser scenarios
     runs-on: ubuntu-24.04
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - name: Build images
-        run: docker compose -p potok-ci build
-      - name: Start the stack and wait for healthchecks
-        run: docker compose -p potok-ci up -d --wait --wait-timeout 300
+      - name: Start the stack exactly as README says (build, wait for healthchecks)
+        run: docker compose up --build -d --wait --wait-timeout 300
       - name: Smoke test through nginx (demo login → application → approved)
         run: python3 scripts/smoke.py http://localhost:8080 --timeout 180
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install newman and Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Request collection end to end (newman)
+        working-directory: e2e
+        run: npm run api -- --env-var base_url=http://localhost:8080
+      - name: Demo personas from README in the browser (Playwright)
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_MOCKS_URL: http://localhost:8001
+        run: npm run ui
+      - name: Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
       - name: Logs on failure
         if: failure()
-        run: docker compose -p potok-ci logs --no-color --tail 200
+        run: docker compose logs --no-color --tail 200
       - name: Stop and remove volumes
         if: always()
-        run: docker compose -p potok-ci down -v
+        run: docker compose down -v

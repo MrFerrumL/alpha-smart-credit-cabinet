@@ -3,7 +3,7 @@
 Перечень сторонних библиотек, образов, сервисов, моделей и данных, используемых в проверяемой версии решения,
 и указание смоделированных интеграций. Версии и лицензии сверены с зафиксированными зависимостями
 (`backend/requirements.txt`, `mocks/requirements.txt`, `backend/requirements-dev.txt`,
-`frontend/package-lock.json`); лицензии Python-пакетов взяты из метаданных установленных пакетов, лицензии
+`frontend/package-lock.json`, `e2e/package-lock.json`); лицензии Python-пакетов взяты из метаданных установленных пакетов, лицензии
 npm-пакетов — из поля `license` в `frontend/package-lock.json`.
 
 **Платных сервисов, платных API, купленных данных и закрытых лицензий решение не использует.**
@@ -142,7 +142,7 @@ npm-пакетов — из поля `license` в `frontend/package-lock.json`.
 | baseline-browser-mapping | Apache-2.0 | Только сборка |
 | caniuse-lite | CC-BY-4.0 | Только сборка (данные о поддержке браузеров); в поставляемый образ не входит. Лицензия данных, требует указания авторства — это указание дано здесь |
 
-**Лицензий с сильным копилефтом (GPL, AGPL, SSPL) и пакетов без указанной лицензии среди npm-зависимостей нет.**
+**Лицензий с сильным копилефтом (GPL, AGPL, SSPL) и пакетов без указанной лицензии среди npm-зависимостей фронтенда нет.**
 Условия шрифта Manrope (OFL-1.1) допускают встраивание в приложение без изменений и без продажи самого шрифта.
 
 ## Инфраструктура (Docker-образы)
@@ -169,6 +169,23 @@ npm-пакетов — из поля `license` в `frontend/package-lock.json`.
 | actions/checkout | v4 | MIT | Получение кода в CI |
 | actions/setup-python | v5 | MIT | Установка Python в CI |
 | actions/setup-node | v4 | MIT | Установка Node.js в CI |
+| actions/upload-artifact | v4 | MIT | Отчёт Playwright при падении сквозных проверок |
+
+## Сквозные проверки (`e2e/`, только проверка, не входят в решение)
+
+Запускаются в CI против поднятого `docker compose` (и локально по желанию), в образы не попадают.
+
+| Компонент | Версия | Лицензия | Назначение |
+|---|---|---|---|
+| `@playwright/test` | 1.64.0 | Apache-2.0 | Сценарии демо-персон в браузере |
+| `newman` | 6.2.3 | Apache-2.0 | Прогон коллекции запросов `docs/postman_collection.json` |
+| Chromium (скачивается Playwright) | сборка 1248 для Playwright 1.64.0 | BSD-3-Clause и лицензии компонентов Chromium | Браузер для сценариев |
+
+Всего в `e2e/package-lock.json` 151 пакет. По полю `license`: MIT — 104, Apache-2.0 — 22, ISC — 11,
+BSD-3-Clause — 6, BSD-2-Clause — 2, `(AFL-2.1 OR BSD-3-Clause)` — 1 (json-schema), `(BSD-3-Clause OR GPL-2.0)` —
+1 (node-forge, используется на условиях BSD-3-Clause), WTFPL — 1 (stream-length), Unlicense — 1 (tweetnacl).
+У двух пакетов поле `license` в lock-файле не заполнено, по их файлам LICENSE оба под MIT: httpntlm 1.8.13 и
+stack-trace 0.0.9.
 
 ## Смоделированные интеграции
 
