@@ -29,10 +29,13 @@ test('buh: бухгалтер готовит заявку и передаёт е
   const id = await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 3_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Принять и перейти к договору' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Отказаться' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Передать руководителю на подпись' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Предложение передано руководителю' })).toBeVisible();
 
   const director = await session(browser, 'Ольга Северова');
+  await director.getByRole('button', { name: 'Уведомления' }).click();
+  await expect(director.getByText(/Елена Счётова просит подписать кредит по заявке №/).first()).toBeVisible();
   await director.goto(`/applications/${id}`);
   await director.getByRole('button', { name: 'Принять и перейти к договору' }).click();
   await sign(director);
@@ -58,6 +61,8 @@ test('clean: контрпредложение другим продуктом �
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Экспресс-оборот');
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Овердрафт');
   await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('150 тыс. ₽');
+  await expect(compare.getByRole('row', { name: /Срок/ })).toContainText('12 месяцев');
+  await expect(compare.getByRole('row', { name: /Ставка/ })).toContainText('26,9%');
   await expect(page.getByText(/подходит «Овердрафт»/)).toBeVisible();
   await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
   await sign(page);
@@ -65,6 +70,7 @@ test('clean: контрпредложение другим продуктом �
   await page.getByRole('link', { name: 'Кредит и график платежей' }).click();
   await expect(page.getByRole('heading', { name: 'Овердрафт' })).toBeVisible();
   await expect(page.getByText('Сумма кредита').locator('..')).toContainText('150 000 ₽');
+  await expect(page.locator('table tbody tr')).toHaveCount(12);
 });
 
 test('smirnova: банк просит выписку, специалист сверяет и одобряет', async ({ page, browser }) => {
@@ -148,7 +154,11 @@ test('start: отказ с причинами и подсказками', async 
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 2_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Почему банк отказал' })).toBeVisible();
   const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Почему банк отказал' }) });
-  await expect(card.locator('ul').first().locator('li')).toHaveCount(3);
+  const reasons = card.locator('ul').first().locator('li');
+  await expect(reasons).toHaveCount(3);
+  await expect(reasons.filter({ hasText: 'Были просрочки по кредитам больше двух месяцев' })).toHaveCount(1);
+  await expect(reasons.filter({ hasText: 'Сейчас есть просроченный платёж по кредиту' })).toHaveCount(1);
+  await expect(reasons.filter({ hasText: 'работает в убыток' })).toHaveCount(1);
   await expect(card).toContainText('Что можно сделать');
 });
 
@@ -169,6 +179,10 @@ test('new: подключение компании по ИНН из ЕГРЮЛ �
   await expect(page.getByText(/ООО «Новые горизонты» ·/)).toBeVisible();
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 2_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
+  await expect(page.getByText('Сумма', { exact: true }).first().locator('..')).toContainText('2 млн ₽');
+  await expect(page.getByText('Ставка', { exact: true }).first().locator('..')).toContainText('22,9%');
+  // Руководитель по ЕГРЮЛ получил право подписи: может принять предложение сам.
+  await expect(page.getByRole('button', { name: 'Принять и перейти к договору' })).toBeVisible();
 });
 
 test('лента новостей своя у каждой компании', async ({ browser }) => {
@@ -187,6 +201,12 @@ test('analyst: очередь и симулятор кредитной поли�
   await expect(page.locator('table tbody tr').first()).toBeVisible();
   await page.getByText('Кредитная политика', { exact: true }).first().click();
   await expect(page).toHaveURL(/\/policy$/);
+  // Жёстче порог нагрузки: 50% → 30%, часть решений по уже поданным заявкам меняется, сами заявки — нет.
+  const dsr = page.getByRole('slider').first();
+  await dsr.focus();
+  for (let i = 0; i < 4; i++) await dsr.press('ArrowLeft');
+  await expect(page.getByText('Максимальная нагрузка: 30% выручки на все кредитные платежи')).toBeVisible();
   await page.getByRole('button', { name: 'Рассчитать' }).click();
   await expect(page.getByText('Положительные решения').first()).toBeVisible();
+  await expect(page.getByText(/^Изменится решение: [1-9]\d* из \d+$/)).toBeVisible();
 });
