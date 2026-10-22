@@ -311,8 +311,12 @@ def cancel(db: Session, user: User, app: Application, comment: str | None) -> Ap
     offer_stage = app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value, Status.SIGNING.value)
     if offer_stage and user.role == "client" and user.company_id == app.company_id and not user_may_sign(user, app):
         raise Forbidden("Отказаться от одобренного кредита может только руководитель компании")
-    if "cancel" not in allowed_actions(app, user, latest_offer(db, app)):
+    offer = latest_offer(db, app)
+    if "cancel" not in allowed_actions(app, user, offer):
         raise Conflict("Эту заявку уже нельзя отозвать")
+    if offer is not None and offer.status in ("active", "accepted"):
+        # Отзыв заявки с предложением банка равен отказу от него: договор больше не ждёт подписи.
+        offer.status = "declined"
     apply_transition(db, app, Status.CANCELLED, Actor.CLIENT, actor_id=user.id, event="cancelled", comment=comment)
     db.commit()
     return app

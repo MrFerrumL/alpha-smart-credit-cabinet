@@ -157,13 +157,26 @@ def test_code_cannot_be_used_after_cancel_or_expiry(client, mocks):
     )
     assert expired.status_code == 409
     fresh = client.post(f"/api/applications/{app_id}/signing/code", headers=headers).json()
-    assert client.post(f"/api/applications/{app_id}/cancel", headers=headers).status_code == 200
+    cancelled = client.post(f"/api/applications/{app_id}/cancel", headers=headers)
+    assert cancelled.status_code == 200
+    # Отзыв равен отказу от предложения: договор больше не ждёт подписи и по прямой ссылке не открывается.
+    assert cancelled.json()["offer"]["status"] == "declined" and cancelled.json()["allowed_actions"] == []
+    assert client.get(f"/api/applications/{app_id}/contract", headers=headers).status_code == 404
     after_cancel = client.post(
         f"/api/applications/{app_id}/signing/confirm",
         json={"challenge_id": fresh["challenge_id"], "code": fresh["demo_code"]},
         headers=headers,
     )
     assert after_cancel.status_code == 409
+    assert client.post(f"/api/applications/{app_id}/signing/code", headers=headers).status_code == 409
+
+
+def test_cancel_at_offer_stage_declines_the_offer(client, mocks):
+    app_id, headers = approved(client, mocks)
+    cancelled = client.post(f"/api/applications/{app_id}/cancel", headers=headers)
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"]["code"] == "cancelled" and cancelled.json()["offer"]["status"] == "declined"
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).status_code == 409
 
 
 def test_consumed_code_is_rejected_even_if_the_offer_still_waits(client, mocks):

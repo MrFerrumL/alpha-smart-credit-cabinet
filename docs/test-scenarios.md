@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 139 автотестов на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 140 автотестов на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -541,7 +541,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-29 | Попытки исчерпаны | Три неверных кода подряд, затем верный | 409; заявка остаётся в `signing` | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
 | NEG-30 | Новый код заменяет старый | Запросить второй код и ввести первый | 409 | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
 | NEG-31 | Повторное использование кода | Подтвердить уже использованный код | 409 | `test_signing.py::test_full_path_from_offer_to_loan`, `test_signing.py::test_consumed_code_is_rejected_even_if_the_offer_still_waits` |
-| NEG-32 | Код после отзыва или истечения срока | Подтвердить код с истёкшим сроком; подтвердить код после отзыва заявки | 409 | `test_signing.py::test_code_cannot_be_used_after_cancel_or_expiry` |
+| NEG-32 | Код после отзыва или истечения срока | Подтвердить код с истёкшим сроком; подтвердить код после отзыва заявки | 409; после отзыва предложение `declined`, договор — 404, новый код — 409 | `test_signing.py::test_code_cannot_be_used_after_cancel_or_expiry`, `test_signing.py::test_cancel_at_offer_stage_declines_the_offer` |
 | NEG-33 | Код привязан к условиям | Условия договора изменились после выдачи кода | 422, оферта остаётся «принятой» | `test_signing.py::test_code_is_bound_to_the_contract_terms` |
 | NEG-34 | Лимит кодов | Запросить код 6 раз подряд (лимит 5 в час на заявку) | первые пять — 200, шестой — 429 «Новый код можно запросить через 60 мин.»; через час после первых кодов — снова 200 | `test_signing.py::test_signing_codes_are_rate_limited` |
 | NEG-35 | Отзыв после подписи | `POST …/cancel` после подписи | 409 (в `allowed_actions` нет `cancel`) | `test_signing.py::test_full_path_from_offer_to_loan` |
@@ -586,7 +586,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 139 тестов; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 140 тестов; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 
