@@ -58,3 +58,20 @@ def test_mermaid_diagram_lists_every_transition():
     diagram = to_mermaid()
     for src, dst in TRANSITIONS:
         assert f"{src.value} --> {dst.value}" in diagram
+
+
+def test_every_recorded_event_has_a_readable_title():
+    # Событие без смены статуса показывается в истории по EVENT_TITLES — иначе клиент увидит служебный код.
+    import ast
+    from pathlib import Path
+
+    from app.services.applications import EVENT_TITLES
+
+    names = set()
+    for path in (Path(__file__).parents[1] / "app").rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            func = getattr(node, "func", None)
+            if isinstance(node, ast.Call) and getattr(func, "id", getattr(func, "attr", None)) == "record_event":
+                assert isinstance(node.args[2], ast.Constant), f"{path}:{node.lineno}"
+                names.add(node.args[2].value)
+    assert names and names <= set(EVENT_TITLES), names - set(EVENT_TITLES)
