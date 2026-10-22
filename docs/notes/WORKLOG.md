@@ -249,16 +249,12 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-23.10: all features through E are on `feat/e2e-completion` (`4f23678`, CI green; README rewritten).
-Submission preparation, agreed with Kirill:
-1. `docs/test-scenarios.md` (E2E per persona with exact inputs, negative and role scenarios), `docs/api.md`
-   (roles, errors, idempotency, SSE, examples), THIRD_PARTY_NOTICES checked against
-   `backend/requirements.txt`, `mocks/requirements.txt`, `frontend/package-lock.json` — subagents, separate
-   files.
-2. RELEASE.md (version identifier, how to verify), CHANGELOG.md, README section "Проверка за 10 минут".
-3. Commit, push, wait for green CI (`gh run watch`).
-4. Full review of the branch against the case (`.notes/research/case/case.txt`) and the submission
-   checklist (`.notes/research/submission-checklist.md`); fix findings.
-5. Propose the `rc` tag and commands; tag/merge only on Kirill's go-ahead; remind about `alfa-hack-2026`
-   access if the repository is private.
-Open question to Kirill: how jurors can try generated INNs in the UI.
+25.10: submission preparation done on `feat/e2e-completion` (`48a6be1` submission docs, `8b38a57` final
+review fixes, version 1.0.0; CI green on both). The branch is 19 commits ahead of `origin/main` and
+fast-forwards onto it.
+Waiting for Kirill:
+1. Go-ahead for the `v1.0.0-rc1` tag on the branch head, then merge to `main` (fast-forward) and `v1.0.0`.
+2. Read access for `alfa-hack-2026` (repository is private).
+3. Whether to delete the stale remote branch `confident-mccarthy-bv4por`.
+4. Whether `docs/notes/` stays in the release tree.
+5. How jurors can try generated INNs in the UI (option: extra demo users that head those companies).
