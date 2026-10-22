@@ -1,0 +1,59 @@
+# Запуск всего решения одной командой:  docker compose up --build
+# Кабинет: http://localhost:8080   API и Swagger: http://localhost:8000/api/docs
+# Эмулятор внешних источников: http://localhost:8001/docs
+
+name: alpha-credit
+
+services:
+  db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-credit}
+      POSTGRES_USER: ${POSTGRES_USER:-credit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credit}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mocks:
+    build: ./mocks
+    environment:
+      MOCK_LATENCY_MS: ${MOCK_LATENCY_MS:-400}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-credit}:${POSTGRES_PASSWORD:-credit}@db:5432/${POSTGRES_DB:-credit}
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-in-production}
+      MOCKS_URL: http://mocks:8001
+      DEMO_MODE: ${DEMO_MODE:-true}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-demo}
+    depends_on:
+      db:
+        condition: service_healthy
+      mocks:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

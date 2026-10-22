@@ -1,0 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Окружение и секреты
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store

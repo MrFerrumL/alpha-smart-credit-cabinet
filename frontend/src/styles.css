@@ -1,0 +1,127 @@
+:root {
+  --app-bg: #f2f3f6;
+  --app-ink: #111827;
+  --app-muted: #6b7280;
+  --app-line: #e7e8ec;
+  --brand-gradient: linear-gradient(135deg, #ef3124 0%, #ff6a3d 55%, #ff9a5a 100%);
+}
+
+html,
+body {
+  background: var(--app-bg);
+  color: var(--app-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--brand-gradient);
+  color: #fff;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  right: 90px;
+  bottom: -120px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+/* На широком экране левая панель входа стоит на месте, пока прокручивается список учёток. */
+@media (min-width: 62em) {
+  .login-hero {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    align-self: start;
+  }
+}
+
+.clickable {
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.08);
+}
+
+.selectable {
+  border: 2px solid transparent;
+}
+
+.selectable[data-selected='true'] {
+  border-color: var(--mantine-color-brand-6);
+  background: var(--mantine-color-brand-0);
+}
+
+.best-offer {
+  border: 2px solid var(--mantine-color-brand-6);
+}
+
+.nav-link {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.stage-line {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--app-line);
+  margin-top: 14px;
+}
+
+.stage-line[data-done='true'] {
+  background: var(--mantine-color-brand-6);
+}
+
+.fade-in {
+  animation: fade-in 260ms ease both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 49, 36, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 49, 36, 0);
+  }
+}

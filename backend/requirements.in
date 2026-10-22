@@ -1,0 +1,9 @@
+# Top-level runtime dependencies. Exact versions are pinned in requirements.txt (pip freeze).
+fastapi
+uvicorn[standard]
+sqlalchemy>=2.0
+alembic
+pydantic-settings
+pyjwt
+httpx
+psycopg[binary]
