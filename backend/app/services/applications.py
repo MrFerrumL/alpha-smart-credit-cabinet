@@ -6,7 +6,15 @@ from sqlalchemy.orm import Session
 from app.db import get_by_id
 from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
-from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
+from app.domain.statuses import (
+    SIGNED_AWAITING_CONDITIONS,
+    SIGNED_AWAITING_ISSUE,
+    STATUS_INFO,
+    Actor,
+    Status,
+    StatusInfo,
+    can_transition,
+)
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
 from app.models import Application, ApplicationEvent, ClientTask, Loan, Offer, User, utcnow
 from app.pipeline.queue import enqueue
@@ -50,8 +58,8 @@ EVENT_TITLES = {
 }
 
 
-def status_out(status: Status) -> StatusInfoOut:
-    info = STATUS_INFO[status]
+def status_out(status: Status, info: StatusInfo | None = None) -> StatusInfoOut:
+    info = info or STATUS_INFO[status]
     return StatusInfoOut(
         code=status.value,
         title=info.title,
@@ -124,10 +132,14 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     awaiting = offer is not None and offer.status == "active" and handed_off(db, app, offer)
     if awaiting and "handoff_to_signer" in actions:
         actions.remove("handoff_to_signer")
+    signed_info = None
+    if app.status == Status.SIGNING.value and offer is not None and offer.status == "signed":
+        # В подписании открытыми бывают только условия выдачи — по ним же окно договора выбирает свой текст.
+        signed_info = SIGNED_AWAITING_CONDITIONS if open_tasks else SIGNED_AWAITING_ISSUE
     return ApplicationOut(
         id=app.id,
         number=app.number,
-        status=status_out(Status(app.status)),
+        status=status_out(Status(app.status), signed_info),
         product=ProductRef(code=product.code, name=product.name, rate=float(product.rate)),
         purpose=Purpose(app.purpose),
         purpose_title=PURPOSES[Purpose(app.purpose)].title,

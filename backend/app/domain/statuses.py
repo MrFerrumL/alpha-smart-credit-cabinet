@@ -129,6 +129,19 @@ STATUS_INFO: dict[Status, StatusInfo] = {
     ),
 }
 
+# После подписи договора статус остаётся «Подписание договора» до выдачи, но подсказка меняется: подписывать
+# уже нечего — клиент закрывает условия выдачи или ждёт перевода денег.
+SIGNED_AWAITING_CONDITIONS = StatusInfo(
+    "Подписание договора",
+    "Договор подписан. Закройте условия выдачи ниже — после этого банк переведёт деньги.",
+    5, "warning", action_required=True,
+)
+SIGNED_AWAITING_ISSUE = StatusInfo(
+    "Подписание договора",
+    "Договор подписан. Переводим деньги на расчётный счёт компании — от вас ничего не нужно.",
+    5, "warning",
+)
+
 _C, _A, _SYS = Actor.CLIENT, Actor.ANALYST, Actor.SYSTEM
 
 _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {

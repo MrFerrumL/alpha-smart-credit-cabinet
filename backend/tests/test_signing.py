@@ -43,6 +43,7 @@ def test_full_path_from_offer_to_loan(client, mocks):
     accepted = client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).json()
     assert accepted["status"]["code"] == "signing"
     assert "sign" in accepted["allowed_actions"]
+    assert "подпишите" in accepted["status"]["hint"]
 
     contract = client.get(f"/api/applications/{app_id}/contract", headers=headers).json()
     assert contract["number"] == f"КД-{utcnow().year}-{app_id:06d}"
@@ -285,7 +286,9 @@ def test_long_bank_system_outage_delays_issue_but_never_strands_it(client, mocks
     sign(client, app_id, headers)
     mocks.post("/admin/faults", json={"source": "abs", "mode": "error"})
     run_pipeline(mocks)
-    assert get(client, app_id, headers)["status"]["code"] == "signing"
+    status = get(client, app_id, headers)["status"]
+    assert status["code"] == "signing"
+    assert "подпишите" not in status["hint"] and status["action_required"] is False  # клиенту ничего делать не нужно
     assert client.get(f"/api/applications/{app_id}/contract", headers=headers).json()["issue_delayed"] is True
     mocks.post("/admin/faults", json={"source": "abs", "mode": "none"})
     with SessionLocal() as db:  # следующая попытка выдачи по расписанию — не ждём паузу в тесте
@@ -417,7 +420,13 @@ def test_secured_loan_is_issued_only_after_issue_conditions_are_closed(client, m
     run_pipeline(mocks)
     app = get(client, app_id, headers)
     assert app["status"]["code"] == "signing" and app["open_tasks"] == 2  # подписан, но денег нет
-    assert {"answer_tasks", "confirm_guarantee"} <= set(app["allowed_actions"])
+    assert {"answer_tasks", "confirm_guarantee"} <= set(app["allowed_actions"]) and "sign" not in app["allowed_actions"]
+    # Подсказка статуса больше не просит подписать: подписывать нечего, нужно закрыть условия выдачи.
+    hint = app["status"]["hint"]
+    assert app["status"]["title"] == "Подписание договора" and app["status"]["action_required"] is True
+    assert "условия выдачи" in hint and "подпишите" not in hint
+    listed = next(a for a in client.get("/api/applications", headers=headers).json() if a["id"] == app_id)
+    assert listed["status"]["hint"] == hint
     assert "issue_waiting_conditions" in [e["event"] for e in client.get(
         f"/api/applications/{app_id}/events", headers=headers).json()]
 
