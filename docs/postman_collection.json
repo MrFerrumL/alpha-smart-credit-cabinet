@@ -1045,6 +1045,28 @@
           "response": []
         },
         {
+          "name": "Передать предложение руководителю на подпись (для сотрудника без права подписи)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/offer/handoff",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "offer",
+                "handoff"
+              ]
+            },
+            "description": "Передать предложение руководителю на подпись (для сотрудника без права подписи)"
+          },
+          "response": []
+        },
+        {
           "name": "Отказаться от предложения",
           "request": {
             "method": "POST",

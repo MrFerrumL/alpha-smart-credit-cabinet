@@ -90,6 +90,8 @@ def link(
             )
             db.add(company)
             db.flush()
+        # Руководитель берётся из свежей выписки ЕГРЮЛ: сменился директор — меняется и право подписи.
+        company.director = card.director
         user.company_id = company.id
         user.can_sign = authority.can_sign
         if connected:

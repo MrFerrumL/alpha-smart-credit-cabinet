@@ -23,9 +23,9 @@ verification, docs, a full review of the branch against the case and the release
 | P0.1 | Accept offer → sign with in-app code → issue with repayment schedule (B1) | landed on `main` (`990e5d5`), merged `b327da1`; gap fixes `5228957`; request collection generator `d44b901` |
 | P0.2 | Analyst card and decision (B2, B9) | done `5807d2e`, verified in the browser on a local stack |
 | P1.8 | Demo resilience: live queue (N2), per-tab token (N4), worker (N5), ports (B12) | done `35dd827` |
-| P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | implemented, under review |
-| P1.6 | Offer expiry (B7), unanswered bank requests | implemented with P1.5, under review |
-| B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | pending |
+| P1.5 | Credit policy: coverage by profit (N6), current overdue (N7), statement-only revenue (B8), one rate in DSR (N8), other-product counter-offer (N3) | done `17165e4` |
+| P1.6 | Offer expiry (B7), unanswered bank requests | done `17165e4` |
+| B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done (this commit), reviewed |
 | G | Risk profiles in the mock generator (N10) together with B5 | pending |
 | News | Feed from `news.json`, tagged by OKVED, product, status | pending |
 | A | Decision rule trace, policy version, replay | pending |

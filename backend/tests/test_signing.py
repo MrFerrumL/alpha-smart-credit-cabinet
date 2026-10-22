@@ -325,3 +325,62 @@ def test_unanswered_bank_request_closes_the_application(client, mocks):
         assert expire_requests(db) == 1
         assert db.get(Application, app_id).status == "expired"
     assert get(client, app_id, headers)["open_tasks"] == 0
+
+
+def test_accountant_hands_offer_to_the_director(client, mocks):
+    app_id, owner = approved(client, mocks)
+    accountant = auth(client, "buh@demo.local")
+    app = get(client, app_id, accountant)
+    assert "handoff_to_signer" in app["allowed_actions"] and app["awaiting_signer"] is False
+    handed = client.post(f"/api/applications/{app_id}/offer/handoff", headers=accountant)
+    assert handed.status_code == 200, handed.text
+    assert handed.json()["awaiting_signer"] is True
+    assert "handoff_to_signer" not in handed.json()["allowed_actions"]
+    assert client.post(f"/api/applications/{app_id}/offer/handoff", headers=accountant).status_code == 409
+
+    notes = client.get("/api/notifications", headers=owner).json()
+    request = next(n for n in notes if n["kind"] == "signature_requested")
+    assert "Елена Счётова" in request["title"]
+    events = client.get(f"/api/applications/{app_id}/events", headers=owner).json()
+    handoff = next(e for e in events if e["event"] == "handed_to_signer")
+    assert handoff["actor_name"] == "Елена Счётова"
+    assert client.post(f"/api/applications/{app_id}/offer/handoff", headers=owner).status_code == 409  # сам может
+
+    accepted = client.post(f"/api/applications/{app_id}/offer/accept", headers=owner)
+    assert accepted.status_code == 200
+    sign(client, app_id, owner)
+    with SessionLocal() as db:
+        from app.models import ApplicationEvent
+
+        signed = db.query(ApplicationEvent).filter_by(application_id=app_id, event="contract_signed").one()
+        assert signed.payload["signer_authority"] == "руководитель по ЕГРЮЛ: Северова Ольга Николаевна"
+
+
+def test_signing_right_is_checked_against_the_registry_director(client, mocks):
+    from app.models import Company, User
+    from app.security import hash_password
+
+    app_id, _ = approved(client, mocks)
+    with SessionLocal() as db:  # у пользователя есть флаг права подписи, но по ЕГРЮЛ руководитель другой
+        company = db.scalar(select(Company).where(Company.inn == "0077010019"))
+        db.add(User(email="ex-director@demo.local", full_name="Пётр Бывший", position="Бывший директор",
+                    role="client", can_sign=True, password_hash=hash_password("demo1234"), company_id=company.id))
+        db.commit()
+    token = client.post("/api/auth/login", json={"email": "ex-director@demo.local", "password": "demo1234"}).json()
+    former = {"Authorization": f"Bearer {token['access_token']}"}
+    response = client.post(f"/api/applications/{app_id}/offer/accept", headers=former)
+    assert response.status_code == 403
+    assert "Северова Ольга Николаевна" in response.json()["detail"]
+    actions = get(client, app_id, former)["allowed_actions"]
+    assert "handoff_to_signer" in actions and not {"accept_offer", "decline_offer", "cancel"} & set(actions)
+    assert client.post(f"/api/applications/{app_id}/offer/decline", headers=former).status_code == 403
+    assert client.post(f"/api/applications/{app_id}/cancel", headers=former).status_code == 403
+    assert client.post(f"/api/applications/{app_id}/offer/handoff", headers=former).status_code == 200
+    with SessionLocal() as db:
+        from app.models import Notification
+
+        ex = db.scalar(select(User).where(User.email == "ex-director@demo.local"))
+        olga = db.scalar(select(User).where(User.email == "bakery@demo.local"))
+        requests = db.scalars(select(Notification).where(Notification.kind == "signature_requested")).all()
+        assert any(n.user_id == olga.id for n in requests)
+        assert not any(n.user_id == ex.id for n in requests)  # бывшему директору запрос не уходит

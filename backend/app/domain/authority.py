@@ -46,3 +46,8 @@ def authority_of(profile_name: str, egrul: dict) -> Authority:
         is_head=same_person(profile_name, director),
         is_founder=any(same_person(profile_name, name) for name in founders),
     )
+
+
+def may_sign(full_name: str, can_sign: bool, registry_director: str | None) -> bool:
+    """Право подписи из профиля действует, только пока человек — руководитель по данным ЕГРЮЛ."""
+    return can_sign and (not registry_director or same_person(full_name, registry_director))

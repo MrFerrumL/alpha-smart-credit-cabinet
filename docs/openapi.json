@@ -1310,6 +1310,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/offer/handoff": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Передать предложение руководителю на подпись (для сотрудника без права подписи)",
+        "operationId": "handoff_offer_api_applications__application_id__offer_handoff_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/offer/decline": {
       "post": {
         "tags": [
@@ -1972,6 +2019,12 @@
               }
             ],
             "title": "Loan Id"
+          },
+          "awaiting_signer": {
+            "type": "boolean",
+            "title": "Awaiting Signer",
+            "description": "Предложение передано руководителю на подпись",
+            "default": false
           },
           "created_at": {
             "type": "string",

@@ -263,6 +263,18 @@ def accept_offer(
     return svc.to_out(app, user, db)
 
 
+@router.post(
+    "/{application_id}/offer/handoff",
+    response_model=ApplicationOut,
+    summary="Передать предложение руководителю на подпись (для сотрудника без права подписи)",
+)
+def handoff_offer(
+    application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    return svc.to_out(signing_svc.handoff_to_signer(db, user, app), user, db)
+
+
 @router.post("/{application_id}/offer/decline", response_model=ApplicationOut, summary="Отказаться от предложения")
 def decline_offer(
     application_id: int,

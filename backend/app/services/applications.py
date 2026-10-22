@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
 from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
@@ -34,6 +35,7 @@ EVENT_TITLES = {
     "task_answered": "Вы ответили на запрос банка",
     "document_uploaded": "Загружен документ «{filename}»",
     "pipeline_failed": "Сбой обработки — заявку проверит специалист",
+    "handed_to_signer": "Предложение передано руководителю на подпись",
     "offer_accepted": "Предложение принято — договор готов к подписанию",
     "offer_declined": "Вы отказались от предложения банка",
     "signing_code_sent": "Код для подписи отправлен в уведомления",
@@ -56,24 +58,41 @@ def status_out(status: Status) -> StatusInfoOut:
     )
 
 
+def user_may_sign(user: User, app: Application) -> bool:
+    return may_sign(user.full_name, user.can_sign, app.company.director)
+
+
+def handed_off(db: Session, app: Application, offer: Offer) -> bool:
+    """Предложение уже передано руководителю на подпись."""
+    events = db.scalars(
+        select(ApplicationEvent.payload).where(
+            ApplicationEvent.application_id == app.id, ApplicationEvent.event == "handed_to_signer"
+        )
+    )
+    return any((payload or {}).get("offer_id") == offer.id for payload in events)
+
+
 def allowed_actions(app: Application, user: User, offer: Offer | None = None) -> list[str]:
     status = Status(app.status)
     actions: list[str] = []
     if user.role == "client" and user.company_id == app.company_id:
+        signer = user_may_sign(user, app)
         signed = offer is not None and offer.status == "signed"
         if status == Status.DRAFT:
             actions += ["edit", "submit"]
         if status == Status.NEEDS_INFO:
             actions.append("answer_tasks")
         if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
-            if user.can_sign:
+            if signer:
                 actions += ["accept_offer", "decline_offer"]
-        if status == Status.SIGNING and user.can_sign and not signed:
+            else:
+                actions.append("handoff_to_signer")
+        if status == Status.SIGNING and signer and not signed:
             actions.append("sign")
         # Когда у заявки есть предложение банка, отзыв равен отказу от кредита — это решение руководителя.
         # После подписи договора отозвать заявку нельзя — деньги уже в пути.
         offer_stage = status in (Status.APPROVED, Status.COUNTER_OFFER, Status.SIGNING)
-        if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed and (user.can_sign or not offer_stage):
+        if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed and (signer or not offer_stage):
             actions.append("cancel")
     if user.role == "analyst" and status == Status.MANUAL_REVIEW:
         actions.append("decide")
@@ -93,6 +112,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     product = PRODUCTS[app.product_code]
     offer = latest_offer(db, app)
     decision = app.decision or None
+    actions = allowed_actions(app, user, offer)
+    awaiting = offer is not None and offer.status == "active" and handed_off(db, app, offer)
+    if awaiting and "handoff_to_signer" in actions:
+        actions.remove("handoff_to_signer")
     return ApplicationOut(
         id=app.id,
         number=app.number,
@@ -105,7 +128,8 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         monthly_payment=int(monthly_payment(app.amount, product.rate, app.term_months, product.repayment)),
         form=ApplicationForm.model_validate(app.form or {}),
         company=CompanyRef(id=app.company.id, inn=app.company.inn, name=app.company.short_name),
-        allowed_actions=allowed_actions(app, user, offer),
+        allowed_actions=actions,
+        awaiting_signer=awaiting,
         offer=OfferOut.model_validate(offer) if offer else None,
         decision=DecisionOut(
             outcome=decision["outcome"], reasons=decision.get("reasons", []), tips=decision.get("tips", [])
@@ -265,7 +289,7 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
 
 def cancel(db: Session, user: User, app: Application, comment: str | None) -> Application:
     offer_stage = app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value, Status.SIGNING.value)
-    if offer_stage and user.role == "client" and user.company_id == app.company_id and not user.can_sign:
+    if offer_stage and user.role == "client" and user.company_id == app.company_id and not user_may_sign(user, app):
         raise Forbidden("Отказаться от одобренного кредита может только руководитель компании")
     if "cancel" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Эту заявку уже нельзя отозвать")

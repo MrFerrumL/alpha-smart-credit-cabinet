@@ -266,6 +266,9 @@ function useApplicationMutation<TVars>(id: number, request: (vars: TVars) => Pro
 export const useAcceptOffer = (id: number) =>
   useApplicationMutation<void>(id, () => api<Application>(`/applications/${id}/offer/accept`, { method: 'POST' }));
 
+export const useHandoffOffer = (id: number) =>
+  useApplicationMutation<void>(id, () => api<Application>(`/applications/${id}/offer/handoff`, { method: 'POST' }));
+
 export const useDeclineOffer = (id: number) =>
   useApplicationMutation<{ comment?: string }>(id, ({ comment }) =>
     api<Application>(`/applications/${id}/offer/decline`, { method: 'POST', json: { comment: comment ?? null } }),

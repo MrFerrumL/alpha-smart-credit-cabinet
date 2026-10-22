@@ -23,6 +23,7 @@ import { Link } from 'react-router';
 import { ApiError } from '../api/client';
 import {
   useAcceptOffer,
+  useHandoffOffer,
   useConfirmSigning,
   useContract,
   useDeclineOffer,
@@ -38,6 +39,8 @@ export function OfferActions({ app }: { app: Application }) {
   const { user } = useAuth();
   const accept = useAcceptOffer(app.id);
   const decline = useDeclineOffer(app.id);
+  const handoff = useHandoffOffer(app.id);
+  const canHandoff = app.allowed_actions.includes('handoff_to_signer');
   const [declineOpened, setDeclineOpened] = useState(false);
   const [comment, setComment] = useState('');
   const canAccept = app.allowed_actions.includes('accept_offer');
@@ -49,9 +52,19 @@ export function OfferActions({ app }: { app: Application }) {
     <>
       {!canAccept && (
         <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
-          Принять предложение, отказаться от него и подписать договор может только руководитель компании
-          {user?.company?.director ? ` — ${user.company.director}` : ''}.
+          {app.awaiting_signer
+            ? `Предложение передано руководителю${user?.company?.director ? ` — ${user.company.director}` : ''}: он получил уведомление в кабинете и подпишет договор.`
+            : `Принять предложение, отказаться от него и подписать договор может только руководитель компании${
+                user?.company?.director ? ` — ${user.company.director}` : ''
+              }. Передайте ему предложение — он получит уведомление в кабинете.`}
         </Alert>
+      )}
+      {canHandoff && (
+        <Group mt="md">
+          <Button size="md" variant="light" rightSection={<IconArrowRight size={18} />} loading={handoff.isPending} onClick={() => handoff.mutate()}>
+            Передать руководителю на подпись
+          </Button>
+        </Group>
       )}
       <Group mt="xl">
         {canAccept && (

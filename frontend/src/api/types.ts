@@ -158,6 +158,7 @@ export type ApplicationAction =
   | 'answer_tasks'
   | 'accept_offer'
   | 'decline_offer'
+  | 'handoff_to_signer'
   | 'sign'
   | 'decide';
 
@@ -178,6 +179,7 @@ export interface Application {
   decision: Decision | null;
   open_tasks: number;
   loan_id: number | null;
+  awaiting_signer: boolean;
   created_at: string;
   updated_at: string;
   submitted_at: string | null;
@@ -327,7 +329,7 @@ export interface LoanDetail extends Loan {
 
 export interface AppNotification {
   id: number;
-  kind: 'status' | 'signing_code' | 'info';
+  kind: 'status' | 'signing_code' | 'signature_requested' | 'info';
   title: string;
   body: string | null;
   link: string | null;

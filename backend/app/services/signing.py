@@ -17,12 +17,14 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, schedule
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, TooManyRequests
 from app.models import Application, ApplicationEvent, Offer, SigningChallenge, User, utcnow
 from app.pipeline.queue import enqueue
 from app.schemas import ContractOut, ContractSection, ScheduleRowOut
+from app.services.applications import handed_off, user_may_sign
 from app.services.notifications import notify_users
 from app.services.state_machine import apply_transition, record_event
 
@@ -45,9 +47,53 @@ def _require_owner(app: Application, user: User) -> None:
         raise NotFound("Заявка не найдена")
 
 
-def _require_signer(user: User) -> None:
+def _require_signer(user: User, app: Application | None = None) -> None:
+    """Подписывает руководитель с правом подписи. Полномочия сверяются с руководителем компании по ЕГРЮЛ:
+    сменился директор в реестре — прежний сотрудник подписать уже не сможет."""
     if not user.can_sign:
         raise Forbidden("Принять предложение и подписать договор может только руководитель компании")
+    director = app.company.director if app is not None else None
+    if not may_sign(user.full_name, user.can_sign, director):
+        raise Forbidden(
+            f"По данным ЕГРЮЛ руководитель компании — {director}. Подписать договор от её имени может только он"
+        )
+
+
+def handoff_to_signer(db: Session, user: User, app: Application) -> Application:
+    """Сотрудник без права подписи (бухгалтер) передаёт предложение руководителю: тому приходит уведомление
+    в кабинете, а в журнале остаётся, кто подготовил и кому передал."""
+    _require_owner(app, user)
+    if user_may_sign(user, app):
+        raise Conflict("Вы можете принять предложение сами")
+    if app.status not in OFFER_STATUSES:
+        raise Conflict("Сейчас нет предложения, которое нужно подписать")
+    offer = _require_offer(db, app, "active")
+    db.refresh(offer, with_for_update=True)  # два одновременных запроса не пришлют руководителю два уведомления
+    if handed_off(db, app, offer):
+        raise Conflict("Предложение уже передано руководителю")
+    director = app.company.director
+    signers = [
+        s
+        for s in db.scalars(select(User).where(User.company_id == app.company_id, User.can_sign.is_(True)))
+        if may_sign(s.full_name, s.can_sign, director)
+    ]
+    if not signers:
+        raise Conflict("В кабинете компании пока нет руководителя с правом подписи — он может подключиться по ИНН")
+    notify_users(
+        db,
+        [s.id for s in signers],
+        kind="signature_requested",
+        title=f"{user.full_name} просит подписать кредит по заявке № {app.number}",
+        body=f"{int(offer.amount):,} ₽ на {offer.term_months} мес. Проверьте условия и примите предложение.".replace(",", " "),
+        link=f"/applications/{app.id}",
+    )
+    record_event(
+        db, app, "handed_to_signer", Actor.CLIENT, actor_id=user.id,
+        payload={"offer_id": offer.id, "signers": [s.full_name for s in signers]},
+    )
+    app.updated_at = utcnow()
+    db.commit()
+    return app
 
 
 def _require_offer(db: Session, app: Application, *statuses: str) -> Offer:
@@ -83,7 +129,7 @@ def terms_hash(app: Application, offer: Offer) -> str:
 
 def accept_offer(db: Session, user: User, app: Application) -> Offer:
     _require_owner(app, user)
-    _require_signer(user)
+    _require_signer(user, app)
     if app.status not in OFFER_STATUSES:
         raise Conflict("Принять можно только действующее предложение банка")
     offer = _require_offer(db, app, "active")
@@ -107,7 +153,7 @@ def accept_offer(db: Session, user: User, app: Application) -> Offer:
 def decline_offer(db: Session, user: User, app: Application, comment: str | None) -> Application:
     _require_owner(app, user)
     # Отказ от одобренного кредита — решение руководителя, как и согласие.
-    _require_signer(user)
+    _require_signer(user, app)
     if app.status not in OFFER_STATUSES:
         raise Conflict("Сейчас нет предложения, от которого можно отказаться")
     offer = _require_offer(db, app, "active")
@@ -131,7 +177,7 @@ def _hash(challenge_salt: str, terms: str, code: str) -> str:
 def request_code(db: Session, user: User, app: Application) -> tuple[SigningChallenge, str]:
     """Создаёт одноразовый код. Возвращает его один раз — интерфейс показывает код в окне подписания."""
     _require_owner(app, user)
-    _require_signer(user)
+    _require_signer(user, app)
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
     offer = _require_offer(db, app, "accepted")
@@ -178,7 +224,7 @@ def request_code(db: Session, user: User, app: Application) -> tuple[SigningChal
 
 def confirm(db: Session, user: User, app: Application, challenge_id: int, code: str) -> Offer:
     _require_owner(app, user)
-    _require_signer(user)
+    _require_signer(user, app)
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
     offer = _require_offer(db, app, "accepted")
@@ -225,7 +271,12 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
     app.updated_at = utcnow()
     record_event(
         db, app, "contract_signed", Actor.CLIENT, actor_id=user.id,
-        payload={"contract_number": offer.contract_number, "challenge_id": challenge.id, "terms_hash": terms},
+        payload={
+            "contract_number": offer.contract_number,
+            "challenge_id": challenge.id,
+            "terms_hash": terms,
+            "signer_authority": f"руководитель по ЕГРЮЛ: {app.company.director}" if app.company.director else None,
+        },
     )
     # Выдачу выполняет конвейер: запрос в АБС с ретраями и идемпотентностью по номеру договора.
     enqueue(db, "pipeline.disburse", app.id, delay_s=get_settings().pipeline_step_delay_s)

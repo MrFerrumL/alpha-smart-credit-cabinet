@@ -275,6 +275,7 @@ class ApplicationOut(BaseModel):
     decision: DecisionOut | None
     open_tasks: int
     loan_id: int | None
+    awaiting_signer: bool = Field(default=False, description="Предложение передано руководителю на подпись")
     created_at: UtcDatetime
     updated_at: UtcDatetime
     submitted_at: UtcDatetime | None
