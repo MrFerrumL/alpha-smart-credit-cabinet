@@ -259,8 +259,8 @@ def test_replay_reports_a_difference_when_the_policy_changed(client, mocks, monk
     app_id, headers = submit(client, "bakery@demo.local")
     run_pipeline(mocks)
     analyst = auth(client, "analyst@demo.local")
-    monkeypatch.setattr(policy, "MAX_DSR", 0.05)  # как если бы риск-менеджер ужесточил политику
-    replay = client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).json()
+    with policy.policy_override(max_dsr=0.05):  # как если бы риск-менеджер ужесточил политику
+        replay = client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).json()
     assert replay["matches"] is False
     assert any(d.startswith("исход") for d in replay["differences"])
     assert get(client, app_id, headers)["status"]["code"] == "approved"  # заявка не изменилась

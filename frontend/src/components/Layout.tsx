@@ -4,6 +4,7 @@ import {
   IconCreditCard,
   IconFileText,
   IconHome2,
+  IconAdjustments,
   IconListCheck,
   IconLogout,
   IconSparkles,
@@ -29,7 +30,10 @@ const CLIENT_NAV: NavItem[] = [
   { to: '/loans', label: 'Мои кредиты', icon: IconCreditCard },
 ];
 
-const ANALYST_NAV: NavItem[] = [{ to: '/queue', label: 'Очередь заявок', icon: IconListCheck }];
+const ANALYST_NAV: NavItem[] = [
+  { to: '/queue', label: 'Очередь заявок', icon: IconListCheck },
+  { to: '/policy', label: 'Кредитная политика', icon: IconAdjustments },
+];
 
 export function Layout() {
   const { user, signOut } = useAuth();

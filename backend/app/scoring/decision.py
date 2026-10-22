@@ -4,7 +4,9 @@
 информации, передача специалисту или отказ — с объяснением для клиента в каждом случае.
 """
 
-from dataclasses import dataclass, field
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 from app.domain.products import CATALOGUE, Product, Purpose, monthly_payment
@@ -15,6 +17,31 @@ from app.scoring.rules import ScoreResult
 POLICY_VERSION = "policy-1.1"
 MAX_DSR = 0.5  # все кредитные платежи — не больше половины выручки
 MIN_DSCR = 1.2  # прибыль по данным ФНС покрывает платёж по новому кредиту с запасом 20 %
+
+
+@dataclass(frozen=True)
+class PolicyParams:
+    """Пороги политики, которые риск-менеджер может проверить в симуляторе. По умолчанию — действующие."""
+
+    max_dsr: float = MAX_DSR
+    min_dscr: float = MIN_DSCR
+
+
+_params: ContextVar[PolicyParams] = ContextVar("policy_params", default=PolicyParams())
+
+
+def policy() -> PolicyParams:
+    return _params.get()
+
+
+@contextmanager
+def policy_override(**changes):
+    """Временно подменяет пороги политики — только для расчёта «что если», заявки не меняются."""
+    token = _params.set(replace(policy(), **changes))
+    try:
+        yield
+    finally:
+        _params.reset(token)
 STEP = 50_000  # шаг, с которым подбирается сумма
 
 RATE_PREMIUM = {"A": Decimal("0"), "B": Decimal("2"), "C": Decimal("4"), "D": Decimal("6"), "E": Decimal("8")}
@@ -144,12 +171,12 @@ def affordability_problem(f: Features, product: Product, amount: int, term: int,
     dsr = debt_service_ratio(f, product, amount, term, rate)
     if dsr is None:
         return "Выручка компании не подтверждена"
-    if dsr > MAX_DSR:
-        return f"Платежи по кредитам составят {dsr:.0%} выручки при лимите политики {MAX_DSR:.0%}"
+    if dsr > policy().max_dsr:
+        return f"Платежи по кредитам составят {dsr:.0%} выручки при лимите политики {policy().max_dsr:.0%}"
     dscr = coverage(f, product, amount, term, rate)
-    if dscr is not None and dscr < MIN_DSCR:
+    if dscr is not None and dscr < policy().min_dscr:
         return (
-            f"Прибыль по данным ФНС покрывает платёж только в {dscr:.2f} раза при минимуме {MIN_DSCR:.1f}".replace(".", ",")
+            f"Прибыль по данным ФНС покрывает платёж только в {dscr:.2f} раза при минимуме {policy().min_dscr:.1f}".replace(".", ",")
         )
     profit = monthly_profit(f)
     if profit is not None and profit <= 0:
@@ -200,8 +227,8 @@ def fit_terms(f: Features, s: ScoreResult, product: Product, amount: int, term: 
             )
         else:
             explanation.append(
-                "Сумма уменьшена, чтобы платежи по кредитам не превышали половины выручки, а прибыль бизнеса "
-                "покрывала ежемесячный платёж с запасом"
+                f"Сумма уменьшена, чтобы платежи по кредитам не превышали {policy().max_dsr:.0%} выручки, "
+                "а прибыль бизнеса покрывала ежемесячный платёж с запасом"
             )
     if new_term != term:
         explanation.append(f"Срок увеличен до {new_term} мес., чтобы ежемесячный платёж был посильным")
@@ -357,13 +384,13 @@ def explain(f: Features, s: ScoreResult, product: Product, amount: int, term: in
     # Срок приводится к рамкам продукта так же, как при подборе условий.
     term = min(max(term, product.min_term), product.max_term)
     dsr = debt_service_ratio(f, product, amount, term, rate)
-    step("Нагрузка при запрошенных условиях", f"{dsr:.1%} выручки при лимите {MAX_DSR:.0%}".replace(".", ","),
-         "pass" if dsr is not None and dsr <= MAX_DSR else "fail")
+    step("Нагрузка при запрошенных условиях", f"{dsr:.1%} выручки при лимите {policy().max_dsr:.0%}".replace(".", ","),
+         "pass" if dsr is not None and dsr <= policy().max_dsr else "fail")
     dscr = coverage(f, product, amount, term, rate)
     step("Покрытие платежа прибылью",
          "нет данных о расходах в ФНС" if dscr is None
-         else f"×{dscr:.2f} при минимуме ×{MIN_DSCR:.1f}".replace(".", ","),
-         "info" if dscr is None else ("pass" if dscr >= MIN_DSCR else "fail"))
+         else f"×{dscr:.2f} при минимуме ×{policy().min_dscr:.1f}".replace(".", ","),
+         "info" if dscr is None else ("pass" if dscr >= policy().min_dscr else "fail"))
 
     if d.outcome == Status.MANUAL_REVIEW:
         step("Повод для специалиста", d.reasons[0] if d.reasons else "—", "triggered")

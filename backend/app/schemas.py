@@ -560,3 +560,33 @@ class ReplayOut(BaseModel):
     replayed: dict
     policy_version_stored: str | None
     policy_version_current: str
+
+
+# --- Симулятор политики --------------------------------------------------------------------
+
+
+class PolicySimulationIn(BaseModel):
+    max_dsr: float = Field(ge=0.1, le=0.9, description="Максимальная доля выручки на все кредитные платежи")
+    min_coverage: float = Field(ge=0.5, le=3.0, description="Минимальное покрытие нового платежа прибылью")
+
+
+class SimulatedApplicationOut(BaseModel):
+    id: int
+    number: str | None
+    company: str
+    product: str
+    status: str = Field(description="Текущий статус заявки — для сравнения с пересчётом")
+    requested: int
+    outcome_now: str
+    outcome_then: str
+    offered_now: int
+    offered_then: int
+
+
+class PolicySimulationOut(BaseModel):
+    """Что изменилось бы при других порогах политики. Заявки не меняются."""
+
+    applications: int = Field(description="Сколько заявок с сохранённой оценкой пересчитано")
+    current: dict
+    simulated: dict
+    changed: list[SimulatedApplicationOut]

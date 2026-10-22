@@ -428,3 +428,29 @@ export interface FeedItem {
   reasons: string[];
   is_synthetic: boolean;
 }
+
+export interface PolicySummary {
+  max_dsr: number;
+  min_coverage: number;
+  counts: Record<string, number>;
+  approval_share: number;
+  offered_total: number;
+}
+
+export interface PolicySimulation {
+  applications: number;
+  current: PolicySummary;
+  simulated: PolicySummary;
+  changed: {
+    id: number;
+    number: string | null;
+    company: string;
+    product: string;
+    status: string;
+    requested: number;
+    outcome_now: string;
+    outcome_then: string;
+    offered_now: number;
+    offered_then: number;
+  }[];
+}

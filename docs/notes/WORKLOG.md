@@ -28,8 +28,8 @@ verification, docs, a full review of the branch against the case and the release
 | B | Accountant prepares → director signs, authority checked against ЕГРЮЛ | done `385d3c6`, reviewed |
 | G | Risk profiles in the mock generator (N10) together with B5 | done `9834575` |
 | News | Feed from `news.json`, tagged by OKVED, product, status | done `189b0dd` |
-| A | Decision rule trace, policy version, replay | done (this commit), reviewed |
-| C | Policy impact simulator | pending |
+| A | Decision rule trace, policy version, replay | done `f81366e` |
+| C | Policy impact simulator | done (this commit), reviewed |
 | E | Product-dependent conditions before issue | pending |
 | Rel | 25.10: e2e verification, full review, `rc` tag | pending |
 

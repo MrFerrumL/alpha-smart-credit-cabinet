@@ -13,6 +13,7 @@ import { HomePage } from './pages/HomePage';
 import { LoanPage, LoansPage } from './pages/LoansPage';
 import { LoginPage } from './pages/LoginPage';
 import { MatchPage } from './pages/MatchPage';
+import { PolicyPage } from './pages/PolicyPage';
 import { QueuePage } from './pages/QueuePage';
 
 function RequireAuth() {
@@ -76,6 +77,7 @@ function AppRoutes() {
           </Route>
           <Route element={<RequireRole role="analyst" />}>
             <Route path="queue" element={<QueuePage />} />
+            <Route path="policy" element={<PolicyPage />} />
           </Route>
           <Route path="applications/:id" element={<ApplicationPage />} />
           <Route path="applications/:id/contract" element={<ContractPage />} />

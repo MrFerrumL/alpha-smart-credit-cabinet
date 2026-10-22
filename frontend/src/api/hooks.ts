@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  PolicySimulation,
   Replay,
   FeedItem,
   AnalystDecision,
@@ -362,4 +363,11 @@ export function useFeed(version: string) {
 
 export function useReplay(id: number) {
   return useMutation({ mutationFn: () => api<Replay>(`/applications/${id}/assessment/replay`, { method: 'POST' }) });
+}
+
+export function usePolicySimulation() {
+  return useMutation({
+    mutationFn: (body: { max_dsr: number; min_coverage: number }) =>
+      api<PolicySimulation>('/policy/simulate', { method: 'POST', json: body }),
+  });
 }

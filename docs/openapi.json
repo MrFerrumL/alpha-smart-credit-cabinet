@@ -1774,6 +1774,52 @@
           }
         ]
       }
+    },
+    "/api/policy/simulate": {
+      "post": {
+        "tags": [
+          "Политика"
+        ],
+        "summary": "Что если изменить пороги политики: пересчёт сохранённых заявок без изменения данных",
+        "operationId": "simulate_policy_api_policy_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicySimulationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicySimulationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4046,6 +4092,65 @@
         ],
         "title": "OfferOut"
       },
+      "PolicySimulationIn": {
+        "properties": {
+          "max_dsr": {
+            "type": "number",
+            "maximum": 0.9,
+            "minimum": 0.1,
+            "title": "Max Dsr",
+            "description": "Максимальная доля выручки на все кредитные платежи"
+          },
+          "min_coverage": {
+            "type": "number",
+            "maximum": 3.0,
+            "minimum": 0.5,
+            "title": "Min Coverage",
+            "description": "Минимальное покрытие нового платежа прибылью"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_dsr",
+          "min_coverage"
+        ],
+        "title": "PolicySimulationIn"
+      },
+      "PolicySimulationOut": {
+        "properties": {
+          "applications": {
+            "type": "integer",
+            "title": "Applications",
+            "description": "Сколько заявок с сохранённой оценкой пересчитано"
+          },
+          "current": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Current"
+          },
+          "simulated": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Simulated"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/SimulatedApplicationOut"
+            },
+            "type": "array",
+            "title": "Changed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applications",
+          "current",
+          "simulated",
+          "changed"
+        ],
+        "title": "PolicySimulationOut",
+        "description": "Что изменилось бы при других порогах политики. Заявки не меняются."
+      },
       "ProductOut": {
         "properties": {
           "code": {
@@ -4412,6 +4517,72 @@
           "demo_code"
         ],
         "title": "SigningCodeOut"
+      },
+      "SimulatedApplicationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "product": {
+            "type": "string",
+            "title": "Product"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Текущий статус заявки — для сравнения с пересчётом"
+          },
+          "requested": {
+            "type": "integer",
+            "title": "Requested"
+          },
+          "outcome_now": {
+            "type": "string",
+            "title": "Outcome Now"
+          },
+          "outcome_then": {
+            "type": "string",
+            "title": "Outcome Then"
+          },
+          "offered_now": {
+            "type": "integer",
+            "title": "Offered Now"
+          },
+          "offered_then": {
+            "type": "integer",
+            "title": "Offered Then"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "company",
+          "product",
+          "status",
+          "requested",
+          "outcome_now",
+          "outcome_then",
+          "offered_now",
+          "offered_then"
+        ],
+        "title": "SimulatedApplicationOut"
       },
       "StatusInfoOut": {
         "properties": {
@@ -4797,6 +4968,10 @@
     {
       "name": "Лента",
       "description": "Персональная лента новостей (синтетические новости)"
+    },
+    {
+      "name": "Политика",
+      "description": "Симулятор изменения порогов кредитной политики"
     },
     {
       "name": "Уведомления",
