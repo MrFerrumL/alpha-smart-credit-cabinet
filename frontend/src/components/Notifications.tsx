@@ -47,8 +47,8 @@ export function NotificationsBell() {
     const fresh = query.data.filter((n) => n.id > (seen.current ?? 0) && !n.read_at).reverse();
     for (const n of fresh) {
       toasts.show({
-        title: n.title,
-        message: n.body ?? '',
+        title: clean(n.title),
+        message: n.body ? clean(n.body) : '',
         color: n.kind === 'signing_code' ? 'brand' : 'blue',
         icon: n.kind === 'signing_code' ? <IconKey size={16} /> : <IconBell size={16} />,
         autoClose: n.kind === 'signing_code' ? 15_000 : 6_000,
