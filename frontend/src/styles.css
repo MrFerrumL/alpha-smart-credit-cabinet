@@ -735,7 +735,35 @@ body {
 
 .potok-amount-slider {
   flex: 1;
-  margin: 0 8px;
+}
+
+/* Сумма и срок — две равные колонки; на телефоне — одна под другой. */
+.potok-amount-term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 24px;
+  align-items: start;
+}
+
+/* «₽» и «мес.» — с одинаковым отступом от правого края поля. */
+.potok-field .mantine-Input-section[data-position='right']:has(.potok-unit) {
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.potok-term-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-term-fixed b {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--potok-ink);
 }
 
 .potok-ticks {
@@ -826,15 +854,16 @@ body {
 }
 
 /* Быстрые значения срока — под слайдером вместо подписей шкалы; выбранное — графитом. */
+/* Быстрые значения — сетка 3×2 равной ширины, на любом экране. */
 .potok-presets {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin: 12px 0 0;
 }
 
 .potok-preset {
-  min-width: 64px;
+  min-width: 0;
   height: 36px;
   padding: 0 12px;
   border: 0;
@@ -860,17 +889,16 @@ body {
 }
 
 @media (max-width: 720px) {
-  .potok-presets {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .potok-preset {
     height: 44px;
   }
 
   .potok-amount-row {
     height: 44px;
+  }
+
+  .potok-amount-term {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

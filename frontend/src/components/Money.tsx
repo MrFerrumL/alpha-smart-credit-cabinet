@@ -1,7 +1,7 @@
 import { NumberInput, Slider, type NumberInputProps } from '@mantine/core';
 import type { ReactNode } from 'react';
 
-import { NBSP, moneyShort, monthsShort } from '../lib/format';
+import { NBSP, moneyShort, months, monthsShort } from '../lib/format';
 
 /** Поле суммы: разряды через узкий пробел, «₽» в поле справа, без стрелок, на телефоне — цифровая клавиатура. */
 export function MoneyInput({ unit = '₽', ...props }: NumberInputProps & { unit?: ReactNode }) {
@@ -96,6 +96,60 @@ export function AmountControl({
         <span>{moneyShort(max)}</span>
       </div>
       {description && <div className="potok-amount-hint">{description}</div>}
+    </div>
+  );
+}
+
+/**
+ * Сумма и срок рядом — один блок для подбора и анкеты: две равные колонки, у суммы слайдер на всю колонку, у срока
+ * быстрые значения сеткой 3×2; «₽» и «мес.» стоят с одинаковым отступом от края поля. Срок без выбора (лимит
+ * открывается на фиксированный срок) показан текстом.
+ */
+export function AmountTermFields({
+  amount,
+  onAmount,
+  term,
+  onTerm,
+  minAmount,
+  maxAmount,
+  minTerm,
+  maxTerm,
+  amountError,
+  termError,
+}: {
+  amount: number;
+  onAmount: (v: number) => void;
+  term: number;
+  onTerm: (v: number) => void;
+  minAmount: number;
+  maxAmount: number;
+  minTerm: number;
+  maxTerm: number;
+  amountError?: ReactNode;
+  termError?: ReactNode;
+}) {
+  return (
+    <div className="potok-amount-term">
+      <AmountControl
+        label="Сумма"
+        sliderLabel="Ползунок суммы"
+        value={amount}
+        onChange={onAmount}
+        min={minAmount}
+        max={maxAmount}
+        step={50_000}
+        scale="log"
+        error={amountError}
+      />
+      {minTerm === maxTerm ? (
+        <div className="potok-term-fixed">
+          <span>Срок</span>
+          <b>{monthsShort(minTerm)}</b>
+          <span>Лимит открывается на {months(minTerm)} и продлевается</span>
+        </div>
+      ) : (
+        <TermControl value={term} onChange={onTerm} min={minTerm} max={maxTerm} step={minTerm >= 12 ? 6 : 3} error={termError} />
+      )}
     </div>
   );
 }

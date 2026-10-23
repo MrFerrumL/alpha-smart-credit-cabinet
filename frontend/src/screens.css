@@ -339,20 +339,8 @@
 }
 
 .potok-home-terms {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 16px;
   margin: 6px 0 20px;
   color: var(--potok-steel);
-}
-
-.potok-home-terms span {
-  white-space: nowrap;
-}
-
-.potok-home-terms span + span {
-  padding-left: 16px;
-  border-left: 1px solid var(--potok-line-strong);
 }
 
 .potok-promo {
@@ -859,11 +847,6 @@
   margin-top: 16px;
 }
 
-/* В узкой колонке быстрые значения срока — по три в ряд; первая строка совпадает со строкой слайдера суммы. */
-.potok-match-sliders .potok-presets {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
 
 .potok-side-amount {
   margin-top: 12px;
@@ -894,8 +877,19 @@
   color: var(--potok-steel);
 }
 
+.potok-offers {
+  margin-top: 16px;
+}
+
 .potok-offer {
-  padding: 28px 32px;
+  padding: 20px 24px 24px;
+  border-radius: var(--r-16);
+  background: var(--potok-canvas);
+}
+
+.potok-terms-prose {
+  margin: 6px 0 0;
+  color: var(--potok-steel);
 }
 
 .potok-offer-top {
@@ -925,27 +919,13 @@
   color: var(--potok-steel);
 }
 
-.potok-terms-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  margin-top: 6px;
-  color: var(--potok-steel);
-}
-
-.potok-terms-line span {
-  white-space: nowrap;
-}
-
-.potok-terms-line span + span {
-  padding-left: 16px;
-  border-left: 1px solid var(--potok-line-strong);
-}
-
 .potok-offer-row {
   display: flex;
   align-items: center;
   gap: 20px;
+  padding: 16px 0 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--potok-line);
 }
 
 .potok-offer-row-main {
@@ -1787,7 +1767,7 @@ a.potok-note-title:hover {
 
   .potok-match {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'q' 'side' 'r';
+    grid-template-areas: 'q' 'r' 'side';
     gap: 16px;
   }
 
@@ -1796,29 +1776,10 @@ a.potok-note-title:hover {
   }
 
   /* Свёрнутый расчёт: сумма, срок и платёж; «что понадобится» и «что дальше» — по кнопке. */
-  .potok-match-side[data-open='false'] .potok-side-more,
-  .potok-match-side[data-open='false'] .potok-side-extra {
+  .potok-match-side[data-open='false'] {
     display: none;
   }
 
-  /* На телефоне части условий переносятся — разделитель-черта в начале строки не нужен, только запятые. */
-  .potok-terms-line span + span,
-  .potok-home-terms span + span {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  /* Запятая — в конце части, а не в начале следующей: перенос строки после неё. */
-  .potok-terms-line span:not(:last-child)::after,
-  .potok-home-terms span:not(:last-child)::after {
-    content: ',';
-    margin-right: 0.3em;
-  }
-
-  .potok-terms-line,
-  .potok-home-terms {
-    gap: 0;
-  }
 
   .potok-match-sliders {
     grid-template-columns: minmax(0, 1fr);
@@ -1826,7 +1787,7 @@ a.potok-note-title:hover {
   }
 
   .potok-offer {
-    padding: 20px 16px;
+    padding: 16px;
   }
 
   .potok-offer-pay {

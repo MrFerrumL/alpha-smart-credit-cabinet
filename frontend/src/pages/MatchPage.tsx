@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router';
 import { useCalculation, useCreateApplication, useMatch, useMeta, useProducts } from '../api/hooks';
 import type { Product, ProductMatch, Purpose } from '../api/types';
 import { ChoiceList } from '../components/Choice';
-import { AmountControl, TermControl } from '../components/Money';
+import { AmountTermFields } from '../components/Money';
 import { Empty } from '../components/States';
 import { Chip } from '../components/Status';
 import { Stat } from '../components/ui';
@@ -61,21 +61,12 @@ function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose
 
 const interestOnly = (p: Product) => p.repayment === 'interest_only';
 
-/** Сумма, срок и ставка варианта — одной строкой из неразрывных частей; в узкой строке варианта — простым текстом. */
-function Terms({ match, plain = false }: { match: ProductMatch; plain?: boolean }) {
-  if (plain) {
-    return (
-      <Text fz="sm" c="dimmed" data-testid="match-terms">
-        {interestOnly(match.product) ? 'Лимит' : 'Сумма'} {money(match.amount)} на {months(match.term_months)}, от {rate(match.product.rate)} годовых
-      </Text>
-    );
-  }
+/** Сумма, срок и ставка варианта — одной фразой, без разделителей, которые переносятся в начало строки. */
+function Terms({ match }: { match: ProductMatch }) {
   return (
-    <div className="potok-terms-line" data-testid="match-terms">
-      <span>{interestOnly(match.product) ? `лимит ${money(match.amount)}` : money(match.amount)}</span>
-      <span>на {months(match.term_months)}</span>
-      <span>от {rate(match.product.rate)} годовых</span>
-    </div>
+    <p className="potok-terms-prose" data-testid="match-terms">
+      {interestOnly(match.product) ? 'Лимит' : 'Сумма'} {money(match.amount)} на {months(match.term_months)}, от{NBSP}{rate(match.product.rate)} годовых
+    </p>
   );
 }
 
@@ -83,7 +74,7 @@ function Terms({ match, plain = false }: { match: ProductMatch; plain?: boolean 
 function BestOffer({ match, loading, onApply, onSchedule }: { match: ProductMatch; loading: boolean; onApply: () => void; onSchedule: () => void }) {
   const p = match.product;
   return (
-    <article className="potok-panel potok-offer" aria-label={p.name}>
+    <article className="potok-offer" aria-label={p.name}>
       <div className="potok-offer-top">
         {match.fit === 'partial' ? <Chip tone="warning">Подходит с оговорками</Chip> : <Chip tone="success">Лучше всего подходит</Chip>}
         <span className="potok-muted-text">
@@ -124,12 +115,12 @@ function BestOffer({ match, loading, onApply, onSchedule }: { match: ProductMatc
 function OtherOffer({ match, loading, onApply }: { match: ProductMatch; loading: boolean; onApply: () => void }) {
   const p = match.product;
   return (
-    <article className="potok-panel potok-offer-row" aria-label={p.name}>
+    <article className="potok-offer-row" aria-label={p.name}>
       <div className="potok-offer-row-main">
         <Title order={3} className="potok-offer-row-name">
           {nb(p.name)}
         </Title>
-        <Terms match={match} plain />
+        <Terms match={match} />
         {match.fit === 'partial' && match.caveats[0] && <Text fz="sm" c="dimmed" mt={4}>{match.caveats[0]}</Text>}
       </div>
       <div className="potok-offer-row-pay">
@@ -147,12 +138,13 @@ function OtherOffer({ match, loading, onApply }: { match: ProductMatch; loading:
  * «Ваш расчёт» — пересчитывается по ответам: платёж и переплата по лучшему варианту, что понадобится и что
  * дальше. На 1440 — липкая правая колонка, на телефоне — свёрнутая строка под вопросами.
  */
-function Estimate({ best, amount, term, purposeChosen }: { best?: ProductMatch; amount: number; term: number; purposeChosen: boolean }) {
-  const [open, setOpen] = useState(false);
+function Estimate({ best, amount, term, purposeChosen, open }: { best?: ProductMatch; amount: number; term: number; purposeChosen: boolean; open: boolean }) {
   const p = best?.product;
-  const overpay = best ? (p && interestOnly(p) ? best.monthly_payment * best.term_months : best.monthly_payment * best.term_months - best.amount) : null;
+  // Переплата — из расчёта банка (тот же график, что в договоре), а не «платёж × срок».
+  const calc = useCalculation(p?.code ?? null, best?.amount ?? 0, best?.term_months ?? 0);
+  const overpay = calc.data?.overpayment ?? null;
   return (
-    <aside className="potok-match-side" data-open={open} aria-label="Ваш расчёт">
+    <aside className="potok-match-side" data-open={open} aria-label="Ваш расчёт" id="estimate">
       <section className="potok-panel">
         <Title order={3}>Ваш расчёт</Title>
         <div className="potok-side-amount">{moneyBig(best?.amount ?? amount)}</div>
@@ -168,7 +160,7 @@ function Estimate({ best, amount, term, purposeChosen }: { best?: ProductMatch; 
             </div>
             <div className="potok-side-extra">
               <dt>{interestOnly(p) ? 'Проценты за срок' : 'Переплата'}</dt>
-              <dd>≈{NBSP}{money(overpay ?? 0)}</dd>
+              <dd>{overpay !== null ? `≈${NBSP}${money(overpay)}` : '…'}</dd>
             </div>
             <div className="potok-side-extra">
               <dt>Ставка</dt>
@@ -184,9 +176,6 @@ function Estimate({ best, amount, term, purposeChosen }: { best?: ProductMatch; 
             {purposeChosen ? 'Считаем платёж…' : 'Выберите цель — посчитаем платёж по подходящему продукту.'}
           </Text>
         )}
-        <Button variant="subtle" px={0} mt="sm" className="potok-phone-only" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          {open ? 'Свернуть' : 'Подробнее о расчёте'}
-        </Button>
         <div className="potok-side-more">
           {best && (
             <Text fz="sm" c="dimmed" mt="md">
@@ -241,6 +230,7 @@ export function MatchPage() {
   const create = useCreateApplication();
   const [applying, setApplying] = useState<string | null>(null);
   const [scheduleFor, setScheduleFor] = useState<ProductMatch | null>(null);
+  const [estimateOpen, setEstimateOpen] = useState(false);
   // Шкалы — по всему каталогу продуктов: от самого маленького минимума до самого большого максимума.
   const all = products.data ?? [];
   const minAmount = all.length ? Math.min(...all.map((p) => p.min_amount)) : 100_000;
@@ -290,38 +280,35 @@ export function MatchPage() {
           <Title order={3} mt={32}>
             2. Сколько и на какой срок
           </Title>
-          <div className="potok-match-sliders">
-            <AmountControl
-              label="Сумма"
-              sliderLabel="Ползунок суммы"
-              value={amount}
-              onChange={setAmount}
-              min={minAmount}
-              max={maxAmount}
-              step={100_000}
-              scale="log"
+          <div style={{ marginTop: 16 }}>
+            {/* До выбора продукта — общий диапазон каталога; подбор сам подгонит срок под продукт. */}
+            <AmountTermFields
+              amount={amount}
+              onAmount={setAmount}
+              term={term}
+              onTerm={setTerm}
+              minAmount={minAmount}
+              maxAmount={maxAmount}
+              minTerm={minTerm}
+              maxTerm={maxTerm}
             />
-            {/* До выбора продукта — общий диапазон всех продуктов; подбор сам подгонит срок под продукт. */}
-            <TermControl value={term} onChange={setTerm} min={minTerm} max={maxTerm} step={3} />
           </div>
         </section>
 
-        <Estimate best={best} amount={amount} term={term} purposeChosen={!!purpose} />
+        <Estimate best={best} amount={amount} term={term} purposeChosen={!!purpose} open={estimateOpen} />
 
-        <section className="potok-match-r" aria-label="Подходящие варианты">
+        <section className="potok-panel potok-match-r" aria-label="Подходящие варианты">
           <Title order={3}>3. Подходящие варианты</Title>
           {!purpose ? (
-            <div className="potok-panel" style={{ marginTop: 12 }}>
-              <Empty
-                art="list"
-                title="Выберите цель кредита"
-                text="Покажем продукты, которые подходят под вашу задачу, и сразу посчитаем платёж."
-              />
-            </div>
+            <Empty
+              art="list"
+              title="Выберите цель кредита"
+              text="Покажем продукты, которые подходят под вашу задачу, и сразу посчитаем платёж."
+            />
           ) : match.isLoading ? (
-            <Skeleton h={320} radius={24} mt={12} />
+            <Skeleton h={320} radius={16} mt={16} />
           ) : (
-            <Stack gap="md" mt={12}>
+            <div className="potok-offers">
               {best && (
                 <BestOffer
                   match={best}
@@ -333,8 +320,21 @@ export function MatchPage() {
               {others.map((m) => (
                 <OtherOffer key={m.product.code} match={m} loading={applying === m.product.code} onApply={() => apply(m)} />
               ))}
-            </Stack>
+            </div>
           )}
+          {/* На телефоне расчёт не занимает экран — он по ссылке под вариантами. */}
+          <Button
+            variant="subtle"
+            px={0}
+            mt="md"
+            className="potok-phone-only"
+            component="a"
+            href="#estimate"
+            onClick={() => setEstimateOpen((o) => !o)}
+            aria-expanded={estimateOpen}
+          >
+            {estimateOpen ? 'Скрыть расчёт' : 'Ваш расчёт и документы'}
+          </Button>
         </section>
       </div>
 

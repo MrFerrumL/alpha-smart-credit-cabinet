@@ -18,7 +18,7 @@ import type { Application, ApplicationForm, Product, Purpose, PurposeInfo } from
 import { useAuth } from '../auth/AuthContext';
 import { DocumentList } from '../components/ApplicationBlocks';
 import { ChoiceList, ChoiceMark } from '../components/Choice';
-import { AmountControl, MoneyInput, TermControl } from '../components/Money';
+import { AmountTermFields, MoneyInput } from '../components/Money';
 import { Stepper } from '../components/Status';
 import { MAX_DEBT_SHARE, monthlyPayment } from '../lib/finance';
 import { NBSP, date, money, moneyBig, moneyShort, months, monthsShort, percent, plural, rate } from '../lib/format';
@@ -498,34 +498,19 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 error={err('purpose')}
                 allowDeselect={false}
               />
-              <div className="potok-wz-row2" style={{ marginTop: 24 }}>
-                <AmountControl
-                  label="Сумма"
-                  sliderLabel="Ползунок суммы"
-                  value={params.amount}
-                  onChange={(v) => setParams({ ...params, amount: v })}
-                  min={product.min_amount}
-                  max={product.max_amount}
-                  step={50_000}
-                  scale="log"
-                  error={err('amount')}
+              <div style={{ marginTop: 24 }}>
+                <AmountTermFields
+                  amount={params.amount}
+                  onAmount={(v) => setParams({ ...params, amount: v })}
+                  term={params.term_months}
+                  onTerm={(v) => setParams({ ...params, term_months: v })}
+                  minAmount={product.min_amount}
+                  maxAmount={product.max_amount}
+                  minTerm={product.min_term}
+                  maxTerm={product.max_term}
+                  amountError={err('amount')}
+                  termError={err('term_months')}
                 />
-                {product.min_term === product.max_term ? (
-                  <div className="potok-wz-fixed">
-                    <span>Срок</span>
-                    <b>{months(product.min_term)}</b>
-                    <span>Лимит открывается на {months(product.min_term)} и продлевается</span>
-                  </div>
-                ) : (
-                  <TermControl
-                    value={params.term_months}
-                    onChange={(v) => setParams({ ...params, term_months: v })}
-                    min={product.min_term}
-                    max={product.max_term}
-                    step={product.min_term >= 12 ? 6 : 3}
-                    error={err('term_months')}
-                  />
-                )}
               </div>
               <Text c="dimmed" mt="lg">
                 {product.repayment === 'interest_only' ? 'Проценты в месяц при полном использовании лимита' : 'Платёж в месяц'} —

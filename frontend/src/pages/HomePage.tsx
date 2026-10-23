@@ -103,13 +103,10 @@ function HomeStatus({ app }: { app: Application }) {
         <StatusChip app={app} />
       </div>
       <div className="potok-home-amount">{moneyBig(amount)}</div>
-      {/* Срок и платёж — отдельными неразрывными частями: строка не рвётся на «мес.,». */}
-      <div className="potok-home-terms">
-        <span>на {months(term)}</span>
-        <span>
-          {payment} {interestOnly ? 'процентов в месяц' : 'в месяц'}
-        </span>
-      </div>
+      {/* Срок и платёж — одной фразой; «месяцев» целиком, без сокращения «мес.,». */}
+      <p className="potok-home-terms">
+        на {months(term)}, {payment} {interestOnly ? 'процентов в месяц' : 'в месяц'}
+      </p>
       <StatusBlock app={app} />
     </section>
   );
