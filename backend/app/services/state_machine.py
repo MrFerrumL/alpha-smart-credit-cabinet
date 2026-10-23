@@ -3,7 +3,7 @@
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
+from app.domain.statuses import STATUS_INFO, Actor, Status, StatusInfo, can_transition
 from app.errors import InvalidTransition
 from app.models import Application, ApplicationEvent, ClientTask, utcnow
 from app.services.notifications import notify_company
@@ -34,7 +34,9 @@ def apply_transition(
     event: str = "status_changed",
     comment: str | None = None,
     payload: dict | None = None,
+    info: StatusInfo | None = None,
 ) -> ApplicationEvent:
+    """info — текст статуса для уведомления клиенту, если он зависит от заявки (например, у овердрафта)."""
     src = Status(application.status)
     if not can_transition(src, to, actor):
         raise InvalidTransition(
@@ -65,7 +67,7 @@ def apply_transition(
             .values(status="expired")
         )
     if actor != Actor.CLIENT and to in NOTIFY_CLIENT:
-        info = STATUS_INFO[to]
+        info = info or STATUS_INFO[to]
         notify_company(
             db,
             application.company_id,

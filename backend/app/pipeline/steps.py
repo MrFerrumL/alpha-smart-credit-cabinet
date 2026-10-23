@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.domain.products import PRODUCTS, Purpose
-from app.domain.statuses import Actor, Status
+from app.domain.statuses import LIMIT_OPENED, Actor, Status
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
@@ -278,9 +278,11 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
                 payment_ref=payment["payment_id"],
             )
         )
+    limit = PRODUCTS[offer.product_code].repayment == "interest_only"
     apply_transition(
         db, app, Status.ISSUED, Actor.SYSTEM, event="issued",
-        payload={"payment_id": payment["payment_id"], "amount": int(offer.amount)},
+        payload={"payment_id": payment["payment_id"], "amount": int(offer.amount), "limit": limit},
+        info=LIMIT_OPENED if limit else None,
     )
 
 

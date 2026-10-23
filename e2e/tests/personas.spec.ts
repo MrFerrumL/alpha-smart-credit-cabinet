@@ -69,8 +69,9 @@ test('clean: контрпредложение другим продуктом �
   await expect(page.getByText(/подходит «Овердрафт»/)).toBeVisible();
   await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
   await sign(page);
-  await expect(page.getByRole('heading', { name: 'Деньги на счёте!' })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/Лимит овердрафта/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Лимит открыт!' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Лимит овердрафта .* открыт/)).toBeVisible();
+  await expect(page.getByText('Лимит открыт', { exact: true }).first()).toBeVisible();
   // После выдачи заявка показывает условия кредита, а не то, что просили.
   const terms = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Условия кредита' }) });
   await expect(terms).toContainText('Овердрафт');

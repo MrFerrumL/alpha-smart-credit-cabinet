@@ -11,6 +11,8 @@ from app.domain.products import PRODUCTS, PURPOSES, Purpose, monthly_payment
 from app.domain.statuses import (
     SIGNED_AWAITING_CONDITIONS,
     SIGNED_AWAITING_ISSUE,
+    SIGNED_AWAITING_LIMIT,
+    LIMIT_OPENED,
     STATUS_INFO,
     Actor,
     Status,
@@ -150,7 +152,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
     signed_info = None
     if app.status == Status.SIGNING.value and offer is not None and offer.status == "signed":
         # В подписании открытыми бывают только условия выдачи — по ним же окно договора выбирает свой текст.
-        signed_info = SIGNED_AWAITING_CONDITIONS if open_tasks else SIGNED_AWAITING_ISSUE
+        limit = PRODUCTS[offer.product_code].repayment == "interest_only"
+        signed_info = SIGNED_AWAITING_CONDITIONS if open_tasks else SIGNED_AWAITING_LIMIT if limit else SIGNED_AWAITING_ISSUE
+    if app.status == Status.ISSUED.value and offer is not None and PRODUCTS[offer.product_code].repayment == "interest_only":
+        signed_info = LIMIT_OPENED
     return ApplicationOut(
         id=app.id,
         number=app.number,
@@ -181,7 +186,9 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
 
 
 def event_out(ev: ApplicationEvent, for_bank: bool = False) -> EventOut:
-    if ev.event in EVENT_TITLES:
+    if ev.event == "issued" and (ev.payload or {}).get("limit"):
+        title = "Лимит овердрафта открыт на расчётном счёте"
+    elif ev.event in EVENT_TITLES:
         payload = ev.payload or {}
         title = EVENT_TITLES[ev.event].format(
             source=SOURCE_TITLES.get(payload.get("source", ""), "Источник"),

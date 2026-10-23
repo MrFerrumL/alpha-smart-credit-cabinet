@@ -579,3 +579,19 @@ def test_conditions_close_when_the_contract_expires(client, mocks):
         expire_offers(db)
     app = get(client, app_id, headers)
     assert app["status"]["code"] == "expired" and app["open_tasks"] == 0
+
+
+def test_issued_overdraft_says_the_limit_is_opened(client, mocks):
+    # Овердрафт не перечисляется на счёт, а открывается лимитом: статус, история и уведомление говорят об этом.
+    app_id, headers = approved(client, mocks, "clean@demo.local", amount=300_000,
+                               form={"finance": {"monthly_revenue": 1_000_000}, "consent_bki": True})
+    assert client.post(f"/api/applications/{app_id}/offer/accept", headers=headers).status_code == 200
+    sign(client, app_id, headers)
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "issued" and app["status"]["title"] == "Лимит открыт"
+    titles = [e["title"] for e in client.get(f"/api/applications/{app_id}/events", headers=headers).json()]
+    assert "Лимит овердрафта открыт на расчётном счёте" in titles
+    notes = client.get("/api/notifications", headers=headers).json()
+    assert any("лимит открыт" in n["title"] for n in notes)
+

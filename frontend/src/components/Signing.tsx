@@ -296,7 +296,9 @@ export function SigningCard({ app }: { app: Application }) {
                 ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они выше на странице.'
                 : c?.issue_delayed
                   ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
-                  : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
+                  : interestOnly
+                    ? 'Открываем лимит овердрафта на расчётном счёте компании — это займёт несколько секунд.'
+                    : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
             </Text>
           </Group>
         </Paper>
@@ -323,7 +325,7 @@ export function SigningCard({ app }: { app: Application }) {
   );
 }
 
-/** Финал: деньги на счёте. */
+/** Финал: деньги на счёте или, для овердрафта, открытый лимит. */
 export function IssuedCard({ app }: { app: Application }) {
   const offer = app.offer;
   const interestOnly = useInterestOnly(offer?.product_code);
@@ -335,7 +337,7 @@ export function IssuedCard({ app }: { app: Application }) {
             <IconConfetti size={26} color="#ef3124" />
           </ThemeIcon>
           <Title order={2} c="white">
-            Деньги на счёте!
+            {interestOnly ? 'Лимит открыт!' : 'Деньги на счёте!'}
           </Title>
         </Group>
         {offer && (
