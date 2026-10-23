@@ -1048,7 +1048,7 @@ a.potok-note-title:hover {
 
 .potok-next-pay {
   display: grid;
-  grid-template-columns: repeat(3, auto);
+  grid-template-columns: repeat(2, auto);
   justify-content: start;
   gap: 16px 48px;
   margin: 28px 0 0;
@@ -1094,7 +1094,15 @@ a.potok-note-title:hover {
 }
 
 .potok-loan-table {
-  max-height: 420px;
+  margin-top: 12px;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+  overflow: hidden;
+}
+
+.potok-loan-table .potok-total td {
+  font-weight: 600;
+  background: var(--potok-canvas);
 }
 
 .potok-loan-table tr[data-current='true'] td {

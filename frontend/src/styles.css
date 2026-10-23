@@ -661,15 +661,9 @@ body {
   border-radius: 0 0 3px 3px;
 }
 
-.potok-bar[data-current='true']::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: -2px;
-  right: -2px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--potok-accent);
+/* Текущий платёж на графике — чуть темнее, без красной черты (её читали как подчёркивание заголовка). */
+.potok-bar[data-current='true'] .potok-bar-p {
+  background: var(--potok-ink);
 }
 
 .potok-bars-axis {

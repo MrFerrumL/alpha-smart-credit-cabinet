@@ -24,7 +24,7 @@ function Progress({ loan, last }: { loan: Loan; last?: string }) {
   return (
     <div className="potok-progress">
       <div className="potok-progress-track">
-        <span style={{ width: `${Math.max(share * 100, 1)}%` }} />
+        {share > 0 && <span style={{ width: `${share * 100}%` }} />}
       </div>
       <div className="potok-progress-scale">
         <span>
@@ -242,8 +242,8 @@ export function LoansPage() {
 function LoanTable({ rows, current }: { rows: { n: number; date: string; payment: number; principal: number; interest: number; balance: number }[]; current?: number }) {
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <div className="potok-table-wrap potok-loan-table">
-      <Table stickyHeader withRowBorders verticalSpacing={10} aria-label="График платежей">
+    <div className="potok-loan-table">
+      <Table withRowBorders verticalSpacing={10} aria-label="График платежей">
         <Table.Thead>
           <Table.Tr>
             <Table.Th className="potok-hide-phone">№</Table.Th>
@@ -282,6 +282,20 @@ function LoanTable({ rows, current }: { rows: { n: number; date: string; payment
             </Table.Tr>
           ))}
         </Table.Tbody>
+        <Table.Tfoot>
+          <Table.Tr className="potok-total">
+            <Table.Td className="potok-hide-phone" />
+            <Table.Td>Итого</Table.Td>
+            <Table.Td ta="right">{money(rows.reduce((s, r) => s + r.payment, 0))}</Table.Td>
+            <Table.Td ta="right" className="potok-hide-phone">
+              {money(rows.reduce((s, r) => s + r.principal, 0))}
+            </Table.Td>
+            <Table.Td ta="right" className="potok-hide-phone">
+              {money(rows.reduce((s, r) => s + r.interest, 0))}
+            </Table.Td>
+            <Table.Td />
+          </Table.Tr>
+        </Table.Tfoot>
       </Table>
     </div>
   );
@@ -365,19 +379,21 @@ export function LoanPage() {
           </span>
         </div>
 
+        {/* Один «следующий платёж» — дата и сумма вместе; остаток долга — только когда он уже меньше суммы кредита,
+            иначе это та же цифра второй раз. */}
         <dl className="potok-next-pay">
           <div>
             <dt>Следующий платёж</dt>
-            <dd>{l.next_payment_date ? dayMonth(l.next_payment_date) : 'нет'}</dd>
+            <dd>
+              {l.next_payment_date && l.next_payment_amount ? `${dayMonth(l.next_payment_date)}, ${money(l.next_payment_amount)}` : 'платежей больше нет'}
+            </dd>
           </div>
-          <div>
-            <dt>Сумма платежа</dt>
-            <dd>{l.next_payment_amount ? money(l.next_payment_amount) : '—'}</dd>
-          </div>
-          <div>
-            <dt>Основной долг к погашению</dt>
-            <dd>{money(l.balance)}</dd>
-          </div>
+          {l.balance < l.amount && (
+            <div>
+              <dt>Остаток долга</dt>
+              <dd>{money(l.balance)}</dd>
+            </div>
+          )}
         </dl>
         <div className="potok-inline-note">Платёж списывается с расчётного счёта автоматически — следить за датой не нужно.</div>
         <Progress loan={l} last={last} />
