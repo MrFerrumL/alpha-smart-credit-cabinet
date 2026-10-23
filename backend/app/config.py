@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     llm_enabled: bool = False
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: SecretStr = SecretStr("")
-    llm_model: str = "qwen3:4b-instruct-2507-q4_K_M"
+    llm_model: str = "qwen2.5:7b-instruct-q4_K_M"
 
     log_level: str = "INFO"
 

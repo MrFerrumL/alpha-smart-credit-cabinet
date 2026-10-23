@@ -45,7 +45,7 @@ services:
       # они заданы.
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
-      LLM_MODEL: ${LLM_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
     volumes:
       - uploads:/data/uploads
     depends_on:
@@ -74,7 +74,7 @@ services:
       # провайдеру, локальной модели — нет.
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
-      LLM_MODEL: ${LLM_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
       LLM_API_KEY: ${LLM_API_KEY:-}
     # Воркер жив, если его цикл обновлял файл «пульса» в последнюю минуту (зависший шаг тоже будет виден).
     healthcheck:
