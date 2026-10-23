@@ -1,4 +1,5 @@
 import { Radio } from '@mantine/core';
+import { IconCheck } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 
 export interface ChoiceOption<T extends string> {
@@ -8,9 +9,18 @@ export interface ChoiceOption<T extends string> {
   text?: ReactNode;
 }
 
+/** Отметка справа: пустой кружок, у выбранного — красный с белой галочкой. */
+export function ChoiceMark() {
+  return (
+    <span className="potok-choice-mark" aria-hidden="true">
+      <IconCheck size={14} stroke={3} />
+    </span>
+  );
+}
+
 /**
- * Выбор одного варианта списком строк: заголовок и строка пояснения, отметка справа. Выбранная строка — красный
- * край слева и чуть темнее фон; без плиток, иконок в квадратах и теней.
+ * Выбор одного варианта списком строк: заголовок и строка пояснения, отметка справа. Выбранная строка — красная
+ * рамка со всех сторон и красная галочка; без плиток, иконок в квадратах и теней.
  */
 export function ChoiceList<T extends string>({
   label,
@@ -32,7 +42,7 @@ export function ChoiceList<T extends string>({
               <span className="potok-choice-title">{o.title}</span>
               {o.text && <span className="potok-choice-sub">{o.text}</span>}
             </span>
-            <Radio.Indicator />
+            <ChoiceMark />
           </Radio.Card>
         ))}
       </div>

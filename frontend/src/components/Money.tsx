@@ -108,8 +108,9 @@ export function amountTicks(min: number, max: number): Tick[] {
 const TERM_PRESETS = [6, 12, 18, 24, 36];
 
 /**
- * Срок: поле в месяцах, быстрые значения и слайдер — всё синхронно. Быстрые значения — 6, 12, 18, 24, 36 и
- * максимум продукта, только в его диапазоне; без слайдера срок задаётся с клавиатуры или кнопкой.
+ * Срок: поле в месяцах и быстрые значения — синхронно, без слайдера. Быстрые значения — 6, 12, 18, 24, 36 и
+ * максимум продукта, только в его диапазоне. Срок больше максимума — сообщение по правилу продукта, при уходе
+ * из поля значение возвращается в диапазон.
  */
 export function TermControl({
   label = 'Срок',
@@ -132,8 +133,10 @@ export function TermControl({
 }) {
   const presets = [...new Set([...TERM_PRESETS, max])].filter((v) => v >= min && v <= max).sort((a, b) => a - b);
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  // Текст — как у правила продукта на сервере. Меньше минимума не ругаемся: человек, скорее всего, ещё печатает.
+  const rangeError = value > max ? `Срок — от ${min} до ${max} мес.` : undefined;
   return (
-    <div className="potok-amount potok-term">
+    <div className="potok-term">
       <MoneyInput
         label={label}
         unit="мес."
@@ -141,19 +144,10 @@ export function TermControl({
         value={value}
         min={min}
         max={max}
+        step={step}
         onChange={(v) => onChange(typeof v === 'number' ? v : Number(v) || 0)}
         onBlur={() => onChange(clamp(value))}
-        error={error}
-      />
-      <Slider
-        value={clamp(value)}
-        onChange={onChange}
-        min={min}
-        max={max}
-        step={step}
-        label={null}
-        thumbLabel="Ползунок срока"
-        className="potok-amount-slider"
+        error={error ?? rangeError}
       />
       <div className="potok-presets" role="group" aria-label="Быстрый выбор срока">
         {presets.map((p) => (

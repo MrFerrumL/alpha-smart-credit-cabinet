@@ -564,6 +564,140 @@
   color: var(--potok-steel);
 }
 
+/* --- Вход ----------------------------------------------------------------------------------------- */
+.potok-login {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 456px;
+  grid-template-areas: 'promo form' 'note note';
+  gap: 40px 96px;
+  align-content: start;
+  align-items: start;
+  max-width: 1152px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 72px 24px 48px;
+}
+
+.potok-login-promo {
+  grid-area: promo;
+}
+
+.potok-login-title {
+  margin-top: 40px;
+  max-width: 24ch;
+  font: 700 44px/1.12 var(--font-display) !important;
+  letter-spacing: -0.01em;
+}
+
+.potok-login-lead {
+  margin-top: 16px;
+  max-width: 46ch;
+  font-size: 18px !important;
+  color: var(--potok-steel);
+}
+
+.potok-login-points {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-login-points li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.potok-login-points li + li {
+  margin-top: 8px;
+}
+
+/* Маркер — короткая графитовая черта, без иконок в кружках. */
+.potok-login-points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--potok-ink);
+}
+
+.potok-login-form {
+  grid-area: form;
+  padding: 32px;
+}
+
+.potok-login-h {
+  margin-bottom: 20px;
+}
+
+.potok-login-note {
+  grid-area: note;
+  margin: 0;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-personas {
+  padding: 6px;
+  border: 0;
+  border-radius: var(--r-16);
+  box-shadow: var(--shadow-m);
+}
+
+/* Профиль — две строки: имя и метка исхода, под ними компания целиком; все десять видны без прокрутки. */
+.potok-persona {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: var(--r-12);
+}
+
+.potok-persona[data-combobox-selected],
+.potok-persona:hover {
+  background: var(--potok-hover);
+}
+
+.potok-persona[data-combobox-active] .potok-persona-name::after {
+  content: ' — выбран';
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
+.potok-persona-main {
+  display: contents;
+}
+
+.potok-persona-name {
+  grid-column: 1;
+  grid-row: 1;
+  overflow: hidden;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.potok-persona-sub {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--potok-steel);
+}
+
+.potok-persona .potok-chip {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  height: 20px;
+  font-size: 12px;
+}
+
 /* --- Карточка аналитика --------------------------------------------------------------------------- */
 .potok-analyst {
   display: grid;
@@ -714,25 +848,13 @@
   margin-top: 16px;
 }
 
+/* Рамка и выделение — общие со списком выбора (styles.css). */
 .potok-outcome {
   min-height: 44px;
   padding: 8px 12px;
-  border: 0;
-  border-radius: var(--r-12);
-  background: var(--potok-canvas);
   font-size: 14px;
   font-weight: 500;
   text-align: center;
-  transition: background-color 0.15s ease;
-}
-
-.potok-outcome:hover {
-  background: var(--potok-line);
-}
-
-.potok-outcome[data-checked] {
-  background: var(--potok-ink);
-  color: var(--potok-paper);
 }
 
 /* Сумма — на всю ширину, срок и ставка — под ней: иначе цифры обрезаются. */
@@ -890,6 +1012,38 @@
     align-items: stretch;
     padding: 16px;
   }
+
+  /* На телефоне промо — логотип, заголовок и одна строка; форма — сразу под ними, без прокрутки. */
+  .potok-login {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'promo' 'form' 'note';
+    gap: 20px;
+    align-content: start;
+    padding: 20px 16px;
+  }
+
+  .potok-login-title {
+    margin-top: 16px;
+    font-size: 24px !important;
+  }
+
+  .potok-desktop-only {
+    display: none;
+  }
+
+  .potok-login-lead {
+    margin-top: 6px;
+    font-size: 15px !important;
+  }
+
+  .potok-login-points {
+    display: none;
+  }
+
+  .potok-login-form {
+    padding: 20px 16px;
+  }
+
 
   .potok-home,
   .potok-lists,
