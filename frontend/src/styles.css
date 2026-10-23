@@ -724,36 +724,25 @@ body {
   color: var(--potok-steel);
 }
 
-.potok-amount .mantine-Input-input {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+/* Слайдер суммы — своя строка под полем, той же высоты, что строка быстрых значений срока: колонки совпадают. */
+.potok-amount-row {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  margin-top: 12px;
 }
 
 .potok-amount-slider {
-  margin: -1px 16px 0;
+  flex: 1;
+  margin: 0 8px;
 }
 
 .potok-ticks {
-  position: relative;
-  height: 18px;
-  margin: 8px 16px 0;
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0 0;
   font-size: 12px;
   color: var(--potok-steel);
-}
-
-.potok-ticks span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-.potok-ticks span:first-child {
-  transform: none;
-}
-
-.potok-ticks span:last-child {
-  transform: translateX(-100%);
 }
 
 .potok-amount-hint {
@@ -781,11 +770,12 @@ body {
   transition: border-color var(--dur-press) var(--ease), box-shadow var(--dur-press) var(--ease);
 }
 
+/* Заголовок и пояснение — один блок по центру строки, отметка по центру справа; отступы 16 и 20 px. */
 .potok-choice {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 16px 20px;
   text-align: left;
 }
 
@@ -878,8 +868,8 @@ body {
     height: 44px;
   }
 
-  .potok-ticks span[data-major='false'] {
-    display: none;
+  .potok-amount-row {
+    height: 44px;
   }
 }
 

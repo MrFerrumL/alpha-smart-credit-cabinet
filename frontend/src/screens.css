@@ -564,6 +564,150 @@
   color: var(--potok-steel);
 }
 
+/* --- Подбор кредита ------------------------------------------------------------------------------- */
+/* Слева (7/12) три вопроса и варианты, справа (5/12) липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
+.potok-match {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-areas: 'q side' 'r side';
+  gap: 24px 32px;
+  align-items: start;
+}
+
+.potok-match-q {
+  grid-area: q;
+}
+
+.potok-match-r {
+  grid-area: r;
+}
+
+.potok-match-side {
+  grid-area: side;
+  position: sticky;
+  top: 16px;
+}
+
+.potok-match-sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+/* В узкой колонке быстрые значения срока — по три в ряд; первая строка совпадает со строкой слайдера суммы. */
+.potok-match-sliders .potok-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.potok-side-amount {
+  margin-top: 12px;
+  font: 700 32px/1.15 var(--font-display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-side-pairs {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-side-row {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.potok-side-row b {
+  font-weight: 500;
+}
+
+.potok-side-row span {
+  color: var(--potok-steel);
+}
+
+.potok-offer {
+  padding: 28px 32px;
+}
+
+.potok-offer-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 14px;
+}
+
+.potok-offer-name {
+  margin-top: 14px;
+  font: 700 28px/1.2 var(--font-display) !important;
+}
+
+.potok-offer-pay {
+  margin-top: 16px;
+  font: 700 40px/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.potok-offer-pay span {
+  font: 500 17px/1 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--potok-steel);
+}
+
+.potok-terms-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-top: 6px;
+  color: var(--potok-steel);
+}
+
+.potok-terms-line span {
+  white-space: nowrap;
+}
+
+.potok-terms-line span + span {
+  padding-left: 16px;
+  border-left: 1px solid var(--potok-line-strong);
+}
+
+.potok-offer-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.potok-offer-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.potok-offer-row-name {
+  font-size: 18px !important;
+}
+
+.potok-offer-row-pay {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.potok-offer-row-pay span {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;
@@ -1011,6 +1155,64 @@
     flex-direction: column;
     align-items: stretch;
     padding: 16px;
+  }
+
+  .potok-match {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'q' 'side' 'r';
+    gap: 16px;
+  }
+
+  .potok-match-side {
+    position: static;
+  }
+
+  /* Свёрнутый расчёт: сумма, срок и платёж; «что понадобится» и «что дальше» — по кнопке. */
+  .potok-match-side[data-open='false'] .potok-side-more,
+  .potok-match-side[data-open='false'] .potok-side-extra {
+    display: none;
+  }
+
+  /* На телефоне части условий переносятся — разделитель-черта в начале строки не нужен, только запятые. */
+  .potok-terms-line span + span,
+  .potok-home-terms span + span {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  /* Запятая — в конце части, а не в начале следующей: перенос строки после неё. */
+  .potok-terms-line span:not(:last-child)::after,
+  .potok-home-terms span:not(:last-child)::after {
+    content: ',';
+    margin-right: 0.3em;
+  }
+
+  .potok-terms-line,
+  .potok-home-terms {
+    gap: 0;
+  }
+
+  .potok-match-sliders {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .potok-offer {
+    padding: 20px 16px;
+  }
+
+  .potok-offer-pay {
+    font-size: 32px;
+  }
+
+  .potok-offer-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .potok-offer-row-pay {
+    align-items: flex-start;
   }
 
   /* На телефоне промо — логотип, заголовок и одна строка; форма — сразу под ними, без прокрутки. */

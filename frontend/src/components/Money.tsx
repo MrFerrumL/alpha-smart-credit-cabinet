@@ -23,13 +23,19 @@ export function MoneyInput({ unit = '₽', ...props }: NumberInputProps & { unit
 export interface Tick {
   value: number;
   label: string;
-  /** Подпись остаётся и на узком экране (края шкалы). */
-  major?: boolean;
+}
+
+// Логарифмическая шкала: 100 делений от минимума до максимума, значение округляется до круглого — 3 000 000
+// оказывается в середине шкалы, а не прижат к левому краю. Шаг округления растёт вместе с суммой.
+const LOG_STEPS = 100;
+function roundAmount(v: number): number {
+  const unit = v < 1_000_000 ? 10_000 : v < 10_000_000 ? 100_000 : 500_000;
+  return Math.round(v / unit) * unit;
 }
 
 /**
- * Сумма или срок: поле сверху и слайдер под ним — один контрол на подборе и в анкете. Подписи шкалы — у краёв и
- * у 2–3 опорных значений, на телефоне — только у краёв, чтобы не сталкивались.
+ * Сумма: поле — такое же, как у срока (подпись, значение и «₽» на одной линии), под ним отдельной строкой — слайдер
+ * по ширине поля. Под слайдером — только минимум и максимум.
  */
 export function AmountControl({
   label,
@@ -38,8 +44,8 @@ export function AmountControl({
   min,
   max,
   step,
+  scale = 'linear',
   unit = '₽',
-  ticks,
   description,
   error,
   sliderLabel,
@@ -50,13 +56,16 @@ export function AmountControl({
   min: number;
   max: number;
   step: number;
+  scale?: 'linear' | 'log';
   unit?: ReactNode;
-  ticks: Tick[];
   description?: ReactNode;
   error?: ReactNode;
   sliderLabel?: string;
 }) {
-  const position = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+  const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  const log = scale === 'log';
+  const toPos = (v: number) => (log ? Math.round((LOG_STEPS * Math.log(clamp(v) / min)) / Math.log(max / min)) : clamp(v));
+  const fromPos = (p: number) => (log ? clamp(roundAmount(min * (max / min) ** (p / LOG_STEPS))) : p);
   return (
     <div className="potok-amount">
       <MoneyInput
@@ -66,43 +75,29 @@ export function AmountControl({
         max={max}
         unit={unit}
         onChange={(v) => onChange(typeof v === 'number' ? v : Number(v) || 0)}
-        onBlur={() => onChange(Math.min(max, Math.max(min, value)))}
+        onBlur={() => onChange(clamp(value))}
         error={error}
         thousandSeparator={unit === '₽' ? NBSP : undefined}
       />
-      <Slider
-        value={Math.min(max, Math.max(min, value))}
-        onChange={onChange}
-        min={min}
-        max={max}
-        step={step}
-        label={null}
-        thumbLabel={sliderLabel ?? label}
-        className="potok-amount-slider"
-      />
+      <div className="potok-amount-row">
+        <Slider
+          value={toPos(value)}
+          onChange={(p) => onChange(fromPos(p))}
+          min={log ? 0 : min}
+          max={log ? LOG_STEPS : max}
+          step={log ? 1 : step}
+          label={null}
+          thumbLabel={sliderLabel ?? label}
+          className="potok-amount-slider"
+        />
+      </div>
       <div className="potok-ticks" aria-hidden="true">
-        {ticks.map((t) => (
-          <span key={t.value} data-major={t.major ?? false} style={{ left: position(t.value) }}>
-            {t.label}
-          </span>
-        ))}
+        <span>{moneyShort(min)}</span>
+        <span>{moneyShort(max)}</span>
       </div>
       {description && <div className="potok-amount-hint">{description}</div>}
     </div>
   );
-}
-
-/** Ближайшее «круглое» число ряда 1–2–2,5–5: 25 млн, а не 16,7 млн. */
-function nice(v: number): number {
-  const exp = 10 ** Math.floor(Math.log10(v));
-  return [1, 2, 2.5, 5, 10].map((m) => m * exp).reduce((best, c) => (Math.abs(c - v) < Math.abs(best - v) ? c : best));
-}
-
-/** Подписи шкалы суммы: края и одна круглая опорная точка посередине. */
-export function amountTicks(min: number, max: number): Tick[] {
-  const mid = nice((min + max) / 2);
-  const values = mid > min && mid < max ? [min, mid, max] : [min, max];
-  return values.map((value, i) => ({ value, label: moneyShort(value), major: i === 0 || i === values.length - 1 }));
 }
 
 const TERM_PRESETS = [6, 12, 18, 24, 36];

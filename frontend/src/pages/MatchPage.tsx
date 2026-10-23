@@ -1,39 +1,22 @@
-import {
-  Badge,
-  Button,
-  Card,
-  Divider,
-  Group,
-  List,
-  Modal,
-  ScrollArea,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-  ThemeIcon,
-  Title,
-} from '@mantine/core';
+import { Button, Modal, ScrollArea, SimpleGrid, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconArrowRight, IconCheck, IconInfoCircle, IconStarFilled, IconTarget } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { useCalculation, useCreateApplication, useMatch, useMeta } from '../api/hooks';
-import type { ProductMatch, Purpose } from '../api/types';
+import { useCalculation, useCreateApplication, useMatch, useMeta, useProducts } from '../api/hooks';
+import type { Product, ProductMatch, Purpose } from '../api/types';
 import { ChoiceList } from '../components/Choice';
-import { AmountControl, TermControl, amountTicks } from '../components/Money';
-import { EmptyState, Stat } from '../components/ui';
-import { money, moneyShort, months, rate } from '../lib/format';
-
-const MIN_AMOUNT = 100_000;
-const MAX_AMOUNT = 50_000_000;
+import { AmountControl, TermControl } from '../components/Money';
+import { Empty } from '../components/States';
+import { Chip } from '../components/Status';
+import { Stat } from '../components/ui';
+import { NBSP, money, moneyBig, months, rate } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
 function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose: () => void }) {
   const calc = useCalculation(match?.product.code ?? null, match?.amount ?? 0, match?.term_months ?? 0);
   return (
-    <Modal opened={match !== null} onClose={onClose} title={<Text fw={800}>График платежей</Text>} size="lg" centered>
+    <Modal opened={match !== null} onClose={onClose} title={<Text fw={600}>График платежей</Text>} size="lg" centered>
       {calc.isLoading || !calc.data ? (
         <Skeleton h={300} />
       ) : (
@@ -44,7 +27,7 @@ function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose
             <Stat label="Всего" value={money(calc.data.total)} />
           </SimpleGrid>
           <ScrollArea h={360}>
-            <Table striped stickyHeader fz="sm">
+            <Table stickyHeader withRowBorders fz="sm">
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>№</Table.Th>
@@ -67,8 +50,8 @@ function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose
               </Table.Tbody>
             </Table>
           </ScrollArea>
-          <Text fz="xs" c="dimmed">
-            Расчёт предварительный, по минимальной ставке продукта. Точные условия банк покажет после рассмотрения заявки.
+          <Text fz="sm" c="dimmed">
+            Расчёт предварительный, по минимальной ставке продукта. Точные условия банк назовёт в решении.
           </Text>
         </Stack>
       )}
@@ -76,94 +59,178 @@ function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose
   );
 }
 
-function OfferCard({
-  match,
-  best,
-  loading,
-  onApply,
-  onSchedule,
-}: {
-  match: ProductMatch;
-  best: boolean;
-  loading: boolean;
-  onApply: () => void;
-  onSchedule: () => void;
-}) {
+const interestOnly = (p: Product) => p.repayment === 'interest_only';
+
+/** Сумма, срок и ставка варианта — одной строкой из неразрывных частей; в узкой строке варианта — простым текстом. */
+function Terms({ match, plain = false }: { match: ProductMatch; plain?: boolean }) {
+  if (plain) {
+    return (
+      <Text fz="sm" c="dimmed" data-testid="match-terms">
+        {interestOnly(match.product) ? 'Лимит' : 'Сумма'} {money(match.amount)} на {months(match.term_months)}, от {rate(match.product.rate)} годовых
+      </Text>
+    );
+  }
+  return (
+    <div className="potok-terms-line" data-testid="match-terms">
+      <span>{interestOnly(match.product) ? `лимит ${money(match.amount)}` : money(match.amount)}</span>
+      <span>на {months(match.term_months)}</span>
+      <span>от {rate(match.product.rate)} годовых</span>
+    </div>
+  );
+}
+
+/** Лучший вариант — крупно: платёж, условия, почему подходит, главная кнопка. */
+function BestOffer({ match, loading, onApply, onSchedule }: { match: ProductMatch; loading: boolean; onApply: () => void; onSchedule: () => void }) {
   const p = match.product;
   return (
-    <Card className={best ? 'best-offer fade-in' : 'fade-in'} p={{ base: 'lg', sm: 'xl' }} shadow={best ? 'md' : 'xs'}>
-      <Group gap="xs" mb="xs">
-        {best && (
-          <Badge leftSection={<IconStarFilled size={11} />} variant="filled">
-            Лучше всего подходит
-          </Badge>
-        )}
-        {match.fit === 'partial' && (
-          <Badge color="orange" variant="light">
-            Подходит с оговорками
-          </Badge>
-        )}
-        <Badge color="gray" variant="light">
-          {p.decision === 'auto' ? 'Автоматическое решение' : 'Рассматривает специалист'}
-        </Badge>
-      </Group>
-      <Title order={3}>{p.name}</Title>
+    <article className="potok-panel potok-offer" aria-label={p.name}>
+      <div className="potok-offer-top">
+        {match.fit === 'partial' ? <Chip tone="warning">Подходит с оговорками</Chip> : <Chip tone="success">Лучше всего подходит</Chip>}
+        <span className="potok-muted-text">
+          {p.decision === 'auto' ? 'Решение автоматически' : 'Рассматривает специалист'}, {p.decision_time}
+        </span>
+      </div>
+      <Title order={3} className="potok-offer-name">
+        {nb(p.name)}
+      </Title>
       <Text c="dimmed">{p.tagline}</Text>
-
-      <SimpleGrid cols={{ base: 2, sm: 4 }} mt="lg" spacing="lg">
-        <Stat
-          label={p.repayment === 'interest_only' ? 'Проценты в месяц' : 'Платёж в месяц'}
-          value={`≈ ${money(match.monthly_payment)}`}
-          accent
-        />
-        <Stat label="Сумма" value={moneyShort(match.amount)} />
-        <Stat label="Срок" value={months(match.term_months)} />
-        <Stat label="Ставка" value={`от ${rate(p.rate)}`} />
-      </SimpleGrid>
-
-      <Divider my="lg" />
-
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <List
-          spacing={8}
-          fz="sm"
-          icon={
-            <ThemeIcon color="teal" size={20} radius="xl">
-              <IconCheck size={12} stroke={3} />
-            </ThemeIcon>
-          }
-        >
-          {match.reasons.map((r) => (
-            <List.Item key={r}>{r}</List.Item>
-          ))}
-        </List>
-        <Stack gap={8}>
-          {match.caveats.map((c) => (
-            <Group key={c} gap={8} wrap="nowrap" align="flex-start">
-              <IconInfoCircle size={20} color="var(--mantine-color-orange-6)" style={{ flex: '0 0 auto' }} />
-              <Text fz="sm">{c}</Text>
-            </Group>
-          ))}
-          <Text fz="sm" c="dimmed">
-            Понадобится: {p.documents.join(', ').toLowerCase()}
-          </Text>
-        </Stack>
-      </SimpleGrid>
-
-      <Group mt="xl">
-        <Button size="md" onClick={onApply} loading={loading} rightSection={<IconArrowRight size={18} />}>
+      <div className="potok-offer-pay">
+        ≈{NBSP}{moneyBig(match.monthly_payment)} <span>{interestOnly(p) ? 'процентов в месяц' : 'в месяц'}</span>
+      </div>
+      <Terms match={match} />
+      <ul className="potok-list">
+        {match.reasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+        {match.caveats.map((c) => (
+          <li key={c} className="potok-muted-text">
+            {c}
+          </li>
+        ))}
+      </ul>
+      <div className="potok-cta" style={{ marginTop: 24 }}>
+        <Button size="lg" onClick={onApply} loading={loading}>
           Оформить заявку
         </Button>
-        <Button size="md" variant="subtle" onClick={onSchedule}>
+        <Button size="lg" variant="subtle" onClick={onSchedule}>
           График платежей
         </Button>
-      </Group>
-    </Card>
+      </div>
+    </article>
+  );
+}
+
+/** Остальные варианты — строкой; на телефоне строка складывается в столбик. */
+function OtherOffer({ match, loading, onApply }: { match: ProductMatch; loading: boolean; onApply: () => void }) {
+  const p = match.product;
+  return (
+    <article className="potok-panel potok-offer-row" aria-label={p.name}>
+      <div className="potok-offer-row-main">
+        <Title order={3} className="potok-offer-row-name">
+          {nb(p.name)}
+        </Title>
+        <Terms match={match} plain />
+        {match.fit === 'partial' && match.caveats[0] && <Text fz="sm" c="dimmed" mt={4}>{match.caveats[0]}</Text>}
+      </div>
+      <div className="potok-offer-row-pay">
+        ≈{NBSP}{money(match.monthly_payment)}
+        <span>{interestOnly(p) ? 'процентов в месяц' : 'в месяц'}</span>
+      </div>
+      <Button size="md" variant="default" onClick={onApply} loading={loading}>
+        Оформить заявку
+      </Button>
+    </article>
+  );
+}
+
+/**
+ * «Ваш расчёт» — пересчитывается по ответам: платёж и переплата по лучшему варианту, что понадобится и что
+ * дальше. На 1440 — липкая правая колонка, на телефоне — свёрнутая строка под вопросами.
+ */
+function Estimate({ best, amount, term, purposeChosen }: { best?: ProductMatch; amount: number; term: number; purposeChosen: boolean }) {
+  const [open, setOpen] = useState(false);
+  const p = best?.product;
+  const overpay = best ? (p && interestOnly(p) ? best.monthly_payment * best.term_months : best.monthly_payment * best.term_months - best.amount) : null;
+  return (
+    <aside className="potok-match-side" data-open={open} aria-label="Ваш расчёт">
+      <section className="potok-panel">
+        <Title order={3}>Ваш расчёт</Title>
+        <div className="potok-side-amount">{moneyBig(best?.amount ?? amount)}</div>
+        <div className="potok-muted-text">
+          на {months(best?.term_months ?? term)}
+          {p ? `, ${p.name}` : ''}
+        </div>
+        {best && p ? (
+          <dl className="potok-pairs potok-side-pairs">
+            <div>
+              <dt>{interestOnly(p) ? 'Проценты в месяц' : 'Платёж'}</dt>
+              <dd>≈{NBSP}{money(best.monthly_payment)}</dd>
+            </div>
+            <div className="potok-side-extra">
+              <dt>{interestOnly(p) ? 'Проценты за срок' : 'Переплата'}</dt>
+              <dd>≈{NBSP}{money(overpay ?? 0)}</dd>
+            </div>
+            <div className="potok-side-extra">
+              <dt>Ставка</dt>
+              <dd>от {rate(p.rate)}</dd>
+            </div>
+            <div className="potok-side-extra">
+              <dt>Решение</dt>
+              <dd>{p.decision_time}</dd>
+            </div>
+          </dl>
+        ) : (
+          <Text fz="sm" c="dimmed" mt="md">
+            {purposeChosen ? 'Считаем платёж…' : 'Выберите цель — посчитаем платёж по подходящему продукту.'}
+          </Text>
+        )}
+        <Button variant="subtle" px={0} mt="sm" className="potok-phone-only" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          {open ? 'Свернуть' : 'Подробнее о расчёте'}
+        </Button>
+        <div className="potok-side-more">
+          {best && (
+            <Text fz="sm" c="dimmed" mt="md">
+              Оценка по минимальной ставке: точные условия банк назовёт в решении.
+            </Text>
+          )}
+          <Title order={4} mt="lg">
+            Что понадобится
+          </Title>
+          <ul className="potok-rows">
+            <li className="potok-side-row">
+              <b>Данные компании</b>
+              <span>Подставим из ЕГРЮЛ и ФНС сами</span>
+            </li>
+            {(p?.documents ?? ['Выписка по расчётному счёту за 6 месяцев']).map((d) => (
+              <li key={d} className="potok-side-row">
+                <b>{d}</b>
+                <span>Можно приложить позже</span>
+              </li>
+            ))}
+            {p?.collateral && (
+              <li className="potok-side-row">
+                <b>Обеспечение</b>
+                <span>{p.collateral}</span>
+              </li>
+            )}
+          </ul>
+          <Title order={4} mt="lg">
+            Что дальше
+          </Title>
+          <ol className="potok-steps">
+            <li>Анкета: около 5 минут, черновик сохраняется сам</li>
+            <li>Решение банка{p ? `: ${p.decision_time}` : ''}, придёт уведомление</li>
+            <li>Подпись кодом в кабинете, и деньги придут на счёт</li>
+          </ol>
+        </div>
+      </section>
+    </aside>
   );
 }
 
 export function MatchPage() {
   const meta = useMeta();
+  const products = useProducts();
   const navigate = useNavigate();
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [amount, setAmount] = useState(3_000_000);
@@ -174,6 +241,14 @@ export function MatchPage() {
   const create = useCreateApplication();
   const [applying, setApplying] = useState<string | null>(null);
   const [scheduleFor, setScheduleFor] = useState<ProductMatch | null>(null);
+  // Шкалы — по всему каталогу продуктов: от самого маленького минимума до самого большого максимума.
+  const all = products.data ?? [];
+  const minAmount = all.length ? Math.min(...all.map((p) => p.min_amount)) : 100_000;
+  const maxAmount = all.length ? Math.max(...all.map((p) => p.max_amount)) : 50_000_000;
+  const minTerm = all.length ? Math.min(...all.map((p) => p.min_term)) : 3;
+  const maxTerm = all.length ? Math.max(...all.map((p) => p.max_term)) : 60;
+  const results = purpose ? (match.data ?? []) : [];
+  const [best, ...others] = results;
 
   const apply = (m: ProductMatch) => {
     if (!purpose) return;
@@ -188,71 +263,80 @@ export function MatchPage() {
   };
 
   return (
-    <Stack gap="xl">
+    <Stack gap="lg">
       <div>
-        <Title order={2}>Подберём кредит под вашу задачу</Title>
+        <Title order={1}>Подобрать кредит</Title>
         <Text c="dimmed" mt={4}>
-          Три вопроса — и вы увидите подходящие продукты с платежом. Ни к чему не обязывает.
+          Три вопроса, и вы увидите подходящие продукты с платежом. Ни к чему не обязывает.
         </Text>
       </div>
 
-      <Card p={{ base: 'lg', sm: 'xl' }}>
-        <Title order={4}>1. Для чего нужны деньги?</Title>
-        <div style={{ marginTop: 16, maxWidth: 672 }}>
-          {meta.data ? (
-            <ChoiceList
-              label="Для чего нужны деньги"
-              value={purpose}
-              onChange={setPurpose}
-              options={meta.data.purposes.map((p) => ({ value: p.code, title: p.title, text: p.description }))}
+      <div className="potok-match">
+        <section className="potok-panel potok-match-q">
+          <Title order={3}>1. Для чего нужны деньги</Title>
+          <div style={{ marginTop: 16 }}>
+            {meta.data ? (
+              <ChoiceList
+                label="Для чего нужны деньги"
+                value={purpose}
+                onChange={setPurpose}
+                options={meta.data.purposes.map((p) => ({ value: p.code, title: p.title, text: p.description }))}
+              />
+            ) : (
+              <Skeleton h={320} radius="md" />
+            )}
+          </div>
+
+          <Title order={3} mt={32}>
+            2. Сколько и на какой срок
+          </Title>
+          <div className="potok-match-sliders">
+            <AmountControl
+              label="Сумма"
+              sliderLabel="Ползунок суммы"
+              value={amount}
+              onChange={setAmount}
+              min={minAmount}
+              max={maxAmount}
+              step={100_000}
+              scale="log"
             />
+            {/* До выбора продукта — общий диапазон всех продуктов; подбор сам подгонит срок под продукт. */}
+            <TermControl value={term} onChange={setTerm} min={minTerm} max={maxTerm} step={3} />
+          </div>
+        </section>
+
+        <Estimate best={best} amount={amount} term={term} purposeChosen={!!purpose} />
+
+        <section className="potok-match-r" aria-label="Подходящие варианты">
+          <Title order={3}>3. Подходящие варианты</Title>
+          {!purpose ? (
+            <div className="potok-panel" style={{ marginTop: 12 }}>
+              <Empty
+                art="list"
+                title="Выберите цель кредита"
+                text="Покажем продукты, которые подходят под вашу задачу, и сразу посчитаем платёж."
+              />
+            </div>
+          ) : match.isLoading ? (
+            <Skeleton h={320} radius={24} mt={12} />
           ) : (
-            <Skeleton h={320} radius="md" />
+            <Stack gap="md" mt={12}>
+              {best && (
+                <BestOffer
+                  match={best}
+                  loading={applying === best.product.code}
+                  onApply={() => apply(best)}
+                  onSchedule={() => setScheduleFor(best)}
+                />
+              )}
+              {others.map((m) => (
+                <OtherOffer key={m.product.code} match={m} loading={applying === m.product.code} onApply={() => apply(m)} />
+              ))}
+            </Stack>
           )}
-        </div>
-
-        <Title order={4} mt={36}>
-          2. Сколько и на какой срок
-        </Title>
-        <SimpleGrid cols={{ base: 1, md: 2 }} mt="md" spacing={40}>
-          <AmountControl
-            label="Сумма"
-            sliderLabel="Ползунок суммы"
-            value={amount}
-            onChange={setAmount}
-            min={MIN_AMOUNT}
-            max={MAX_AMOUNT}
-            step={100_000}
-            ticks={amountTicks(MIN_AMOUNT, MAX_AMOUNT)}
-          />
-          {/* До выбора продукта — общий диапазон всех продуктов; подбор сам подгонит срок под продукт. */}
-          <TermControl value={term} onChange={setTerm} min={3} max={60} step={3} />
-        </SimpleGrid>
-      </Card>
-
-      <Stack gap="md">
-        <Title order={4}>3. Подходящие варианты</Title>
-        {!purpose ? (
-          <EmptyState
-            icon={IconTarget}
-            title="Выберите цель кредита"
-            text="Мы покажем продукты, которые подходят именно под вашу задачу, и сразу посчитаем платёж."
-          />
-        ) : match.isLoading ? (
-          <Skeleton h={320} radius="lg" />
-        ) : (
-          match.data?.map((m, i) => (
-            <OfferCard
-              key={m.product.code}
-              match={m}
-              best={i === 0 && m.fit === 'best'}
-              loading={applying === m.product.code}
-              onApply={() => apply(m)}
-              onSchedule={() => setScheduleFor(m)}
-            />
-          ))
-        )}
-      </Stack>
+        </section>
+      </div>
 
       <ScheduleModal match={scheduleFor} onClose={() => setScheduleFor(null)} />
     </Stack>

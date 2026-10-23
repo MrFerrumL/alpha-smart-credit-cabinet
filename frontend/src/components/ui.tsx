@@ -107,13 +107,14 @@ export function EmptyState({
   );
 }
 
+/** Подпись и значение: подпись обычным регистром, сталью; значение графитом — суммы никогда не красные. */
 export function Stat({ label, value, accent = false }: { label: string; value: ReactNode; accent?: boolean }) {
   return (
     <div>
-      <Text fz="xs" c="dimmed" tt="uppercase" fw={600} lts={0.4}>
+      <Text fz="sm" c="dimmed">
         {label}
       </Text>
-      <Text fz={accent ? 24 : 'lg'} fw={800} c={accent ? 'brand.6' : undefined} lh={1.3}>
+      <Text fz={accent ? 22 : 'lg'} fw={600} lh={1.3} mt={2}>
         {value}
       </Text>
     </div>

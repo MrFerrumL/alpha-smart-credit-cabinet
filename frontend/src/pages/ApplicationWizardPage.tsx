@@ -47,7 +47,7 @@ import type { Application, ApplicationForm, Product, Purpose, PurposeInfo } from
 import { useAuth } from '../auth/AuthContext';
 import { DocumentList } from '../components/ApplicationBlocks';
 import { ChoiceList } from '../components/Choice';
-import { AmountControl, TermControl, amountTicks } from '../components/Money';
+import { AmountControl, TermControl } from '../components/Money';
 import { PurposeIcon, Stat } from '../components/ui';
 import { MAX_DEBT_SHARE, monthlyPayment } from '../lib/finance';
 import { money, moneyShort, months, rate } from '../lib/format';
@@ -359,7 +359,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 min={product.min_amount}
                 max={product.max_amount}
                 step={50_000}
-                ticks={amountTicks(product.min_amount, product.max_amount)}
+                scale="log"
                 error={err('amount')}
               />
               {product.min_term === product.max_term ? (

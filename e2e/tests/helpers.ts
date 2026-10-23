@@ -36,10 +36,9 @@ export async function session(browser: Browser, fullName: string): Promise<Page>
   return page;
 }
 
-/** Как moneyShort во фронтенде: «3 млн ₽», «4,5 млн ₽», «500 тыс. ₽». */
-export function moneyShort(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
-  return `${Math.round(value / 1_000)} тыс. ₽`;
+/** Как money во фронтенде: «3 000 000 ₽» (пробелы сравниваются без учёта вида — обычный или неразрывный). */
+export function money(value: number): string {
+  return `${value.toLocaleString('ru-RU').replace(/\s/g, ' ')} ₽`;
 }
 
 /** Остановки по ходу подачи заявки: запись демо ставит на них подписи и паузы, обычные тесты хук не передают. */
@@ -54,10 +53,10 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   await page.getByLabel('Сумма', { exact: true }).fill(String(input.amount));
   // Срок вводится в поле «Срок» (рядом — быстрые значения и слайдер).
   await page.getByLabel('Срок', { exact: true }).fill(String(input.term));
-  const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: input.product, exact: true }) });
-  // Подбор пересчитывается с задержкой — ждём, пока в карточке появятся введённые срок и сумма.
-  await expect(card.getByText('Сумма', { exact: true }).locator('..')).toContainText(moneyShort(input.amount));
-  await expect(card.getByText('Срок', { exact: true }).locator('..')).toContainText(`${input.term} мес`);
+  const card = page.getByRole('article', { name: input.product, exact: true });
+  // Подбор пересчитывается с задержкой — ждём, пока в варианте появятся введённые срок и сумма.
+  await expect(card.getByTestId('match-terms')).toContainText(money(input.amount));
+  await expect(card.getByTestId('match-terms')).toContainText(`на ${input.term} мес`);
   await onStep?.('match');
   await card.getByRole('button', { name: 'Оформить заявку' }).click();
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);

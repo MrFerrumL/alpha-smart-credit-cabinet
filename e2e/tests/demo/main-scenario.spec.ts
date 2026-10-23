@@ -121,8 +121,7 @@ test('основной сценарий: заявка пекарни от под
     async (step) => {
       // Подпись лежит внизу экрана — нужный блок прокручиваем в середину, чтобы она его не закрывала.
       if (step === 'match') {
-        const heading = page.getByRole('heading', { name: 'Экспресс-оборот', exact: true });
-        await reveal(page.locator('.mantine-Card-root').filter({ has: heading }));
+        await reveal(page.getByRole('article', { name: 'Экспресс-оборот', exact: true }));
       }
       if (step === 'review') await reveal(page.getByLabel(/Согласен на запрос кредитной истории/));
       await show(page, ...APPLY_CAPTIONS[step]);
