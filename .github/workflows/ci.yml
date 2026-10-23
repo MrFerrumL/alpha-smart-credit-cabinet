@@ -78,6 +78,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Start the stack exactly as README says (build, wait for healthchecks)
         run: docker compose up --build -d --wait --wait-timeout 300
+      - name: Start memory sampler (docker stats every 2 s)
+        run: |
+          mkdir -p "$RUNNER_TEMP/resources"
+          # The loop must outlive this step: output goes to a file, own session, no stdin.
+          setsid nohup bash -c '
+            echo $$ > "$1/sampler.pid"
+            while true; do
+              echo "# $(date +%s)"
+              docker stats --no-stream --format "{{.Name}} {{.MemUsage}}"
+              sleep 2
+            done
+          ' sampler "$RUNNER_TEMP/resources" > "$RUNNER_TEMP/resources/stats.log" 2>&1 < /dev/null &
       - name: Smoke test through nginx (demo login → application → approved)
         run: python3 scripts/smoke.py http://localhost:8080 --timeout 180
       - uses: actions/setup-node@v4
@@ -99,6 +111,25 @@ jobs:
           E2E_BASE_URL: http://localhost:8080
           E2E_MOCKS_URL: http://localhost:8001
         run: npm run ui
+      - name: Resources after the full run (peak memory, image sizes, disk)
+        if: always()
+        continue-on-error: true
+        run: |
+          dir="$RUNNER_TEMP/resources"
+          mkdir -p "$dir"
+          if [ -f "$dir/sampler.pid" ]; then kill "$(cat "$dir/sampler.pid")" 2>/dev/null || true; fi
+          python3 scripts/resource_report.py --samples "$dir/stats.log" --out "$dir/resources.md" || echo "Resource report is not available"
+          if [ -f "$dir/resources.md" ]; then cat "$dir/resources.md" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload resources
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resources
+          path: |
+            ${{ runner.temp }}/resources/resources.md
+            ${{ runner.temp }}/resources/stats.log
+          if-no-files-found: warn
+          retention-days: 30
       - name: Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
