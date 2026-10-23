@@ -132,7 +132,8 @@ test('основной сценарий: заявка пекарни от под
   await caption(page, 'Заявка в конвейере: проверка компании, оценка, решение — этапы меняются на глазах');
   const decision = page.getByRole('heading', { name: 'Банк готов выдать кредит' });
   await expect(decision).toBeVisible({ timeout: 90_000 });
-  const number = (await page.locator('h2').filter({ hasText: /^Заявка №/ }).innerText()).replace(/^Заявка №\s*/, '').trim();
+  // Номер — в строке под заголовком: «Заявка 2026-000001, отправлена …».
+  const number = (await page.getByText(/^Заявка \d{4}-\d{6},/).first().innerText()).match(/\d{4}-\d{6}/)![0];
 
   // 5. Решение с объяснением.
   await show(page, 'Решение принято автоматически: сумма, срок, ставка и платёж в месяц', 3000);
@@ -140,7 +141,7 @@ test('основной сценарий: заявка пекарни от под
   await show(page, 'Причины одобрения — простыми словами, а не баллами', 3000);
 
   // 6. Принять предложение, посмотреть договор и график.
-  const accept = page.getByRole('button', { name: 'Принять и перейти к договору' });
+  const accept = page.getByRole('button', { name: 'Принять предложение' });
   await reveal(accept);
   await show(page, 'Клиент принимает предложение банка', 1800);
   await accept.click();
@@ -172,7 +173,8 @@ test('основной сценарий: заявка пекарни от под
   await pause(page, 2500);
 
   // 9. Смена роли: выход и вход аналитиком банка.
-  await page.getByRole('button', { name: 'Выйти' }).click();
+  await page.getByRole('button', { name: /^Профиль/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await show(page, 'Теперь та же заявка глазами кредитного аналитика банка', 2500);
   await pickPersona(page, 'Мария Кредитова');
@@ -187,7 +189,7 @@ test('основной сценарий: заявка пекарни от под
   await show(page, `Находим заявку № ${number} пекарни`, 1800);
   await caption(page, 'Открываем карточку заявки');
   await row.click();
-  await expect(page.getByRole('heading', { name: 'Оценка заявки' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Оценка', exact: true })).toBeVisible();
   await show(page, 'Карточка оценки: балл, грейд, факторы, стоп-факторы, нагрузка и покрытие платежа прибылью', 3500);
 
   // 11. Трасса правил и воспроизведение решения.
