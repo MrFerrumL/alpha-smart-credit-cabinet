@@ -405,3 +405,439 @@ body {
     font-weight: 600;
   }
 }
+
+/* --- Чипы статусов: приглушённый фон, тёмный текст, точка; не обрезаются ------------------------- */
+.potok-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-6);
+  font: 500 13px/1 var(--font-ui);
+  white-space: nowrap;
+  flex: none;
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+}
+
+.potok-chip[data-dot='true']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.potok-chip[data-tone='plain']::before {
+  background: var(--potok-neutral-700);
+}
+
+.potok-chip[data-tone='ok'] {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.potok-chip[data-tone='ok']::before {
+  background: var(--ok-dot);
+}
+
+.potok-chip[data-tone='warn'] {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.potok-chip[data-tone='warn']::before {
+  background: var(--warn-dot);
+}
+
+.potok-chip[data-tone='err'] {
+  background: var(--err-bg);
+  color: var(--err-ink);
+}
+
+.potok-chip[data-tone='err']::before {
+  background: var(--err-dot);
+}
+
+.potok-chip[data-tone='info'] {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.potok-chip[data-tone='info']::before {
+  background: var(--info-dot);
+}
+
+/* --- Степпер из сегментов и компонент статуса --------------------------------------------------- */
+.potok-stepper {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-stepper li {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--potok-steel);
+}
+
+.potok-stepper li::before {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--potok-line-strong);
+  transition: background-color var(--dur-panel) var(--ease);
+}
+
+.potok-stepper[data-labels='true'] li::before {
+  margin-bottom: 8px;
+}
+
+.potok-stepper[data-labels='false'] .potok-stepper-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.potok-stepper li[data-seg='done'] {
+  color: var(--potok-ink);
+}
+
+.potok-stepper li[data-seg='done']::before {
+  background: var(--potok-ink);
+}
+
+.potok-stepper li[data-seg='now'] {
+  color: var(--potok-ink);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='now']::before {
+  background: var(--potok-accent);
+}
+
+.potok-stepper li[data-seg='stop'] {
+  color: var(--err-text);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='stop']::before {
+  background: var(--err-dot);
+}
+
+.potok-stepper li[data-seg='closed'] {
+  color: var(--potok-ink);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='closed']::before {
+  background: var(--potok-neutral-700);
+}
+
+.potok-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.potok-status-where {
+  font-weight: 600;
+}
+
+.potok-status-note {
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
+.potok-status-next {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--potok-steel);
+  max-width: 68ch;
+}
+
+@media (max-width: 720px) {
+  .potok-stepper[data-labels='true'] .potok-stepper-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .potok-stepper[data-labels='true'] li::before {
+    margin-bottom: 0;
+  }
+
+  .potok-status-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
+
+/* --- Кнопки: главная — красная (одна на экране), вторичная — тон, текстовая — подчёркнутая ------- */
+.mantine-Button-root[data-variant='default'] {
+  background: var(--potok-canvas);
+  border: 0;
+  color: var(--potok-ink);
+}
+
+.mantine-Button-root[data-variant='default']:hover {
+  background: var(--potok-line);
+}
+
+.on-canvas .mantine-Button-root[data-variant='default'] {
+  background: var(--potok-paper);
+}
+
+.mantine-Button-root[data-variant='subtle'] {
+  color: var(--potok-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.mantine-Button-root[data-variant='subtle']:hover {
+  background: transparent;
+  text-decoration-thickness: 2px;
+}
+
+.mantine-Button-root:active:not([data-disabled]) {
+  transform: scale(0.98);
+  transition: transform var(--dur-press) var(--ease);
+}
+
+/* --- График платежей ------------------------------------------------------------------------------ */
+.potok-bars-plot {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  height: 96px;
+}
+
+.potok-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 56%;
+  height: 100%;
+  justify-self: center;
+}
+
+.potok-bar-i {
+  background: var(--potok-line-strong);
+  border-radius: 3px 3px 0 0;
+}
+
+.potok-bar-p {
+  background: var(--potok-neutral-700);
+  border-radius: 0 0 3px 3px;
+}
+
+.potok-bar[data-current='true']::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -2px;
+  right: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--potok-accent);
+}
+
+.potok-bars-axis {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--potok-steel);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.potok-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+.potok-legend i[data-kind='p'] {
+  background: var(--potok-neutral-700);
+}
+
+.potok-legend i[data-kind='i'] {
+  background: var(--potok-line-strong);
+}
+
+@media (max-width: 720px) {
+  .potok-bars-plot {
+    gap: 3px;
+    height: 72px;
+  }
+
+  .potok-bar {
+    width: 70%;
+  }
+
+  .potok-bars-axis {
+    gap: 3px;
+  }
+
+  .potok-bars-axis span[data-major='false'] {
+    visibility: hidden;
+  }
+}
+
+/* --- Поле суммы и слайдер ------------------------------------------------------------------------- */
+.potok-unit {
+  font-size: 16px;
+  color: var(--potok-steel);
+}
+
+.potok-amount .mantine-Input-input {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.potok-amount-slider {
+  margin: -1px 16px 0;
+}
+
+.potok-ticks {
+  position: relative;
+  height: 18px;
+  margin: 8px 16px 0;
+  font-size: 12px;
+  color: var(--potok-steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.potok-ticks span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.potok-ticks span:first-child {
+  transform: none;
+}
+
+.potok-ticks span:last-child {
+  transform: translateX(-100%);
+}
+
+.potok-amount-hint {
+  margin: 6px 0 0 16px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+@media (max-width: 720px) {
+  .potok-ticks span[data-major='false'] {
+    display: none;
+  }
+}
+
+/* --- Пустые состояния, ошибки, скелетоны ---------------------------------------------------------- */
+.potok-empty {
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--potok-paper);
+  border-radius: var(--r-24);
+}
+
+.potok-empty-action {
+  margin-top: 20px;
+}
+
+.potok-error {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 32px;
+  align-items: start;
+  max-width: 776px;
+  padding: 40px;
+  background: var(--potok-paper);
+  border-radius: var(--r-24);
+}
+
+.potok-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.potok-sk-figures {
+  display: flex;
+  gap: 96px;
+  margin-top: 12px;
+}
+
+.potok-sk-bars {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 96px;
+  margin-top: 40px;
+}
+
+@media (max-width: 720px) {
+  .potok-error {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 24px 16px;
+  }
+
+  .potok-sk-figures {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+/* --- Тосты: тёмная плашка, выезжает с края ------------------------------------------------------- */
+.mantine-Notification-root {
+  background: var(--potok-ink);
+  border-radius: var(--r-16);
+  box-shadow: var(--shadow-m);
+}
+
+.mantine-Notification-root::before {
+  display: none;
+}
+
+.mantine-Notification-title,
+.mantine-Notification-description {
+  color: #fff;
+}
+
+.mantine-Notification-description {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.mantine-Notification-closeButton {
+  color: rgba(255, 255, 255, 0.78);
+}
