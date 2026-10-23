@@ -29,6 +29,7 @@ import {
 import type { Application, SigningCode } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { money, moneyShort, months, rate } from '../lib/format';
+import { nb } from '../lib/nobreak';
 import { Stat } from './ui';
 
 function useCountdown(until: string | null): number {
@@ -184,7 +185,7 @@ export function SigningCard({ app }: { app: Application }) {
         <div>
           <Title order={3}>{signed ? 'Договор подписан' : 'Договор готов к подписанию'}</Title>
           <Text c="dimmed" fz="sm">
-            {c ? `Кредитный договор № ${c.number}` : 'Готовим договор…'}
+            {c ? nb(`Кредитный договор № ${c.number}`) : 'Готовим договор…'}
           </Text>
         </div>
       </Group>

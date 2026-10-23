@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { useProducts } from '../api/hooks';
 import type { Application } from '../api/types';
 import { money, monthsShort } from '../lib/format';
+import { nb } from '../lib/nobreak';
 import { shownTerms } from './ApplicationBlocks';
 import { StatusChip } from './Status';
 
@@ -16,9 +17,9 @@ export function AppRow({ app }: { app: Application }) {
     <li>
       <Link to={to} className="potok-row">
         <span className="potok-row-main">
-          <span className="potok-row-title">{terms.product}</span>
-          <span className="potok-row-sub num">
-            Заявка {app.number}, {money(terms.amount)} на {monthsShort(terms.term)}
+          <span className="potok-row-title">{nb(terms.product)}</span>
+          <span className="potok-row-sub">
+            Заявка {nb(app.number)}, {money(terms.amount)} на {monthsShort(terms.term)}
           </span>
         </span>
         <StatusChip app={app} />

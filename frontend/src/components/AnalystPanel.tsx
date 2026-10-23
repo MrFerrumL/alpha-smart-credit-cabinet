@@ -7,6 +7,7 @@ import { useAnalystDecision, useAssessment, useChecks, useReplay } from '../api/
 import type { Application, ApplicationEvent, Assessment, DecisionOutcome, Terms, TraceStep } from '../api/types';
 import { monthlyPayment } from '../lib/finance';
 import { NBSP, decimal, duration, money, months, percent, rate } from '../lib/format';
+import { nb } from '../lib/nobreak';
 import { History } from './History';
 import { MoneyInput } from './Money';
 import { Chip, StatusBlock, StatusChip } from './Status';
@@ -94,7 +95,7 @@ function Facts({ app, a }: { app: Application; a: Assessment | undefined }) {
         {items.map(([k, v]) => (
           <div key={k}>
             <dt>{k}</dt>
-            <dd className="num">{v}</dd>
+            <dd>{v}</dd>
           </div>
         ))}
       </dl>
@@ -123,7 +124,7 @@ function AssessmentPanel({ a }: { a: Assessment }) {
       <div className="potok-grade">
         <span className="potok-grade-g">Грейд {a.grade}</span>
         <span>
-          балл <b className="num">{a.score}</b> из{NBSP}100
+          балл <b>{a.score}</b> из{NBSP}100
         </span>
         {a.probability_default !== null && <span className="potok-muted-text">вероятность дефолта {percent(a.probability_default, 0)}</span>}
       </div>
@@ -354,13 +355,13 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
             </div>
             <div className="potok-calc">
               <span>
-                Платёж <b className="num">{money(Math.round(payment))}</b>
+                Платёж <b>{money(Math.round(payment))}</b>
               </span>
               <span>
-                Нагрузка <b className="num"><Load value={dsr} max={a.max_dsr} /></b>
+                Нагрузка <b><Load value={dsr} max={a.max_dsr} /></b>
               </span>
               <span>
-                Покрытие <b className="num"><Coverage value={cover} min={a.min_coverage} /></b>
+                Покрытие <b><Coverage value={cover} min={a.min_coverage} /></b>
               </span>
             </div>
             {deviates && (
@@ -464,7 +465,7 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
           {waiting && <Chip tone="neutral" dot={false}>В очереди {duration(Date.now() - new Date(app.submitted_at!).getTime())}</Chip>}
         </Group>
         <Text c="dimmed" mt={4} fz="sm">
-          Заявка {app.number}, {app.product.name.toLowerCase()}, ИНН {app.company.inn}
+          Заявка {nb(app.number)}, {nb(app.product.name.toLowerCase())}, ИНН{NBSP}{app.company.inn}
         </Text>
       </div>
       <div className="potok-analyst">

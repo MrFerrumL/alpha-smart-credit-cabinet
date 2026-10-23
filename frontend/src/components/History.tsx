@@ -23,7 +23,7 @@ function EventItem({ ev, bank }: { ev: ApplicationEvent; bank: boolean }) {
       <Text fz="sm" fw={500}>
         {ev.title}
       </Text>
-      <Text fz="xs" c="dimmed" className="num">
+      <Text fz="xs" c="dimmed">
         {dateTime(ev.created_at)}, {ev.actor_name ?? ACTOR_LABEL[ev.actor_type]}
       </Text>
       {ev.comment && (

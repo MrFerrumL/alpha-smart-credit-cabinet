@@ -1,13 +1,13 @@
 import { NumberInput, Slider, type NumberInputProps } from '@mantine/core';
 import type { ReactNode } from 'react';
 
-import { THIN, moneyShort, monthsShort } from '../lib/format';
+import { NBSP, moneyShort, monthsShort } from '../lib/format';
 
 /** Поле суммы: разряды через узкий пробел, «₽» в поле справа, без стрелок, на телефоне — цифровая клавиатура. */
 export function MoneyInput({ unit = '₽', ...props }: NumberInputProps & { unit?: ReactNode }) {
   return (
     <NumberInput
-      thousandSeparator={THIN}
+      thousandSeparator={NBSP}
       allowNegative={false}
       allowDecimal={false}
       inputMode="numeric"
@@ -68,7 +68,7 @@ export function AmountControl({
         onChange={(v) => onChange(typeof v === 'number' ? v : Number(v) || 0)}
         onBlur={() => onChange(Math.min(max, Math.max(min, value)))}
         error={error}
-        thousandSeparator={unit === '₽' ? THIN : undefined}
+        thousandSeparator={unit === '₽' ? NBSP : undefined}
       />
       <Slider
         value={Math.min(max, Math.max(min, value))}

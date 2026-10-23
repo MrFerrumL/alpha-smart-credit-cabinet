@@ -68,10 +68,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Цифры — табличные: суммы, ставки, даты и колонки не прыгают. */
+/* Слово с дефисом (номер заявки, «Экспресс-оборот») не переносится — см. lib/nobreak.tsx. */
+.potok-nowrap {
+  white-space: nowrap;
+}
+
+/* Табличные цифры — только в таблицах, колонках и крупных цифрах; в тексте «12 месяцев» они разъезжаются. */
 .num,
-.mantine-Table-td,
-.mantine-NumberInput-input {
+.mantine-Table-td {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
@@ -735,7 +739,6 @@ body {
   margin: 8px 16px 0;
   font-size: 12px;
   color: var(--potok-steel);
-  font-variant-numeric: tabular-nums;
 }
 
 .potok-ticks span {
@@ -848,7 +851,6 @@ body {
   background: var(--potok-canvas);
   color: var(--potok-ink);
   font: 500 14px/1 var(--font-ui);
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition: background-color var(--dur-press) var(--ease);
 }

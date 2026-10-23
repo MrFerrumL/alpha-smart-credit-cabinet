@@ -21,6 +21,7 @@ import { DecisionBlock, DecisionReasons, NextSteps } from '../components/Decisio
 import { IssuedCard, SigningCard } from '../components/Signing';
 import { History } from '../components/History';
 import { DecisionSkeleton, LoadError } from '../components/States';
+import { nb } from '../lib/nobreak';
 import { StatusBlock, StatusChip } from '../components/Status';
 import { dateTime, money, months, rate } from '../lib/format';
 
@@ -103,7 +104,7 @@ function AgreedTerms({ app }: { app: Application }) {
         </div>
         <div>
           <dt>Сумма</dt>
-          <dd className="num">{money(terms.amount)}</dd>
+          <dd>{money(terms.amount)}</dd>
         </div>
         <div>
           <dt>Срок</dt>
@@ -115,7 +116,7 @@ function AgreedTerms({ app }: { app: Application }) {
         </div>
         <div>
           <dt>{terms.interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'}</dt>
-          <dd className="num">{terms.payment}</dd>
+          <dd>{terms.payment}</dd>
         </div>
       </dl>
       {terms.asked && (
@@ -170,11 +171,11 @@ export function ApplicationPage() {
       <div>
         {back}
         <Group mt="sm" gap="md" align="center">
-          <Title order={1}>{app.product.name}</Title>
+          <Title order={1}>{nb(app.product.name)}</Title>
           <StatusChip app={app} />
         </Group>
         <Text c="dimmed" mt={4} fz="sm">
-          Заявка {app.number}, {app.submitted_at ? 'отправлена' : 'создана'} {dateTime(sent)}
+          Заявка {nb(app.number)}, {app.submitted_at ? 'отправлена' : 'создана'} {dateTime(sent)}
         </Text>
       </div>
 

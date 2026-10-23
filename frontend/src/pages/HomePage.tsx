@@ -11,7 +11,8 @@ import { shownTerms } from '../components/ApplicationBlocks';
 import { AppRow } from '../components/AppRow';
 import { NewsFeed } from '../components/NewsFeed';
 import { StatusBlock, StatusChip } from '../components/Status';
-import { NBSP, date, dayMonth, greeting, money, months } from '../lib/format';
+import { NBSP, date, dayMonth, greeting, money, moneyBig, months } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
 /** Своя иллюстрация промоблока: серые столбики роста, графитовая база и одна красная волна «Потока». */
 function GrowthArt() {
@@ -96,13 +97,13 @@ function HomeStatus({ app }: { app: Application }) {
     <section className="potok-panel potok-home-status" aria-label="Текущая заявка">
       <div className="potok-home-top">
         <span className="potok-muted-text">
-          Заявка {app.number}, {offered?.name ?? terms.product}
+          Заявка {nb(app.number)}, {nb(offered?.name ?? terms.product)}
         </span>
         <StatusChip app={app} />
       </div>
-      <div className="potok-home-amount num">{money(amount)}</div>
+      <div className="potok-home-amount">{moneyBig(amount)}</div>
       {/* Срок и платёж — отдельными неразрывными частями: строка не рвётся на «мес.,». */}
-      <div className="potok-home-terms num">
+      <div className="potok-home-terms">
         <span>на {months(term)}</span>
         <span>
           {payment} {interestOnly ? 'процентов в месяц' : 'в месяц'}
@@ -127,8 +128,8 @@ function LoansBrief({ loans }: { loans: Loan[] }) {
           <li key={loan.id}>
             <Link to={`/loans/${loan.id}`} className="potok-row">
               <span className="potok-row-main">
-                <span className="potok-row-title">{loan.product_name}</span>
-                <span className="potok-row-sub num">
+                <span className="potok-row-title">{nb(loan.product_name)}</span>
+                <span className="potok-row-sub">
                   Основной долг к погашению {money(loan.balance)}
                 </span>
               </span>
@@ -180,7 +181,7 @@ function CompanyCard({ company }: { company: Company }) {
           .map(([k, v]) => (
             <div key={k}>
               <dt>{k}</dt>
-              <dd className="num">{v}</dd>
+              <dd>{v}</dd>
             </div>
           ))}
       </dl>
@@ -269,7 +270,7 @@ function CompanyOnboarding() {
                 {found.short_name}
               </Text>
               <Text fz="sm" c="dimmed">
-                ИНН {found.inn}
+                ИНН{NBSP}{found.inn}
                 {found.ogrn ? `, ОГРН ${found.ogrn}` : ''}
               </Text>
             </div>

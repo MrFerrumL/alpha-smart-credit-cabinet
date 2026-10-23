@@ -1,22 +1,29 @@
-// Числа как в банковском интерфейсе: разряды — узкий неразрывный пробел (U+202F), между числом и единицей —
-// неразрывный пробел (U+00A0), десятичная часть — через запятую. Строка не рвётся внутри суммы или срока.
+// Числа как в банковском интерфейсе: разряды и единицы — через неразрывный пробел (U+00A0), десятичная часть —
+// через запятую; строка не рвётся внутри суммы или срока. Узкий U+202F в Onest — 0,14 em: в тексте до 20 px его
+// почти не видно («329024 ₽»), поэтому он только у крупных цифр (moneyBig).
 export const NBSP = ' ';
 export const THIN = ' ';
 
 const intFmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+const SPACES = /[\s  ]/g;
 
-/** Целое с узкими пробелами между разрядами: 3 000 000. */
-export function int(value: number): string {
-  return intFmt.format(Math.round(value)).replace(/[\s  ]/g, THIN);
+/** Целое с разрядами: 3 000 000. */
+export function int(value: number, sep: string = NBSP): string {
+  return intFmt.format(Math.round(value)).replace(SPACES, sep);
 }
 
 /** Десятичное с запятой: 0,82; 22,9. */
 export function decimal(value: number, digits = 1): string {
-  return value.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: digits }).replace(/[\s  ]/g, THIN);
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: digits }).replace(SPACES, NBSP);
 }
 
 export function money(value: number): string {
   return `${int(value)}${NBSP}₽`;
+}
+
+/** Сумма для крупных цифр (20 px и больше): разряды — узким пробелом, иначе они слишком широкие. */
+export function moneyBig(value: number): string {
+  return `${int(value, THIN)}${NBSP}₽`;
 }
 
 export function moneyShort(value: number): string {
