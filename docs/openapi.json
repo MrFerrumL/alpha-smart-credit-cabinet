@@ -840,6 +840,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/explanation": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Пояснение решения простыми словами (если функция включена)",
+        "operationId": "application_explanation_api_applications__application_id__explanation_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/assessment": {
       "get": {
         "tags": [
@@ -3329,6 +3376,51 @@
         ],
         "title": "EventOut"
       },
+      "ExplanationOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "none"
+            ],
+            "title": "Status",
+            "description": "pending — пояснение готовится; ready — готово; none — пояснения нет: функция выключена, решение его не предполагает или оно не получилось"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Текст пояснения, только при ready: первое предложение пишет банк, продолжение — языковая модель"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At",
+            "description": "Когда пояснение готово, только при ready"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ExplanationOut",
+        "description": "Пояснение автоматического решения простыми словами. Необязательная функция: по умолчанию выключена."
+      },
       "FactorOut": {
         "properties": {
           "code": {
@@ -3935,13 +4027,19 @@
             },
             "type": "array",
             "title": "Purposes"
+          },
+          "llm_explanation": {
+            "type": "boolean",
+            "title": "Llm Explanation",
+            "description": "Включено пояснение решения простыми словами (языковая модель)"
           }
         },
         "type": "object",
         "required": [
           "stages",
           "statuses",
-          "purposes"
+          "purposes",
+          "llm_explanation"
         ],
         "title": "MetaOut"
       },

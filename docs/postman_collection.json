@@ -874,6 +874,27 @@
           "response": []
         },
         {
+          "name": "Пояснение решения простыми словами (если функция включена)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/explanation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "explanation"
+              ]
+            },
+            "description": "Пояснение решения простыми словами (если функция включена)"
+          },
+          "response": []
+        },
+        {
           "name": "Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
           "request": {
             "method": "GET",

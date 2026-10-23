@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.domain.products import PRODUCTS, Purpose
 from app.domain.statuses import LIMIT_OPENED, Actor, Status
+from app.explanation import jobs as explanation_jobs
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
@@ -181,13 +182,14 @@ def _apply_decision(
         "grade": result.grade,
         "score": result.score,
     }
-    apply_transition(
+    event = apply_transition(
         db,
         app,
         decision.outcome,
         Actor.SYSTEM,
         payload={"grade": result.grade, "score": result.score, "reasons": decision.reasons},
     )
+    explanation_jobs.schedule(db, app, event)  # пояснение простыми словами: только если функция включена
 
 
 def _own_loans(db: Session, app: Application) -> tuple[int, int]:

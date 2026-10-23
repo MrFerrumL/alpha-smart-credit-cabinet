@@ -46,6 +46,7 @@ class MetaOut(BaseModel):
     stages: list[str]
     statuses: list[StatusInfoOut]
     purposes: list[PurposeOut]
+    llm_explanation: bool = Field(description="Включено пояснение решения простыми словами (языковая модель)")
 
 
 # --- Пользователи и компании -----------------------------------------------------------------
@@ -256,6 +257,20 @@ class DecisionOut(BaseModel):
     outcome: str
     reasons: list[str]
     tips: list[str]
+
+
+class ExplanationOut(BaseModel):
+    """Пояснение автоматического решения простыми словами. Необязательная функция: по умолчанию выключена."""
+
+    status: Literal["pending", "ready", "none"] = Field(
+        description="pending — пояснение готовится; ready — готово; none — пояснения нет: функция выключена, "
+        "решение его не предполагает или оно не получилось"
+    )
+    text: str | None = Field(
+        default=None,
+        description="Текст пояснения, только при ready: первое предложение пишет банк, продолжение — языковая модель",
+    )
+    generated_at: UtcDatetime | None = Field(default=None, description="Когда пояснение готово, только при ready")
 
 
 class ApplicationOut(BaseModel):

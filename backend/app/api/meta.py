@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.config import get_settings
 from app.domain.products import PURPOSES
 from app.domain.statuses import STAGES, Status
 from app.schemas import MetaOut, PurposeOut
@@ -17,4 +18,5 @@ def meta() -> MetaOut:
             PurposeOut(code=code, title=info.title, description=info.description, icon=info.icon)
             for code, info in PURPOSES.items()
         ],
+        llm_explanation=get_settings().llm_active,
     )

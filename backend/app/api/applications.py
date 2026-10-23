@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_stream_user, require_analyst, require_client
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
+from app.explanation import jobs as explanation_jobs
 from app.models import ApplicationEvent, CheckResult, ClientTask, Document, User
 from app.pipeline.steps import SOURCE_TITLES, SOURCES
 from app.schemas import (
@@ -23,6 +24,7 @@ from app.schemas import (
     ContractOut,
     DocumentOut,
     EventOut,
+    ExplanationOut,
     SignConfirmIn,
     SigningCodeOut,
     StreamSnapshot,
@@ -102,6 +104,17 @@ def application_events(
 ) -> list[EventOut]:
     app = svc.get_for_user(db, user, application_id)
     return [svc.event_out(ev, for_bank=user.role == "analyst") for ev in app.events]
+
+
+@router.get(
+    "/{application_id}/explanation",
+    response_model=ExplanationOut,
+    summary="Пояснение решения простыми словами (если функция включена)",
+)
+def application_explanation(
+    application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ExplanationOut:
+    return explanation_jobs.for_client(db, svc.get_for_user(db, user, application_id))
 
 
 @router.get(
