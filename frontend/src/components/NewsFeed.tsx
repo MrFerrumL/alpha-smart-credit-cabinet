@@ -5,10 +5,11 @@ import { useApplications, useFeed } from '../api/hooks';
 import type { FeedItem } from '../api/types';
 import { dayMonth } from '../lib/format';
 
-/** Короткая метка «почему показано»: самая конкретная причина из тех, что прислал сервер. Полный список — в подсказке. */
+/**
+ * Короткая метка «почему показано»: отрасль, форма, регион или продукты. Статья — не сообщение о заявке, поэтому
+ * метки «Ваша заявка» нет. Полный список причин — в подсказке.
+ */
 function tag(reasons: string[]): { label: string; app: boolean } | null {
-  const now = reasons.find((r) => r.startsWith('Сейчас '));
-  if (now) return { label: 'Ваша заявка', app: true };
   const sector = reasons.find((r) => r.startsWith('Для вашей отрасли: '));
   if (sector) {
     const name = sector.slice('Для вашей отрасли: '.length);
@@ -47,8 +48,10 @@ export function NewsFeed() {
   const apps = useApplications();
   const feed = useFeed((apps.data ?? []).map((a) => `${a.id}:${a.status.code}`).join(','));
   const [all, setAll] = useState(false);
+  // Сервер ставит первыми самые подходящие — на главной три из них; и они, и полный список — по дате, новые сверху.
+  const byDate = (list: FeedItem[]) => [...list].sort((x, y) => y.published_at.localeCompare(x.published_at));
   const items = feed.data ?? [];
-  const shown = all ? items : items.slice(0, 3);
+  const shown = all ? byDate(items) : byDate(items.slice(0, 3));
   return (
     <section className="potok-panel potok-news" aria-label="Новости для вас">
       <Title order={3}>Новости для вас</Title>

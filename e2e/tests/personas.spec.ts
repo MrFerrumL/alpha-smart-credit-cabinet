@@ -99,9 +99,10 @@ test('smirnova: банк просит выписку, специалист св�
     revenue: 600_000,
   });
   await expect(page.getByRole('heading', { name: 'Банк просит уточнить' })).toBeVisible();
-  // Лента реагирует на этап заявки: наверху — новость о дополнительных документах.
-  const titles = await feedTitles(page);
-  expect(titles[0]).toContain('банк запросил дополнительные документы');
+  // Лента реагирует на этап заявки: среди трёх новостей на главной — новость о дополнительных документах
+  // (сами три стоят по дате).
+  const titles = await feedTitles(page, false);
+  expect(titles.some((t) => t.includes('банк запросил дополнительные документы'))).toBe(true);
 
   await page.goto(`/applications/${id}`);
   await page.locator('input[type=file]').first().setInputFiles({
