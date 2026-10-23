@@ -465,7 +465,7 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
           {waiting && <Chip tone="neutral" dot={false}>В очереди {duration(Date.now() - new Date(app.submitted_at!).getTime())}</Chip>}
         </Group>
         <Text c="dimmed" mt={4} fz="sm">
-          Заявка {nb(app.number)}, {nb(app.product.name.toLowerCase())}, ИНН{NBSP}{app.company.inn}
+          Заявка {nb(app.number)}, {nb(app.product.name)}, ИНН{NBSP}{app.company.inn}
         </Text>
       </div>
       <div className="potok-analyst">
