@@ -183,7 +183,7 @@ test('основной сценарий: заявка пекарни от под
   // 10. Очередь и карточка заявки.
   await show(page, 'Очередь заявок: все отправленные клиентами заявки и их статусы', 2500);
   await page.getByText('Все', { exact: true }).click();
-  const row = page.getByRole('row').filter({ hasText: `№ ${number}` });
+  const row = page.getByRole('row').filter({ hasText: number });
   await expect(row).toBeVisible();
   await reveal(row);
   await show(page, `Находим заявку № ${number} пекарни`, 1800);

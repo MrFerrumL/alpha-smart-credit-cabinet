@@ -1,113 +1,177 @@
-import { Card, Group, SegmentedControl, SimpleGrid, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
-import { IconInbox } from '@tabler/icons-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Button, Skeleton, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
 import { useApplications } from '../api/hooks';
-import { EmptyState, Stat, StatusBadge } from '../components/ui';
-import { dateTime, moneyShort, months } from '../lib/format';
+import type { Application } from '../api/types';
+import { Empty } from '../components/States';
+import { Chip, StatusChip } from '../components/Status';
+import { duration, money, monthsShort } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'manual_review', label: 'Ждут решения' },
-  { value: 'approved', label: 'Одобрены' },
-  { value: 'counter_offer', label: 'Контрпредложения' },
-  { value: 'rejected', label: 'Отказы' },
+// Ждут банк — конвейер или специалист; остальные ждут клиента или уже закрыты.
+const PIPELINE = ['submitted', 'validation', 'enrichment', 'scoring'];
+const waitsForBank = (a: Application) => a.status.code === 'manual_review' || PIPELINE.includes(a.status.code);
+
+const FILTERS: { value: string; label: string; match: (a: Application) => boolean }[] = [
+  { value: 'review', label: 'Ждут решения', match: (a) => a.status.code === 'manual_review' },
+  { value: 'pipeline', label: 'В конвейере', match: (a) => PIPELINE.includes(a.status.code) },
+  { value: 'info', label: 'Нужна информация', match: (a) => a.status.code === 'needs_info' },
+  { value: 'offer', label: 'Есть предложение', match: (a) => ['approved', 'counter_offer', 'signing'].includes(a.status.code) },
+  { value: 'done', label: 'Завершённые', match: (a) => a.status.terminal },
+  { value: 'all', label: 'Все', match: () => true },
 ];
+
+const waitMs = (a: Application) => (a.submitted_at ? Date.now() - new Date(a.submitted_at).getTime() : 0);
+
+/** Сначала те, кто дольше всех ждёт банк; остальные — по последнему изменению. */
+function byWaiting(a: Application, b: Application): number {
+  const wa = waitsForBank(a);
+  const wb = waitsForBank(b);
+  if (wa !== wb) return wa ? -1 : 1;
+  if (wa) return waitMs(b) - waitMs(a);
+  return b.updated_at.localeCompare(a.updated_at);
+}
+
+function Waiting({ app }: { app: Application }) {
+  return waitsForBank(app) && app.submitted_at ? (
+    <Chip tone="neutral" dot={false}>
+      {duration(waitMs(app))}
+    </Chip>
+  ) : (
+    <span className="potok-muted-text">—</span>
+  );
+}
 
 export function QueuePage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('manual_review');
   const all = useApplications(undefined, true);
-  const list = (all.data ?? []).filter((a) => filter === 'all' || a.status.code === filter);
-  const count = (code: string) => (all.data ?? []).filter((a) => a.status.code === code).length;
-  const inPipeline = (all.data ?? []).filter((a) => !a.status.terminal && !a.status.action_required).length;
+  const apps = all.data ?? [];
+  const [filter, setFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  // По умолчанию — «Ждут решения», а если там пусто — «Все».
+  const current = filter ?? (apps.some(FILTERS[0].match) ? 'review' : 'all');
+  const active = FILTERS.find((f) => f.value === current)!;
+  const q = query.trim().toLowerCase();
+  const list = apps
+    .filter(active.match)
+    .filter((a) => !q || [a.company.name, a.company.inn, a.number].some((s) => (s ?? '').toLowerCase().includes(q)))
+    .sort(byWaiting);
+
+  // Выбранный фильтр на телефоне прокручивается в видимую часть ленты фильтров.
+  const filtersRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    filtersRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [current]);
 
   return (
-    <Stack gap="xl">
-      <div>
-        <Title order={2}>Очередь заявок</Title>
-        <Text c="dimmed" mt={4}>
-          Все отправленные клиентами заявки. Статусы обновляются автоматически.
-        </Text>
+    <Stack gap="lg">
+      <div className="potok-q-head">
+        <div>
+          <Title order={1}>Очередь заявок</Title>
+          <Text c="dimmed" mt={4}>
+            Сверху — те, кто дольше всех ждёт решения банка. Статусы обновляются сами.
+          </Text>
+        </div>
+        <TextInput
+          className="potok-q-search on-canvas"
+          label="Компания, ИНН или номер"
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+        />
       </div>
 
-      <SimpleGrid cols={{ base: 2, md: 4 }}>
-        <Card>
-          <Stat label="Всего" value={all.data?.length ?? '—'} />
-        </Card>
-        <Card>
-          <Stat label="В конвейере" value={inPipeline} />
-        </Card>
-        <Card>
-          <Stat label="Ждут решения" value={count('manual_review')} accent />
-        </Card>
-        <Card>
-          <Stat label="Одобрено" value={count('approved') + count('counter_offer')} />
-        </Card>
-      </SimpleGrid>
-
-      <SegmentedControl value={filter} onChange={setFilter} data={FILTERS} w="fit-content" radius="md" />
+      <div className="potok-q-filters" role="group" aria-label="Фильтр заявок" ref={filtersRef}>
+        {FILTERS.map((f) => {
+          const n = apps.filter(f.match).length;
+          return (
+            <button key={f.value} type="button" className="potok-q-filter" aria-pressed={f.value === current} onClick={() => setFilter(f.value)}>
+              <span>{f.label}</span>
+              <span className="potok-q-count" data-zero={n === 0}>
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {all.isLoading ? (
-        <Skeleton h={240} radius="lg" />
+        <Skeleton h={280} radius={24} />
       ) : list.length === 0 ? (
-        <EmptyState icon={IconInbox} title="Заявок нет" text="Когда клиенты отправят заявки, они появятся здесь." />
+        <section className="potok-panel">
+          <Empty
+            art="queue"
+            title={q ? 'Ничего не нашлось' : `В фильтре «${active.label}» заявок нет`}
+            text={q ? 'Проверьте название компании, ИНН или номер заявки.' : undefined}
+            action={
+              <Button variant="default" size="md" onClick={() => (q ? setQuery('') : setFilter('all'))}>
+                {q ? 'Сбросить поиск' : 'Показать все'}
+              </Button>
+            }
+          />
+        </section>
       ) : (
-        <Card p={0}>
-          <Table.ScrollContainer minWidth={760}>
-            <Table highlightOnHover verticalSpacing="md" horizontalSpacing="lg">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Заявка</Table.Th>
-                  <Table.Th>Компания</Table.Th>
-                  <Table.Th>Продукт</Table.Th>
-                  <Table.Th ta="right">Сумма</Table.Th>
-                  <Table.Th>Статус</Table.Th>
-                  <Table.Th>Отправлена</Table.Th>
+        <section className="potok-panel potok-q">
+          <Table highlightOnHover withRowBorders verticalSpacing={12} className="potok-q-table" aria-label="Заявки">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Компания</Table.Th>
+                <Table.Th>Продукт</Table.Th>
+                <Table.Th ta="right">Сумма</Table.Th>
+                <Table.Th>Статус</Table.Th>
+                <Table.Th>В очереди</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {list.map((a) => (
+                <Table.Tr key={a.id} onClick={() => navigate(`/applications/${a.id}`)}>
+                  <Table.Td>
+                    <Link to={`/applications/${a.id}`} className="potok-q-co" onClick={(e) => e.stopPropagation()}>
+                      {nb(a.company.name)}
+                    </Link>
+                    <span className="potok-q-no">{nb(a.number)}</span>
+                  </Table.Td>
+                  <Table.Td>
+                    {nb(a.product.name)}
+                    <span className="potok-q-no">{monthsShort(a.term_months)}</span>
+                  </Table.Td>
+                  <Table.Td ta="right">{money(a.amount)}</Table.Td>
+                  <Table.Td>
+                    <StatusChip app={a} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Waiting app={a} />
+                  </Table.Td>
                 </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {list.map((a) => (
-                  <Table.Tr key={a.id} onClick={() => navigate(`/applications/${a.id}`)} style={{ cursor: 'pointer' }}>
-                    <Table.Td>
-                      <Text fw={700} fz="sm">
-                        № {a.number}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fz="sm">{a.company.name}</Text>
-                      <Text fz="xs" c="dimmed">
-                        ИНН {a.company.inn}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fz="sm">{a.product.name}</Text>
-                      <Text fz="xs" c="dimmed">
-                        {months(a.term_months)}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Text fz="sm" fw={700}>
-                        {moneyShort(a.amount)}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap={6}>
-                        <StatusBadge status={a.status} size="sm" />
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fz="sm" c="dimmed">
-                        {a.submitted_at ? dateTime(a.submitted_at) : '—'}
-                      </Text>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Card>
+              ))}
+            </Table.Tbody>
+          </Table>
+
+          {/* Телефон: та же очередь карточками-строками. */}
+          <ul className="potok-q-cards">
+            {list.map((a) => (
+              <li key={a.id}>
+                <Link to={`/applications/${a.id}`} className="potok-q-card">
+                  <span className="potok-q-card-l1">
+                    <span>{nb(a.company.name)}</span>
+                    <span className="potok-nowrap">{money(a.amount)}</span>
+                  </span>
+                  <span className="potok-q-card-l2">
+                    {nb(a.product.name)}, {monthsShort(a.term_months)}, заявка {nb(a.number)}
+                  </span>
+                  <span className="potok-q-card-l3">
+                    <StatusChip app={a} />
+                    {waitsForBank(a) && a.submitted_at && (
+                      <Chip tone="neutral" dot={false}>
+                        В очереди {duration(waitMs(a))}
+                      </Chip>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </Stack>
   );

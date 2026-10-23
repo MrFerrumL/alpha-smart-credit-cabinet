@@ -1113,6 +1113,98 @@ a.potok-note-title:hover {
   gap: 12px;
 }
 
+/* --- Очередь аналитика ---------------------------------------------------------------------------- */
+.potok-q-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.potok-q-search {
+  width: 320px;
+}
+
+/* Фильтры — лента кнопок; на телефоне прокручивается внутри экрана, без переполнения страницы. */
+.potok-q-filters {
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+  overflow-x: auto;
+  border-radius: var(--r-12);
+  background: var(--potok-paper);
+  scrollbar-width: none;
+  align-self: flex-start;
+}
+
+.potok-q-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.potok-q-filter {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--potok-steel);
+  font: 500 14px/1.2 var(--font-ui);
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.potok-q-filter:hover {
+  background: var(--potok-hover);
+}
+
+.potok-q-filter[aria-pressed='true'] {
+  background: var(--potok-ink);
+  color: var(--potok-paper);
+}
+
+/* Счётчики — серые, нули — бледнее; красного нет. */
+.potok-q-count {
+  opacity: 0.75;
+}
+
+.potok-q-count[data-zero='true'] {
+  opacity: 0.45;
+}
+
+.potok-q {
+  padding: 8px 24px;
+}
+
+.potok-q-table tbody tr {
+  cursor: pointer;
+}
+
+.potok-q-co {
+  font-weight: 500;
+  color: var(--potok-ink);
+  text-decoration: none;
+}
+
+.potok-q-co:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.potok-q-no {
+  display: block;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-q-cards {
+  display: none;
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;
@@ -1758,6 +1850,57 @@ a.potok-note-title:hover {
     font-size: 12px;
     font-weight: 400;
     color: var(--potok-steel);
+  }
+
+  .potok-q-search {
+    width: 100%;
+  }
+
+  .potok-q {
+    padding: 0;
+    background: none;
+  }
+
+  .potok-q-table {
+    display: none;
+  }
+
+  .potok-q-cards {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .potok-q-card {
+    display: block;
+    padding: 14px 16px;
+    border-radius: var(--r-16);
+    background: var(--potok-paper);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .potok-q-card-l1 {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-weight: 500;
+  }
+
+  .potok-q-card-l2 {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--potok-steel);
+  }
+
+  .potok-q-card-l3 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   /* На телефоне промо — логотип, заголовок и одна строка; форма — сразу под ними, без прокрутки. */

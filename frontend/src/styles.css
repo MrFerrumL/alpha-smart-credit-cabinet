@@ -123,6 +123,13 @@ body {
   padding-top: 26px;
 }
 
+/* Поле прямо на «Тумане» (поиск в очереди) — белое с тонкой рамкой, иначе сливается с фоном. */
+.on-canvas.potok-field .mantine-Input-input,
+.on-canvas .potok-field .mantine-Input-input {
+  background: var(--potok-paper);
+  border-color: var(--potok-line-strong);
+}
+
 .potok-field .mantine-Input-input:hover {
   background: var(--potok-line);
 }
