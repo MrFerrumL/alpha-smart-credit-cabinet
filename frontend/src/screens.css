@@ -1478,6 +1478,15 @@ a.potok-note-title:hover {
   opacity: 0.8;
 }
 
+/* Кнопка на сером блоке запроса — белая, иначе сливается с фоном. */
+.potok-task .mantine-Button-root[data-variant='default'] {
+  background: var(--potok-paper);
+}
+
+.potok-task .mantine-Button-root[data-variant='default']:hover {
+  background: linear-gradient(var(--potok-hover), var(--potok-hover)), var(--potok-paper);
+}
+
 .potok-contract {
   padding: 48px;
 }
