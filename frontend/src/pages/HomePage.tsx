@@ -339,8 +339,8 @@ export function HomePage() {
           <NewsFeed />
         </Stack>
         <Stack gap="lg">
+          <RecentNotifications exclude={main ? `/applications/${main.id}` : undefined} />
           <CompanyCard company={user.company} />
-          <RecentNotifications />
           {!main && <HowItWorks />}
         </Stack>
       </div>

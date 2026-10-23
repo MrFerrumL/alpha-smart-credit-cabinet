@@ -987,10 +987,12 @@
   text-align: left;
 }
 
+/* Висячий отступ: точка «не прочитано» слева, все строки уведомления — по одной вертикали правее неё. */
 .potok-note-row {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 12px 0;
+  padding: 12px 0 12px 14px;
   font-size: 14px;
 }
 
@@ -1005,12 +1007,13 @@ a.potok-note-title:hover {
   text-underline-offset: 3px;
 }
 
-.potok-note-row[data-unread='true'] .potok-note-title::before {
+.potok-note-row[data-unread='true']::before {
   content: '';
-  display: inline-block;
+  position: absolute;
+  left: 0;
+  top: 19px;
   width: 6px;
   height: 6px;
-  margin: 0 8px 2px 0;
   border-radius: 50%;
   background: var(--potok-accent);
 }

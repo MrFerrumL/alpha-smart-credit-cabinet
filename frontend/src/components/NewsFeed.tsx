@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { useApplications, useFeed } from '../api/hooks';
 import type { FeedItem } from '../api/types';
-import { dayMonth } from '../lib/format';
+import { dayMonth, typo } from '../lib/format';
 
 /**
  * Короткая метка «почему показано»: отрасль, форма, регион или продукты. Статья — не сообщение о заявке, поэтому
@@ -35,9 +35,9 @@ function News({ item }: { item: FeedItem }) {
         <span>{dayMonth(item.published_at)}</span>
       </div>
       <div className="potok-news-title" data-testid="news-title">
-        {item.title.replace(' (синтетическая новость)', '')}
+        {typo(item.title.replace(' (синтетическая новость)', ''))}
       </div>
-      <div className="potok-news-summary">{item.summary}</div>
+      <div className="potok-news-summary">{typo(item.summary)}</div>
     </li>
   );
 }

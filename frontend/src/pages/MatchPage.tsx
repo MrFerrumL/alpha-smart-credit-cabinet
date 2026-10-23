@@ -10,7 +10,7 @@ import { AmountTermFields } from '../components/Money';
 import { Empty } from '../components/States';
 import { Chip } from '../components/Status';
 import { Stat } from '../components/ui';
-import { NBSP, money, moneyBig, months, rate } from '../lib/format';
+import { NBSP, money, moneyBig, months, rate, typo } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose: () => void }) {
@@ -91,11 +91,11 @@ function BestOffer({ match, loading, onApply, onSchedule }: { match: ProductMatc
       <Terms match={match} />
       <ul className="potok-list">
         {match.reasons.map((r) => (
-          <li key={r}>{r}</li>
+          <li key={r}>{typo(r)}</li>
         ))}
         {match.caveats.map((c) => (
           <li key={c} className="potok-muted-text">
-            {c}
+            {typo(c)}
           </li>
         ))}
       </ul>

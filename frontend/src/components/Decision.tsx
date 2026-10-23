@@ -360,18 +360,19 @@ export function DecisionBlock({ app }: { app: Application }) {
             </ul>
           </section>
         </div>
+        {/* При стоп-факторе предложить нечего: «На главную» — спокойная вторичная кнопка, не закреплённая внизу. */}
         <div className="potok-cta">
-          <div className="potok-cta-main">
-            {hardStop ? (
-              <Button component={Link} to="/" size="lg">
-                На главную
-              </Button>
-            ) : (
+          {hardStop ? (
+            <Button component={Link} to="/" size="lg" variant="default">
+              На главную
+            </Button>
+          ) : (
+            <div className="potok-cta-main">
               <Button component={Link} to="/match" size="lg">
                 Подобрать другой вариант
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
     );

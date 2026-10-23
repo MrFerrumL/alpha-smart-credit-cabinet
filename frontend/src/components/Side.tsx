@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useNotifications } from '../api/hooks';
 import type { Company } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { date, dateTime } from '../lib/format';
+import { date, dateTime, typo } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 /** Компания из ЕГРЮЛ — правая колонка главной и страницы заявки. Длинный вид деятельности — под подписью. */
@@ -48,14 +48,18 @@ export function MyCompany() {
   return user?.company ? <CompanyCard company={user.company} /> : null;
 }
 
+/** «Заявка № 2026-000003» → «Заявка 2026-000003»: номер и так узнаётся по формату. */
+const clean = (text: string) => typo(text.replace(/№\s*(?=\d)/g, ''));
+
 /**
  * Последние уведомления — те же, что под колокольчиком: только свои события, без кодов подписи (код живёт
  * в окне подписания). Одна форма времени — «23 октября в 14:35».
  */
-export function RecentNotifications({ limit = 3 }: { limit?: number }) {
+export function RecentNotifications({ limit = 3, exclude }: { limit?: number; exclude?: string }) {
   const { user } = useAuth();
   const query = useNotifications(!!user);
-  const items = (query.data ?? []).filter((n) => n.kind !== 'signing_code').slice(0, limit);
+  // Уведомление о заявке, карточка которой уже на экране, не повторяем.
+  const items = (query.data ?? []).filter((n) => n.kind !== 'signing_code' && (!exclude || n.link !== exclude)).slice(0, limit);
   if (!items.length) return null;
   return (
     <section className="potok-panel">
@@ -65,12 +69,12 @@ export function RecentNotifications({ limit = 3 }: { limit?: number }) {
           <li key={n.id} className="potok-note-row" data-unread={!n.read_at}>
             {n.link ? (
               <Link to={n.link} className="potok-note-title">
-                {nb(n.title)}
+                {nb(clean(n.title))}
               </Link>
             ) : (
-              <span className="potok-note-title">{nb(n.title)}</span>
+              <span className="potok-note-title">{nb(clean(n.title))}</span>
             )}
-            {n.body && <span className="potok-note-body">{nb(n.body)}</span>}
+            {n.body && <span className="potok-note-body">{nb(clean(n.body))}</span>}
             <span className="potok-note-when">{dateTime(n.created_at)}</span>
           </li>
         ))}
