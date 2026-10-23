@@ -84,6 +84,7 @@ test('clean: контрпредложение другим продуктом �
   await expect(page.locator('table tbody tr')).toHaveCount(12);
   // Карточка в «Мои заявки» тоже показывает выданные условия.
   await page.goto('/applications');
+  await page.getByText('Завершённые', { exact: true }).click();
   const card = page.locator('.mantine-Card-root').filter({ hasText: 'Овердрафт' }).first();
   await expect(card).toContainText('150 тыс. ₽ · 12 месяцев');
 });
