@@ -56,7 +56,7 @@ test('sklad: контрпредложение — сумма ограничен�
 test('clean: контрпредложение другим продуктом — овердрафт, выдача по нему', async ({ page }) => {
   await login(page, 'Лариса Тихонова');
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 300_000, term: 12 });
-  await expect(page.getByRole('heading', { name: 'Вместо «Экспресс-оборот» банк предлагает «Овердрафт»' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Вместо кредита «Экспресс-оборот» банк предлагает «Овердрафт»' })).toBeVisible();
   const compare = page.getByRole('table', { name: 'Сравнение с заявкой' });
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Экспресс-оборот');
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Овердрафт');

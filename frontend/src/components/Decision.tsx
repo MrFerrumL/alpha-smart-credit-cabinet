@@ -7,7 +7,8 @@ import { useAcceptOffer, useDeclineOffer, useHandoffOffer, useProducts } from '.
 import type { Application, Product } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { schedule, type ScheduleRowCalc } from '../lib/finance';
-import { NBSP, dayMonth, money, months, monthsShort, rate, typo } from '../lib/format';
+import { NBSP, dayMonth, money, moneyBig, months, monthsShort, rate, typo } from '../lib/format';
+import { nb } from '../lib/nobreak';
 import { BarsLegend, PaymentBars } from './PaymentBars';
 import { StatusBlock } from './Status';
 
@@ -39,34 +40,38 @@ function Figures({
   return (
     <div className="potok-figures">
       <div>
-        <div className="potok-big num" data-testid="offer-amount">
-          {money(amount)}
+        <div className="potok-big" data-testid="offer-amount">
+          {moneyBig(amount)}
         </div>
         <div className="potok-under" data-testid="offer-terms">
           {interestOnly ? 'лимит ' : ''}на {months(term)} под {rate(ratePct)} годовых
         </div>
       </div>
       <div>
-        <div className="potok-big num" data-testid="offer-payment">
-          {money(payment)}
+        <div className="potok-big" data-testid="offer-payment">
+          {moneyBig(payment)}
         </div>
         <div className="potok-under">
-          {interestOnly ? 'проценты в месяц при полном использовании лимита' : `платёж в месяц, ${term}${NBSP}платежей`}
+          {interestOnly ? 'проценты в месяц при полном использовании лимита весь срок' : `платёж в месяц, ${term}${NBSP}платежей`}
         </div>
       </div>
     </div>
   );
 }
 
-function Cost({ rows, amount }: { rows: ScheduleRowCalc[]; amount: number }) {
-  const total = rows.reduce((s, r) => s + r.payment, 0);
+/**
+ * Переплата и полная стоимость. У овердрафта — ровно показанные проценты в месяц × срок (лимит использован весь
+ * срок), у кредита — сумма платежей графика.
+ */
+function Cost({ rows, amount, interestOnly, monthly, term }: { rows: ScheduleRowCalc[]; amount: number; interestOnly: boolean; monthly: number; term: number }) {
+  const overpay = interestOnly ? monthly * term : rows.reduce((s, r) => s + r.payment, 0) - amount;
   return (
     <div className="potok-cost">
       <span>
-        Переплата <b className="num">{money(total - amount)}</b>
+        {interestOnly ? 'Проценты за весь срок при полном использовании лимита' : 'Переплата'} <b>{money(overpay)}</b>
       </span>
       <span>
-        Всего вернёте <b className="num">{money(total)}</b>
+        Всего вернёте <b>{money(amount + overpay)}</b>
       </span>
     </div>
   );
@@ -110,9 +115,9 @@ function Compare({ app, offered }: { app: Application; offered?: Product }) {
         {rows.map(([label, asked, given, delta]) => (
           <Table.Tr key={label}>
             <Table.Td className="potok-compare-k">{label}</Table.Td>
-            <Table.Td className="potok-compare-was">{asked}</Table.Td>
+            <Table.Td className="potok-compare-was">{nb(asked)}</Table.Td>
             <Table.Td className="potok-compare-now">
-              {given}
+              {nb(given)}
               {delta && <span className="potok-compare-delta">{delta}</span>}
             </Table.Td>
           </Table.Tr>
@@ -281,6 +286,12 @@ export function OfferActions({ app }: { app: Application }) {
   );
 }
 
+/** Что сказать, когда отказ из-за стоп-фактора: ограничение касается самой компании, а не суммы или продукта. */
+const HARD_STOP_TIPS = [
+  'Если в ЕГРЮЛ ошибка в статусе компании, исправьте её через налоговую — после этого можно подать новую заявку',
+  'Другой продукт или меньшая сумма решение не изменят: ограничение касается компании, а не условий кредита',
+];
+
 const OUTCOME: Record<string, string> = {
   approved: 'Банк готов выдать кредит',
   counter_offer: 'Банк готов выдать на других условиях',
@@ -306,10 +317,10 @@ export function DecisionBlock({ app }: { app: Application }) {
           note={offer.valid_until ? `предложение действует до ${dayMonth(offer.valid_until)}` : undefined}
         />
         <Title order={2} className="potok-say">
-          {other ? `Вместо «${app.product.name}» банк предлагает «${offered?.name ?? '…'}»` : OUTCOME[code]}
+          {other ? nb(`Вместо кредита «${app.product.name}» банк предлагает «${offered?.name ?? '…'}»`) : OUTCOME[code]}
         </Title>
         <Figures amount={offer.amount} term={offer.term_months} ratePct={offer.rate} payment={offer.monthly_payment} interestOnly={interestOnly} />
-        <Cost rows={rows} amount={offer.amount} />
+        <Cost rows={rows} amount={offer.amount} interestOnly={interestOnly} monthly={offer.monthly_payment} term={offer.term_months} />
         {code === 'counter_offer' && <Compare app={app} offered={offered} />}
         <OfferSchedule rows={rows} interestOnly={interestOnly} amount={offer.amount} />
         <OfferActions app={app} />
@@ -318,14 +329,18 @@ export function DecisionBlock({ app }: { app: Application }) {
   }
 
   if (code === 'rejected' && app.decision) {
+    // Советов нет — сработал стоп-фактор (например, ликвидация): другой продукт или сумма не помогут,
+    // поэтому «Подобрать другой вариант» не предлагаем.
+    const hardStop = app.decision.tips.length === 0;
+    const tips = hardStop ? HARD_STOP_TIPS : app.decision.tips;
     return (
       <section className="potok-decision" aria-live="polite">
         <StatusBlock app={app} onPage showLabels hint={false} note="банк отказал" />
         <Title order={2} className="potok-say">
-          Банк не может выдать этот кредит сейчас
+          {hardStop ? 'Банк не может выдать кредит этой компании' : 'Банк не может выдать этот кредит сейчас'}
         </Title>
-        <div className="potok-asked num">
-          Вы просили {money(app.amount)} на {months(app.term_months)}
+        <div className="potok-asked">
+          Вы просили {moneyBig(app.amount)} на {months(app.term_months)}
         </div>
         <div className="potok-lists">
           <section>
@@ -336,22 +351,26 @@ export function DecisionBlock({ app }: { app: Application }) {
               ))}
             </ul>
           </section>
-          {app.decision.tips.length > 0 && (
-            <section>
-              <Title order={3}>Что можно сделать</Title>
-              <ul aria-label="Что можно сделать">
-                {app.decision.tips.map((t) => (
-                  <li key={t}>{typo(t)}</li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <section>
+            <Title order={3}>Что можно сделать</Title>
+            <ul aria-label="Что можно сделать">
+              {tips.map((t) => (
+                <li key={t}>{typo(t)}</li>
+              ))}
+            </ul>
+          </section>
         </div>
         <div className="potok-cta">
           <div className="potok-cta-main">
-            <Button component={Link} to="/match" size="lg">
-              Подобрать другой вариант
-            </Button>
+            {hardStop ? (
+              <Button component={Link} to="/" size="lg">
+                На главную
+              </Button>
+            ) : (
+              <Button component={Link} to="/match" size="lg">
+                Подобрать другой вариант
+              </Button>
+            )}
           </div>
         </div>
       </section>
