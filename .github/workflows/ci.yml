@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Start the stack exactly as README says (build, wait for healthchecks)
         run: docker compose up --build -d --wait --wait-timeout 300
-      - name: Start memory sampler (docker stats every 2 s)
+      - name: Start memory sampler (docker stats in a loop, about every 2-4 s)
         run: |
           mkdir -p "$RUNNER_TEMP/resources"
           # The loop must outlive this step: output goes to a file, own session, no stdin.
@@ -117,11 +117,13 @@ jobs:
         run: |
           dir="$RUNNER_TEMP/resources"
           mkdir -p "$dir"
-          if [ -f "$dir/sampler.pid" ]; then kill "$(cat "$dir/sampler.pid")" 2>/dev/null || true; fi
+          # The sampler runs under setsid: its pid is the process group id, so stop the whole group (loop, sleep, docker stats).
+          if [ -f "$dir/sampler.pid" ]; then kill -- -"$(cat "$dir/sampler.pid")" 2>/dev/null || true; fi
           python3 scripts/resource_report.py --samples "$dir/stats.log" --out "$dir/resources.md" || echo "Resource report is not available"
           if [ -f "$dir/resources.md" ]; then cat "$dir/resources.md" >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Upload resources
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: resources
@@ -144,7 +146,7 @@ jobs:
         if: always() && steps.demo.conclusion != 'skipped'
         run: |
           mkdir -p e2e/demo-video
-          webm="$(find e2e/demo-results -name video.webm | head -n 1)"
+          webm="$(find e2e/demo-results -name video.webm 2>/dev/null | head -n 1 || true)"
           if [ -z "$webm" ]; then
             echo "No video was recorded"
             exit 0
