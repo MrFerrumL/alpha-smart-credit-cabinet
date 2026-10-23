@@ -8,7 +8,7 @@
 | Дедлайн | 26.10.2026 |
 
 Коммиты после дедлайна в проверяемую версию не входят: проверяется ровно то, на что указывает тег. Хеш
-коммита тега указан в форме сдачи и в [docs/SUBMISSION.md](docs/SUBMISSION.md); проверить его можно так:
+коммита тега указан в форме сдачи и в PDF-версии [docs/SUBMISSION.md](docs/SUBMISSION.md); проверить его можно так:
 
 ```bash
 git fetch --tags
@@ -36,6 +36,7 @@ git checkout v1.0.0
 | Требование кейса | Где |
 |---|---|
 | Документ к форме сдачи: версия, запуск, демо-учётки, основной сценарий, документы, ограничения | [docs/SUBMISSION.md](docs/SUBMISSION.md), PDF — [docs/SUBMISSION.pdf](docs/SUBMISSION.pdf) |
+| Видео основного сценария | артефакт `demo-video` прогона CI на коммите тега (Actions → прогон → Artifacts), хранится 30 дней |
 | README: назначение, архитектура, окружение, запуск, переменные, компоненты, сценарий проверки | [README.md](README.md) |
 | Исследование, модель процесса, обоснование MVP | [docs/product.md](docs/product.md) |
 | Архитектурная схема | [docs/architecture.md](docs/architecture.md) |
@@ -51,17 +52,20 @@ git checkout v1.0.0
 
 ## PDF к форме сдачи
 
-`docs/SUBMISSION.pdf` собирается из `docs/SUBMISSION.md` (Node.js 22, Chromium из Playwright). Тег и хеш
-коммита подставляются при сборке, сам документ при этом не меняется:
+PDF собирается из `docs/SUBMISSION.md` (Node.js 22, Chromium из Playwright). Тег и хеш коммита подставляются при
+сборке. Чтобы не менять файлы версии, `docs/SUBMISSION.pdf` не перезаписывается: `--out` кладёт готовый файл в
+корень репозитория (путь считается от папки `e2e`):
 
 ```bash
 cd e2e
 npm ci
 npx playwright install chromium
-npm run submission-pdf -- --tag v1.0.0 --commit "$(git rev-parse v1.0.0^{commit})"
+npm run submission-pdf -- --tag v1.0.0 --commit "$(git rev-parse v1.0.0^{commit})" --out ../SUBMISSION-v1.0.0.pdf
 ```
+
+К форме сдачи прикладывается файл `SUBMISSION-v1.0.0.pdf`.
 
 ## Доступ
 
-Если репозиторий приватный, доступ на чтение выдан аккаунту жюри `alfa-hack-2026`
-(Settings → Collaborators).
+Репозиторий приватный; приглашение отправлено аккаунту жюри `alfa-hack-2026` (Settings → Collaborators); его
+нужно принять до 29.10.
