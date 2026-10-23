@@ -242,6 +242,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentT
 | [docs/postman_collection.json](docs/postman_collection.json) | Коллекция запросов: сквозной сценарий от входа до выданного кредита и все эндпоинты |
 | [docs/test-scenarios.md](docs/test-scenarios.md) | Тестовые сценарии: сквозные, отказоустойчивость, негативные и ролевые |
 | [docs/interface.md](docs/interface.md) | Интерфейс до и после переделки: снимки экранов на 1440 px и на телефоне |
+| [docs/llm-benchmark.md](docs/llm-benchmark.md) | Замер необязательного пояснения решения на локальной модели: время ответа и доля ответов, прошедших проверку |
 | [docs/product/product-analytics.md](docs/product/product-analytics.md) | Рынок, конкуренты, пользователи, интервью, что добавить, метрики, питч |
 | [docs/product/knowledge-base.md](docs/product/knowledge-base.md) | Принципы текстов, база знаний для подсказок и ИИ-ассистента, глоссарий |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | Сторонние компоненты, данные и смоделированные интеграции |
@@ -405,10 +406,16 @@ docker compose up --build -d --wait --wait-timeout 1800
 включении — новая загрузка), удалить только её — `docker volume rm alpha-credit_ollama`. Модель в Ollama на ПК —
 `ollama rm qwen2.5:7b-instruct-q4_K_M`.
 
-### Замер на своей модели
+### Замер
 
-Скрипт строит 17 решений той же кредитной логикой по всем веткам (база и эмулятор не нужны), вызывает модель
-с тем же промптом, проверкой и таймаутом и печатает время ответа и долю ответов, прошедших проверку:
+Qwen2.5-7B-Instruct Q4_K_M в Ollama 0.40.2 на ноутбуке с NVIDIA RTX 4060 Laptop (8 ГБ), модель целиком на
+видеокарте (`ollama ps`: `100% GPU`): **p50 — 2,0 с, p95 — 3,0 с** на ответ, проверку прошли **48 из 51** ответов
+(94 %, порог — 80 %), первая загрузка модели в видеопамять — 6,8 с. Окружение, ответы по веткам решения и почему
+промпт второй версии — в [docs/llm-benchmark.md](docs/llm-benchmark.md).
+
+Замерить на своей модели: скрипт строит 17 решений той же кредитной логикой по всем веткам (база и эмулятор не
+нужны), вызывает модель с тем же промптом, проверкой и таймаутом и печатает время ответа и долю ответов, прошедших
+проверку.
 
 ```bash
 docker compose exec worker python -m app.explanation.bench --runs 3      # в Docker
