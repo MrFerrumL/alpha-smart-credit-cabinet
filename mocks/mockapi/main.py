@@ -2,6 +2,7 @@
 
 Контракты упрощены, но сохраняют смысл интеграций. Чтобы показать отказоустойчивость конвейера,
 в сервис можно «внести сбой» через /admin/faults: источник начнёт отвечать ошибкой или зависать.
+Ещё здесь фейковая языковая модель (/llm/v1/chat/completions) — для тестов и CI вместо настоящей.
 """
 
 import os
@@ -13,10 +14,11 @@ from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mockapi.data import COMPANIES
 from mockapi.generator import SYNTHETIC_PREFIX, generate
+from mockapi.llm import router as llm_router
 
 Source = Literal["egrul", "bki", "fns", "abs"]
 
@@ -25,32 +27,46 @@ app = FastAPI(
     version="0.1.0",
     description="ЕГРЮЛ/ЕГРИП, бюро кредитных историй и ФНС «Прозрачный бизнес» на синтетических данных.",
 )
+app.include_router(llm_router)
 
 
 # --- Внесение сбоев ---------------------------------------------------------------------------
 
 
 class FaultIn(BaseModel):
-    source: Literal["egrul", "bki", "fns", "abs", "all"]
-    mode: Literal["error", "timeout", "none"]
+    source: Literal["egrul", "bki", "fns", "abs", "llm", "all"]
+    mode: Literal["error", "timeout", "contradict", "wrong_numbers", "none"]
     count: int | None = Field(default=None, ge=1, description="Сколько запросов сломать; пусто — до отмены")
+
+    @model_validator(mode="after")
+    def _llm_only_modes(self) -> "FaultIn":
+        # contradict и wrong_numbers портят текст ответа модели: у остальных источников такого нет.
+        if self.mode in ("contradict", "wrong_numbers") and self.source != "llm":
+            raise ValueError(f"режим {self.mode} есть только у источника llm")
+        return self
 
 
 _faults: dict[str, dict] = {}
 _lock = threading.Lock()
 
 
-def _maybe_fail(source: str) -> None:
+def _maybe_fail(source: str) -> str | None:
+    """Применяет сбой источника: error и timeout дают 503; другой режим (у llm) возвращается вызывающему.
+
+    Сбой «all» на llm не действует: у модели свой сбой.
+    """
     with _lock:
-        fault = _faults.get(source) or _faults.get("all")
+        fault = _faults.get(source) or (_faults.get("all") if source != "llm" else None)
         if not fault:
-            return
+            return None
         key = source if source in _faults else "all"
         if fault["count"] is not None:
             fault["count"] -= 1
             if fault["count"] <= 0:
                 _faults.pop(key)
         mode = fault["mode"]
+    if mode not in ("error", "timeout"):
+        return mode
     if mode == "timeout":
         time.sleep(float(os.getenv("MOCK_TIMEOUT_SLEEP_S", "10")))
     raise HTTPException(status_code=503, detail=f"{source} temporarily unavailable")
