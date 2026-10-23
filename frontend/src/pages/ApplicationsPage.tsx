@@ -42,6 +42,18 @@ export function ApplicationsPage() {
       />
       {apps.isLoading ? (
         <Skeleton h={128} radius="lg" />
+      ) : list.length === 0 && (apps.data?.length ?? 0) > 0 ? (
+        // Заявки есть, но в другом разделе: не предлагаем начинать с нуля.
+        <EmptyState
+          icon={IconFileText}
+          title={filter === 'active' ? 'Заявок в работе нет' : 'Завершённых заявок нет'}
+          text={filter === 'active' ? 'Выданные, отклонённые и закрытые заявки — в разделе «Завершённые».' : 'Текущие заявки — в разделе «В работе».'}
+          action={
+            <Button variant="light" onClick={() => setFilter(filter === 'active' ? 'finished' : 'active')}>
+              {filter === 'active' ? 'Показать завершённые' : 'Показать заявки в работе'}
+            </Button>
+          }
+        />
       ) : list.length === 0 ? (
         <EmptyState
           icon={IconFileText}
