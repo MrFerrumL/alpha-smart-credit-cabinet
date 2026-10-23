@@ -338,6 +338,8 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
 def contract(db: Session, app: Application) -> ContractOut:
     offer = current_offer(db, app)
     if offer is None or offer.status not in ("accepted", "signed") or not offer.contract_number:
+        if app.status in (Status.CANCELLED.value, Status.EXPIRED.value) or (offer and offer.status in ("declined", "expired")):
+            raise NotFound("Договора нет: заявка закрыта, предложение банка больше не действует")
         raise NotFound("Договор появится после того, как вы примете предложение банка")
     product = PRODUCTS[offer.product_code]
     company = app.company

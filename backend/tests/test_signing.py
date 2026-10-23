@@ -161,7 +161,8 @@ def test_code_cannot_be_used_after_cancel_or_expiry(client, mocks):
     assert cancelled.status_code == 200
     # Отзыв равен отказу от предложения: договор больше не ждёт подписи и по прямой ссылке не открывается.
     assert cancelled.json()["offer"]["status"] == "declined" and cancelled.json()["allowed_actions"] == []
-    assert client.get(f"/api/applications/{app_id}/contract", headers=headers).status_code == 404
+    closed = client.get(f"/api/applications/{app_id}/contract", headers=headers)
+    assert closed.status_code == 404 and "заявка закрыта" in closed.json()["detail"]
     after_cancel = client.post(
         f"/api/applications/{app_id}/signing/confirm",
         json={"challenge_id": fresh["challenge_id"], "code": fresh["demo_code"]},

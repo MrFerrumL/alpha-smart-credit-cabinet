@@ -29,7 +29,7 @@ export function ContractPage() {
 
       {contract.isLoading && <Skeleton h={600} radius="lg" />}
       {contract.error && (
-        <Alert color="orange" radius="lg" title="Договора пока нет">
+        <Alert color="orange" radius="lg" title="Договор недоступен">
           {contract.error.message}
         </Alert>
       )}

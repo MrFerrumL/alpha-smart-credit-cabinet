@@ -215,7 +215,7 @@ data: {"status":"approved","title":"Одобрено","tone":"success","terminal
 | POST | `/api/applications/{application_id}/offer/accept` | client с правом подписи | Принять предложение: статус `signing`, появляется номер договора |
 | POST | `/api/applications/{application_id}/offer/decline` | client с правом подписи | Отказаться от предложения → `cancelled`; тело необязательно: `{comment}` |
 | POST | `/api/applications/{application_id}/offer/handoff` | client без права подписи | Передать предложение руководителю: ему приходит уведомление в кабинете |
-| GET | `/api/applications/{application_id}/contract` | любая | Договор: разделы, график, `signed`, `terms_hash`, `issue_delayed`. До принятия предложения — `404` |
+| GET | `/api/applications/{application_id}/contract` | любая | Договор: разделы, график, `signed`, `terms_hash`, `issue_delayed`. До принятия предложения и после отзыва или истечения срока — `404` |
 | POST | `/api/applications/{application_id}/signing/code` | client с правом подписи | Выдать одноразовый код (`SigningCodeOut`); новый код отменяет прежние; не более 5 в час на заявку |
 | POST | `/api/applications/{application_id}/signing/confirm` | client с правом подписи | Подписать, тело `{challenge_id, code}` |
 
