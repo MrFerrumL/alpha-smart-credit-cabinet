@@ -1161,6 +1161,7 @@ a.potok-note-title:hover {
 }
 
 .potok-search .mantine-Input-section {
+  padding-top: 0;
   color: var(--potok-steel);
 }
 
