@@ -5,13 +5,14 @@ import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
 import { useApplications, useCompanyLookup, useLinkCompany, useLoans, useProducts } from '../api/hooks';
-import type { Application, Company, Loan } from '../api/types';
+import type { Application, Loan } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { shownTerms } from '../components/ApplicationBlocks';
 import { AppRow } from '../components/AppRow';
 import { NewsFeed } from '../components/NewsFeed';
+import { CompanyCard, RecentNotifications } from '../components/Side';
 import { StatusBlock, StatusChip } from '../components/Status';
-import { NBSP, date, dayMonth, greeting, money, moneyBig, months } from '../lib/format';
+import { NBSP, dayMonth, greeting, money, moneyBig, months } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 /** Своя иллюстрация промоблока: серые столбики роста, графитовая база и одна красная волна «Потока». */
@@ -161,33 +162,6 @@ function OtherApps({ apps }: { apps: Application[] }) {
           <AppRow key={a.id} app={a} />
         ))}
       </ul>
-    </section>
-  );
-}
-
-function CompanyCard({ company }: { company: Company }) {
-  const rows: [string, string | null][] = [
-    ['ИНН', company.inn],
-    ['Работает с', company.registered_at ? date(company.registered_at) : null],
-    ['Руководитель', company.director],
-    ['Вид деятельности', company.okved_name],
-  ];
-  return (
-    <section className="potok-panel">
-      <Title order={3}>{company.short_name}</Title>
-      <dl className="potok-pairs">
-        {rows
-          .filter(([, v]) => v)
-          .map(([k, v]) => (
-            <div key={k}>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-      </dl>
-      <Text fz="sm" c="dimmed" mt="md">
-        Данные из ЕГРЮЛ подставляются в заявки сами.
-      </Text>
     </section>
   );
 }
@@ -369,6 +343,7 @@ export function HomePage() {
         </Stack>
         <Stack gap="lg">
           <CompanyCard company={user.company} />
+          <RecentNotifications />
           {!main && <HowItWorks />}
         </Stack>
       </div>

@@ -20,6 +20,7 @@ import { ChecksCard, DocumentList, TasksCard, shownTerms } from '../components/A
 import { DecisionBlock, DecisionReasons, NextSteps } from '../components/Decision';
 import { IssuedCard, SigningCard } from '../components/Signing';
 import { History } from '../components/History';
+import { MyCompany } from '../components/Side';
 import { DecisionSkeleton, LoadError } from '../components/States';
 import { nb } from '../lib/nobreak';
 import { StatusBlock, StatusChip } from '../components/Status';
@@ -193,10 +194,20 @@ export function ApplicationPage() {
       )}
       {app.status.code === 'issued' && <IssuedCard app={app} />}
 
+      {/* Одна раскладка для всех статусов: слева «почему» и история, справа «что дальше», документы и компания —
+          ни одна колонка не остаётся пустой. */}
       <div className="potok-below">
         <Stack gap="lg">
           <DecisionReasons app={app} />
           <AgreedTerms app={app} />
+          {checks.data && !decided && <ChecksCard checks={checks.data} active={app.status.code === 'enrichment'} />}
+          <section className="potok-panel">
+            <Title order={3}>История</Title>
+            {events.data && <History events={events.data} />}
+          </section>
+        </Stack>
+        <Stack gap="lg">
+          <NextSteps app={app} />
           {documents.data && documents.data.length > 0 && (
             <section className="potok-panel">
               <Title order={3}>Документы</Title>
@@ -205,14 +216,7 @@ export function ApplicationPage() {
               </div>
             </section>
           )}
-          {checks.data && !decided && <ChecksCard checks={checks.data} active={app.status.code === 'enrichment'} />}
-        </Stack>
-        <Stack gap="lg">
-          <NextSteps app={app} />
-          <section className="potok-panel">
-            <Title order={3}>История</Title>
-            {events.data && <History events={events.data} />}
-          </section>
+          <MyCompany />
         </Stack>
       </div>
     </Stack>

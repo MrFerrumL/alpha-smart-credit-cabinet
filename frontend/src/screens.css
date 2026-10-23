@@ -219,14 +219,6 @@
   align-items: start;
 }
 
-/* Слева пусто (например, у отказа) — история встаёт в основную колонку, а не висит справа. */
-.potok-below:has(> :first-child:empty) {
-  grid-template-columns: minmax(0, 672px);
-}
-
-.potok-below > :first-child:empty {
-  display: none;
-}
 
 .potok-cta-main {
   display: contents;
@@ -708,19 +700,67 @@
   color: var(--potok-steel);
 }
 
+/* Длинное значение (вид деятельности) — под подписью, а не прижато вправо в три строки. */
+.potok-pairs-stack div {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.potok-pairs-stack dd {
+  text-align: left;
+}
+
+.potok-note-row {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  font-size: 14px;
+}
+
+.potok-note-title {
+  font-weight: 500;
+  color: var(--potok-ink);
+  text-decoration: none;
+}
+
+a.potok-note-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.potok-note-row[data-unread='true'] .potok-note-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 8px 2px 0;
+  border-radius: 50%;
+  background: var(--potok-accent);
+}
+
+.potok-note-body {
+  color: var(--potok-ink);
+}
+
+.potok-note-when {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 456px;
   grid-template-areas: 'promo form' 'note note';
   gap: 40px 96px;
-  align-content: start;
+  align-content: center;
   align-items: start;
   max-width: 1152px;
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: 72px 24px 48px;
+  padding: 48px 24px;
 }
 
 .potok-login-promo {
@@ -1250,7 +1290,6 @@
   .potok-home,
   .potok-lists,
   .potok-below,
-  .potok-below:has(> :first-child:empty),
   .potok-analyst,
   .potok-kv,
   .potok-facts {
