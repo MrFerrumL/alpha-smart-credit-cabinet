@@ -556,6 +556,277 @@
   color: var(--potok-steel);
 }
 
+/* --- Анкета --------------------------------------------------------------------------------------- */
+/* Сверху справа — степпер, слева 336 — липкая сводка, справа 672 — один шаг на белой панели. */
+.potok-wz-head,
+.potok-wz {
+  display: grid;
+  grid-template-columns: 336px minmax(0, 672px);
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.potok-wz-head {
+  align-items: end;
+}
+
+.potok-wz {
+  align-items: start;
+  margin-top: 24px;
+}
+
+.potok-wz-side {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.potok-wz-sum-what {
+  font-weight: 600;
+}
+
+.potok-wz-sum-amount {
+  margin: 10px 0 2px;
+  font: 700 32px/1.15 var(--font-display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-wz-form {
+  padding: 32px;
+}
+
+.potok-wz-stepno {
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-wz-h {
+  margin: 4px 0 6px;
+  font-size: 32px !important;
+}
+
+.potok-wz-inset {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: var(--r-16);
+  background: var(--potok-canvas);
+}
+
+.potok-wz-inset-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.potok-kv .potok-kv-wide {
+  grid-column: span 2;
+}
+
+.potok-kv .potok-kv-full {
+  grid-column: 1 / -1;
+}
+
+.potok-wz-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.potok-wz-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-wz-fixed b {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--potok-ink);
+}
+
+/* Метка источника данных в подписи поля: «Выручка в месяц  ФНС». */
+.potok-src {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--potok-line-strong);
+  border-radius: var(--r-6);
+  background: var(--potok-paper);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--potok-steel);
+  vertical-align: 1px;
+}
+
+.potok-ink {
+  color: var(--potok-ink);
+  font-weight: 600;
+}
+
+.potok-choices-row {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+}
+
+/* Шкала нагрузки: доля платежей от выручки, метка лимита 50%. */
+.potok-meter {
+  margin-top: 24px;
+}
+
+.potok-meter-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--potok-canvas);
+}
+
+.potok-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--ok-dot);
+}
+
+.potok-meter[data-tone='warn'] .potok-meter-fill {
+  background: var(--warn-dot);
+}
+
+.potok-meter[data-tone='err'] .potok-meter-fill {
+  background: var(--err-dot);
+}
+
+.potok-meter-limit {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--potok-ink);
+}
+
+.potok-meter-scale {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--potok-steel);
+}
+
+.potok-meter-scale span {
+  position: absolute;
+  top: 0;
+}
+
+.potok-meter-scale span:first-child {
+  left: 0;
+}
+
+.potok-meter-scale span:nth-child(2) {
+  transform: translateX(-50%);
+}
+
+.potok-meter-scale span:last-child {
+  right: 0;
+}
+
+.potok-meter-verdict {
+  margin: 8px 0 0;
+  font-weight: 500;
+}
+
+.potok-docs {
+  margin-top: 16px;
+}
+
+.potok-doc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.potok-doc + .potok-doc {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-doc-title {
+  font-weight: 500;
+}
+
+.potok-doc-why {
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-doc-files {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+}
+
+.potok-review {
+  margin-top: 8px;
+}
+
+.potok-review-sec {
+  padding: 20px 0;
+}
+
+.potok-review-sec + .potok-review-sec {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-review-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.potok-review-head .mantine-Title-root {
+  font-size: 17px !important;
+}
+
+.potok-review .potok-kv {
+  margin-top: 8px;
+}
+
+/* Что будет после отправки — будущие этапы, точки «Линией». */
+.potok-timeline-plan > li::before {
+  background: var(--potok-line-strong);
+}
+
+.potok-timeline-plan > li span {
+  display: block;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-wz-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-wz-sheet,
+.potok-wz-bar {
+  display: none;
+}
+
 /* --- Подбор кредита ------------------------------------------------------------------------------- */
 /* Слева (7/12) три вопроса и варианты, справа (5/12) липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
 .potok-match {
@@ -1195,6 +1466,114 @@ a.potok-note-title:hover {
     flex-direction: column;
     align-items: stretch;
     padding: 16px;
+  }
+
+  /* Анкета на телефоне: степпер без подписей, сводка — шторка 56 px над закреплёнными «Назад/Далее», вместе ≤ 140 px. */
+  .potok-wz-head,
+  .potok-wz {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .potok-wz {
+    margin-top: 16px;
+  }
+
+  .potok-wz-side,
+  .potok-wz-actions {
+    display: none;
+  }
+
+  .potok-wz-form {
+    padding: 20px 16px;
+  }
+
+  .potok-wz-h {
+    font-size: 26px !important;
+  }
+
+  .potok-wz-row2,
+  .potok-choices-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-kv .potok-kv-wide {
+    grid-column: 1 / -1;
+  }
+
+  .potok-wz-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 72px;
+    z-index: 89;
+    min-height: 56px;
+    padding: 14px 16px 10px;
+    border: 0;
+    border-radius: var(--r-24) var(--r-24) 0 0;
+    background: var(--potok-paper);
+    box-shadow: var(--shadow-l-up);
+    color: var(--potok-ink);
+    font: inherit;
+    text-align: left;
+  }
+
+  .potok-wz-sheet-grab {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 32px;
+    height: 4px;
+    margin-left: -16px;
+    border-radius: 2px;
+    background: var(--potok-line-strong);
+  }
+
+  .potok-wz-sheet-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  .potok-wz-sheet-line b {
+    font: 700 18px/1 var(--font-display);
+    white-space: nowrap;
+  }
+
+  .potok-wz-sheet-more {
+    font-size: 13px;
+    color: var(--potok-steel);
+  }
+
+  .potok-wz-bar {
+    display: flex;
+    gap: 8px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    padding: 12px 16px;
+    background: var(--potok-paper);
+    border-top: 1px solid var(--potok-line);
+  }
+
+  /* Кнопки панели — 48 px: панель 73 px, со шторкой 56 px вместе 129 px. */
+  .potok-wz-bar .mantine-Button-root {
+    height: 48px !important;
+  }
+
+  .potok-wz-bar .mantine-Button-root:last-child {
+    flex: 1;
+  }
+
+  .potok-shell:has(.potok-wz-bar) .potok-page {
+    padding-bottom: 160px;
   }
 
   .potok-match {
