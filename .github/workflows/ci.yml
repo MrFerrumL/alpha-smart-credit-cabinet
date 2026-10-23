@@ -35,8 +35,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12.11"
           cache: pip
@@ -62,8 +62,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.16.0"
           cache: npm
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Start the stack exactly as README says (build, wait for healthchecks)
         run: docker compose up --build -d --wait --wait-timeout 300
       - name: Start memory sampler (docker stats in a loop, about every 2-4 s)
@@ -93,7 +93,7 @@ jobs:
           ' sampler "$RUNNER_TEMP/resources" > "$RUNNER_TEMP/resources/stats.log" 2>&1 < /dev/null &
       - name: Smoke test through nginx (demo login → application → approved)
         run: python3 scripts/smoke.py http://localhost:8080 --timeout 180
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22.16.0"
           cache: npm
@@ -125,7 +125,7 @@ jobs:
       - name: Upload resources
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: resources
           path: |
@@ -167,7 +167,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload demo video
         if: always() && steps.demo.conclusion != 'skipped'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: demo-video
           path: e2e/demo-video
@@ -175,7 +175,7 @@ jobs:
           retention-days: 30
       - name: Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
