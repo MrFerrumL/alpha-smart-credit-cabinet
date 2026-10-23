@@ -66,7 +66,12 @@ if (args.commit !== undefined) {
   markdown = fill(markdown, 'COMMIT', `\`${args.commit.toLowerCase()}\``);
 }
 
-const body = marked.parse(markdown, { gfm: true, async: false });
+let body = marked.parse(markdown, { gfm: true, async: false });
+// Группы разрядов (3 000 000) и знак ₽ не рвутся на границе строки: между ними неразрывный пробел.
+body = body.replace(/(\d) (?=\d{3}(?!\d))/g, '$1 ').replace(/ ₽/g, ' ₽');
+// Короткий код в строке (`--wait`, `git checkout v1.0.0`) не переносится: перенос после дефиса ломает ключи команд.
+// Блоки кода (<pre><code>) не трогаем: они переносятся по ширине листа.
+body = body.replace(/(?<!<pre>)<code>([^<]{1,40})<\/code>/g, '<code class="nw">$1</code>');
 const title = (/^#\s+(.+)$/m.exec(markdown)?.[1] ?? 'Поток').trim();
 
 const css = `
@@ -98,6 +103,7 @@ const css = `
     font-size: 8.5pt; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid;
   }
   pre code { background: none; padding: 0; font-size: inherit; }
+  code.nw { white-space: nowrap; }
   table { width: 100%; border-collapse: collapse; margin: 4pt 0 10pt; font-size: 9pt; line-height: 1.35; }
   thead { display: table-header-group; }
   thead:not(:has(th:not(:empty))) { display: none; }
