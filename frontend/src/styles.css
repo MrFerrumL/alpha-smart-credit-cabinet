@@ -914,22 +914,13 @@ body {
   margin-top: 20px;
 }
 
-.potok-error {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 32px;
-  align-items: start;
-  max-width: 776px;
-  padding: 40px;
-  background: var(--potok-paper);
-  border-radius: var(--r-24);
-}
-
+/* Ошибка загрузки — та же карточка, что и у пустого состояния: по центру и во всю ширину колонки. */
 .potok-error-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .potok-sk-figures {
@@ -948,12 +939,6 @@ body {
 }
 
 @media (max-width: 720px) {
-  .potok-error {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    padding: 24px 16px;
-  }
-
   .potok-sk-figures {
     flex-direction: column;
     gap: 16px;

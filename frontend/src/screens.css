@@ -124,6 +124,20 @@
   margin-bottom: 16px;
 }
 
+/* Подписание: «Открыть договор…» и «Подробнее» — одной строкой ссылок; вторая тише и переносится под первую. */
+.potok-sign-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 24px;
+  margin-top: 20px;
+}
+
+.potok-link.potok-link-quiet {
+  color: var(--potok-steel) !important;
+  font-weight: 400;
+}
+
 .potok-table-wrap {
   max-height: 360px;
   margin-top: 12px;
@@ -1653,6 +1667,52 @@ a.potok-note-title:hover {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px 24px;
   margin: 16px 0 0;
+}
+
+/* Факт — две строки сетки (подпись, значение): подписи разной длины прижаты к значению, а значения одной
+   строки начинаются на одной высоте. Значение в несколько строк растёт вниз, не сдвигая соседей. */
+@supports (grid-template-rows: subgrid) {
+  .potok-facts > div {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+  }
+
+  .potok-facts dt {
+    align-self: end;
+  }
+}
+
+/* Условия: порог («лимит 50%») — мелкой строкой под названием показателя. */
+.potok-terms-hint {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* На телефоне поля ячеек уже, а крайние — по краю панели: колонке с названием достаётся больше места. */
+@media (max-width: 720px) {
+  .potok-terms .mantine-Table-th,
+  .potok-terms .mantine-Table-td {
+    padding-inline: 4px;
+    font-size: 13px;
+  }
+
+  .potok-terms .mantine-Table-th:first-child,
+  .potok-terms .mantine-Table-td:first-child {
+    padding-left: 0;
+  }
+
+  .potok-terms .mantine-Table-th:last-child,
+  .potok-terms .mantine-Table-td:last-child {
+    padding-right: 0;
+  }
+
+  /* Колонки с числами — по ширине числа (суммы с неразрывным пробелом не рвутся), остальное — названию. */
+  .potok-terms .mantine-Table-td:not(:first-child) {
+    width: 1%;
+  }
 }
 
 .potok-grade {

@@ -58,8 +58,10 @@ const clean = (text: string) => typo(text.replace(/№\s*(?=\d)/g, ''));
 export function RecentNotifications({ limit = 3, exclude }: { limit?: number; exclude?: string }) {
   const { user } = useAuth();
   const query = useNotifications(!!user);
-  // Уведомление о заявке, карточка которой уже на экране, не повторяем.
-  const items = (query.data ?? []).filter((n) => n.kind !== 'signing_code' && (!exclude || n.link !== exclude)).slice(0, limit);
+  const own = (query.data ?? []).filter((n) => n.kind !== 'signing_code');
+  // Уведомление о заявке, карточка которой уже на экране, не повторяем — но если других нет, карточка остаётся.
+  const rest = exclude ? own.filter((n) => n.link !== exclude) : own;
+  const items = (rest.length ? rest : own).slice(0, limit);
   if (!items.length) return null;
   return (
     <section className="potok-panel">

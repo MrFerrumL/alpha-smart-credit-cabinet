@@ -8,10 +8,9 @@ function Art({ kind }: { kind: 'folder' | 'list' | 'queue' | 'error' }) {
   if (kind === 'error') {
     return (
       <svg viewBox="0 0 120 80" width="120" fill="none" aria-hidden="true">
-        <rect x="4" y="4" width="112" height="72" rx="16" fill="#f2f3f5" />
-        <path d="M16 46c6 0 8-14 14-14s8 20 14 20" stroke="#212124" strokeWidth="3" strokeLinecap="round" />
-        <path d="M62 30c6 0 8 14 14 14s8-20 14-20 6 10 14 10" stroke="#babbc2" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 7" />
-        <circle cx="53" cy="54" r="3" fill="#ef3124" />
+        <path d="M10 58c10 0 10-36 20-36s10 36 20 36 10-36 20-36" stroke="#212124" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M70 22c10 0 10 36 20 36s10-36 20-36" stroke="#babbc2" strokeWidth="3" strokeLinecap="round" strokeDasharray="0.5 7.5" />
+        <circle cx="70" cy="22" r="4.5" fill="#ef3124" />
       </svg>
     );
   }
@@ -36,8 +35,8 @@ function Art({ kind }: { kind: 'folder' | 'list' | 'queue' | 'error' }) {
   }
   return (
     <svg viewBox="0 0 160 112" width="140" fill="none" aria-hidden="true">
-      <rect x="10" y="22" width="140" height="82" rx="12" fill="#f2f3f5" />
-      <path d="M10 34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12" stroke="#212124" strokeWidth="1.5" />
+      <path d="M10 92V34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12v48a12 12 0 0 1-12 12H22a12 12 0 0 1-12-12Z" fill="#e7e8eb" />
+      <path d="M10 50V34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12v6" stroke="#212124" strokeWidth="1.5" />
       <rect x="40" y="8" width="62" height="74" rx="6" fill="#fff" stroke="#212124" strokeWidth="1.5" />
       <path d="M52 26h38M52 36h38M52 46h24" stroke="#babbc2" strokeWidth="1.5" strokeLinecap="round" />
       <path d="M52 62c4 0 5-7 9-7s5 9 9 9 5-9 9-9 5 7 7 7" stroke="#ef3124" strokeWidth="2.5" strokeLinecap="round" />
@@ -78,11 +77,13 @@ export function Empty({
 export function LoadError({ error, what, back }: { error: unknown; what: string; back?: ReactNode }) {
   const code = error instanceof ApiError ? error.status : null;
   return (
-    <div className="potok-error" role="alert">
-      <Art kind="error" />
-      <div>
-        <Title order={2}>Не получилось загрузить {what}</Title>
-        <Text c="dimmed" mt={8} maw={560}>
+    <div className="potok-panel" role="alert">
+      <div className="potok-empty">
+        <Art kind="error" />
+        <Title order={2} mt="md">
+          Не получилось загрузить {what}
+        </Title>
+        <Text c="dimmed" mt={6} maw={460} mx="auto">
           {code === 404
             ? 'Такой страницы нет: возможно, ссылка устарела.'
             : 'Сервер банка не ответил. Данные не потеряны — обновите страницу через минуту.'}

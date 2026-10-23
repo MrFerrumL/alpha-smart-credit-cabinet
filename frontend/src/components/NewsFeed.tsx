@@ -7,7 +7,8 @@ import { dayMonth, typo } from '../lib/format';
 
 /**
  * Короткая метка «почему показано»: отрасль, форма, регион или продукты. Статья — не сообщение о заявке, поэтому
- * метки «Ваша заявка» нет. Полный список причин — в подсказке.
+ * метки «Ваша заявка» нет: новость, показанная только по этапу заявки, получает нейтральную тему «Кредиты».
+ * Полный список причин — в подсказке.
  */
 function tag(reasons: string[]): { label: string; app: boolean } | null {
   const sector = reasons.find((r) => r.startsWith('Для вашей отрасли: '));
@@ -19,6 +20,8 @@ function tag(reasons: string[]): { label: string; app: boolean } | null {
   if (reasons.includes('Для вашего региона')) return { label: 'Ваш регион', app: false };
   if (reasons.includes('По продуктам, которые вы оформляете')) return { label: 'Ваши продукты', app: false };
   if (reasons.includes('Полезно всем предпринимателям')) return { label: 'Всем', app: false };
+  // Причина по этапу заявки приходит как «Сейчас …» (см. _STATUS_TITLES в backend/app/services/feed.py).
+  if (reasons.some((r) => r.startsWith('Сейчас '))) return { label: 'Кредиты', app: false };
   return null;
 }
 
