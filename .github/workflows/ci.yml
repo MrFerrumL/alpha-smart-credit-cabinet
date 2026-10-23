@@ -130,6 +130,46 @@ jobs:
             ${{ runner.temp }}/resources/stats.log
           if-no-files-found: warn
           retention-days: 30
+      - name: Reset to a clean stand for the demo video (no rebuild)
+        run: |
+          docker compose down -v
+          docker compose up -d --wait --wait-timeout 300
+      - name: Record the main scenario as a video (Playwright)
+        id: demo
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: npm run demo
+      - name: Prepare the demo video (mp4 if ffmpeg is on the runner, webm otherwise)
+        if: always() && steps.demo.conclusion != 'skipped'
+        run: |
+          mkdir -p e2e/demo-video
+          webm="$(find e2e/demo-results -name video.webm | head -n 1)"
+          if [ -z "$webm" ]; then
+            echo "No video was recorded"
+            exit 0
+          fi
+          if command -v ffmpeg > /dev/null 2>&1 && ffmpeg -y -loglevel error -i "$webm" -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart e2e/demo-video/potok-demo.mp4; then
+            echo "Converted to mp4"
+          else
+            rm -f e2e/demo-video/potok-demo.mp4
+            cp "$webm" e2e/demo-video/potok-demo.webm
+            echo "ffmpeg is not available or failed, keeping the webm"
+          fi
+          ls -l e2e/demo-video
+          {
+            echo "## Видео основного сценария"
+            echo
+            echo 'Артефакт `demo-video` в конце страницы прогона (Artifacts).'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload demo video
+        if: always() && steps.demo.conclusion != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video
+          path: e2e/demo-video
+          if-no-files-found: warn
+          retention-days: 30
       - name: Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

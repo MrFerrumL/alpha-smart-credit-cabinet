@@ -4,6 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Тесты идут по одному: сбой БКИ из сценария отказоустойчивости не должен задеть чужую заявку.
 export default defineConfig({
   testDir: './tests',
+  // Запись демо на видео идёт отдельным конфигом (playwright.demo.config.ts, npm run demo).
+  testIgnore: '**/demo/**',
   timeout: 180_000,
   expect: { timeout: 45_000 },
   workers: 1,

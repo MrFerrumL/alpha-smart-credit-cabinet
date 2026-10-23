@@ -41,9 +41,14 @@ async function setSlider(slider: Locator, from: number, to: number, step: number
   for (let i = 0; i < Math.abs(to - from) / step; i++) await slider.press(key);
 }
 
+/** Остановки по ходу подачи заявки: запись демо ставит на них подписи и паузы, обычные тесты хук не передают. */
+export type ApplyStep = 'match' | 'company' | 'loan' | 'finance' | 'documents' | 'review' | 'consent';
+export type ApplyHook = (step: ApplyStep) => Promise<void>;
+
 /** Подбор → анкета → «Отправить в банк». Возвращает номер заявки в URL. */
-export async function apply(page: Page, input: ApplicationInput): Promise<string> {
-  await page.goto('/match');
+export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyHook): Promise<string> {
+  // Запись демо открывает подбор через меню сама, остальные тесты приходят сюда с другой страницы.
+  if (!/\/match$/.test(page.url())) await page.goto('/match');
   await page.getByText(input.purpose, { exact: true }).click();
   await page.getByLabel('Сумма').fill(String(input.amount));
   // Срок на подборе — от 3 месяцев с шагом 3, по умолчанию 12.
@@ -52,15 +57,18 @@ export async function apply(page: Page, input: ApplicationInput): Promise<string
   // Подбор пересчитывается с задержкой — ждём, пока в карточке появятся введённые срок и сумма.
   await expect(card.getByText('Сумма', { exact: true }).locator('..')).toContainText(moneyShort(input.amount));
   await expect(card.getByText('Срок', { exact: true }).locator('..')).toContainText(`${input.term} мес`);
+  await onStep?.('match');
   await card.getByRole('button', { name: 'Оформить заявку' }).click();
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
   const id = page.url().match(/applications\/(\d+)/)![1];
 
   const next = page.getByRole('button', { name: 'Далее' });
   await expect(page.getByRole('heading', { name: 'Проверьте данные компании' })).toBeVisible();
+  await onStep?.('company');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
   await expect(page.getByText(`Срок: ${input.term} мес`)).toBeVisible();
+  await onStep?.('loan');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Финансы компании' })).toBeVisible();
   if (input.revenue !== undefined) {
@@ -68,6 +76,7 @@ export async function apply(page: Page, input: ApplicationInput): Promise<string
   } else {
     await expect(page.getByText(/Заполнили выручку и расходы по данным ФНС/)).toBeVisible();
   }
+  await onStep?.('finance');
   await next.click();
   if (input.collateral) {
     await expect(page.getByRole('heading', { name: 'Обеспечение' })).toBeVisible();
@@ -77,9 +86,12 @@ export async function apply(page: Page, input: ApplicationInput): Promise<string
     await next.click();
   }
   await expect(page.getByRole('heading', { name: 'Документы' })).toBeVisible();
+  await onStep?.('documents');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Всё верно?' })).toBeVisible();
+  await onStep?.('review');
   await page.getByLabel(/Согласен на запрос кредитной истории/).check();
+  await onStep?.('consent');
   await page.getByRole('button', { name: 'Отправить в банк' }).click();
   await expect(page).toHaveURL(new RegExp(`/applications/${id}$`));
   return id;
@@ -87,14 +99,15 @@ export async function apply(page: Page, input: ApplicationInput): Promise<string
 
 export const status = (page: Page) => page.locator('h3').first();
 
-/** Подпись договора кодом из окна подписания. */
-export async function sign(page: Page): Promise<void> {
+/** Подпись договора кодом из окна подписания. Хук вызывается, когда код уже показан, а ввод ещё не начат. */
+export async function sign(page: Page, onCodeShown?: () => Promise<void>): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Договор готов к подписанию' })).toBeVisible();
   await page.getByLabel(/Я ознакомился с договором/).check();
   await page.getByRole('button', { name: 'Подписать кодом' }).click();
   const dialog = page.getByRole('dialog', { name: 'Подписание договора' });
   const code = dialog.locator('.mantine-Text-root').filter({ hasText: /^\d{6}$/ });
   await expect(code).toBeVisible();
+  await onCodeShown?.();
   await dialog.locator('input').first().click();
   await page.keyboard.type((await code.innerText()).trim());
 }

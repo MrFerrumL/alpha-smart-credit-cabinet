@@ -169,7 +169,7 @@ npm-пакетов — из поля `license` в `frontend/package-lock.json` �
 | actions/checkout | v4 | MIT | Получение кода в CI |
 | actions/setup-python | v5 | MIT | Установка Python в CI |
 | actions/setup-node | v4 | MIT | Установка Node.js в CI |
-| actions/upload-artifact | v4 | MIT | Отчёт Playwright при падении сквозных проверок, отчёт о ресурсах стенда |
+| actions/upload-artifact | v4 | MIT | Отчёт Playwright при падении сквозных проверок, отчёт о ресурсах стенда, запись демо-сценария |
 
 ## Сквозные проверки и выгрузка документа в PDF (`e2e/`, не входят в решение)
 
