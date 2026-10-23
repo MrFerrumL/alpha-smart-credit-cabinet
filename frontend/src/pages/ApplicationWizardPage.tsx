@@ -549,7 +549,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
               </div>
               <Text fz="sm" c="dimmed" mt={8}>
                 {fromFns
-                  ? `Заполнили выручку, расходы и число сотрудников по данным ФНС за ${financials.data?.reporting_year} год — поправьте, если сейчас иначе.`
+                  ? `Заполнили выручку и расходы по данным ФНС за ${financials.data?.reporting_year} год, число сотрудников — тоже. Поправьте, если сейчас иначе.`
                   : financials.data
                     ? 'В налоговой нет данных о выручке — укажите её сами. Банк может попросить выписку, её можно приложить на шаге «Документы».'
                     : null}
