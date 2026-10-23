@@ -231,9 +231,12 @@ def request_code(db: Session, user: User, app: Application) -> tuple[SigningChal
     ).one()
     if recent >= settings.signing_codes_per_hour:
         # Окно скользящее: новый код можно запросить, когда самому раннему из последних кодов исполнится час.
-        oldest = oldest if oldest.tzinfo else oldest.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
-        wait = oldest + timedelta(hours=1) - now
-        minutes = max(1, math.ceil(wait.total_seconds() / 60))
+        if oldest is None:  # лимит 0 — коды не выдаются вовсе
+            minutes = 60
+        else:
+            oldest = oldest if oldest.tzinfo else oldest.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
+            wait = oldest + timedelta(hours=1) - now
+            minutes = max(1, math.ceil(wait.total_seconds() / 60))
         raise TooManyRequests(f"Слишком много запросов кода. Новый код можно запросить через {minutes} мин.")
     # Новый код отменяет все прежние.
     db.execute(

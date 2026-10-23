@@ -167,7 +167,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   };
 
   useEffect(() => {
-    if (opened && !challenge && !request.isPending) send();
+    const expired = challenge !== null && new Date(challenge.expires_at).getTime() <= Date.now();
+    if (opened && (!challenge || expired) && !request.isPending) send();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened]);
 
@@ -183,8 +184,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
         },
         onError: (e) => {
           setCode('');
-          // Код погашен, заменён новым или больше не принимается — после перезагрузки его не показываем.
-          if (e instanceof ApiError && (e.status === 404 || e.status === 409)) saveCode(storeKey, null);
+          // После любой неудачи сохранённый код не показываем: после перезагрузки окно запросит новый.
+          saveCode(storeKey, null);
           setError(e instanceof ApiError ? e.message : 'Не удалось подписать договор');
         },
       },

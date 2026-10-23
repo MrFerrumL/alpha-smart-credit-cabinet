@@ -595,3 +595,12 @@ def test_issued_overdraft_says_the_limit_is_opened(client, mocks):
     notes = client.get("/api/notifications", headers=headers).json()
     assert any("лимит открыт" in n["title"] for n in notes)
 
+
+def test_zero_code_limit_is_a_clear_refusal_not_a_server_error(client, mocks, monkeypatch):
+    from app.config import get_settings
+
+    app_id, headers = approved(client, mocks)
+    client.post(f"/api/applications/{app_id}/offer/accept", headers=headers)
+    monkeypatch.setattr(get_settings(), "signing_codes_per_hour", 0)
+    refused = client.post(f"/api/applications/{app_id}/signing/code", headers=headers)
+    assert refused.status_code == 429 and "через 60 мин." in refused.json()["detail"]
