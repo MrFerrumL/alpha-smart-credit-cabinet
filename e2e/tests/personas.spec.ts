@@ -82,6 +82,10 @@ test('clean: контрпредложение другим продуктом �
   await expect(page.getByText('Сумма кредита').locator('..')).toContainText('150 000 ₽');
   await expect(page.getByText('Проценты в месяц').locator('..')).toContainText('3 363 ₽');
   await expect(page.locator('table tbody tr')).toHaveCount(12);
+  // Карточка в «Мои заявки» тоже показывает выданные условия.
+  await page.goto('/applications');
+  const card = page.locator('.mantine-Card-root').filter({ hasText: 'Овердрафт' }).first();
+  await expect(card).toContainText('150 тыс. ₽ · 12 месяцев');
 });
 
 test('smirnova: банк просит выписку, специалист сверяет и одобряет', async ({ page, browser }) => {

@@ -28,7 +28,7 @@ docker compose up --build
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
 Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 142 автотеста на backend и 12 сценариев в браузере (`e2e/`).
+Всего в проекте 144 автотеста на backend и 12 сценариев в браузере (`e2e/`).
 
 ## Содержание
 
@@ -599,7 +599,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 142 теста; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все 144 теста; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 
