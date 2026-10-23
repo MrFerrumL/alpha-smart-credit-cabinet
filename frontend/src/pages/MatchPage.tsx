@@ -6,18 +6,14 @@ import {
   Group,
   List,
   Modal,
-  NumberInput,
-  Paper,
   ScrollArea,
   SimpleGrid,
   Skeleton,
-  Slider,
   Stack,
   Table,
   Text,
   ThemeIcon,
   Title,
-  UnstyledButton,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconArrowRight, IconCheck, IconInfoCircle, IconStarFilled, IconTarget } from '@tabler/icons-react';
@@ -26,17 +22,13 @@ import { useNavigate } from 'react-router';
 
 import { useCalculation, useCreateApplication, useMatch, useMeta } from '../api/hooks';
 import type { ProductMatch, Purpose } from '../api/types';
-import { EmptyState, PurposeIcon, Stat } from '../components/ui';
+import { ChoiceList } from '../components/Choice';
+import { AmountControl, TermControl, amountTicks } from '../components/Money';
+import { EmptyState, Stat } from '../components/ui';
 import { money, moneyShort, months, rate } from '../lib/format';
 
-const AMOUNTS = [
-  100_000, 300_000, 500_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 7_000_000, 10_000_000,
-  15_000_000, 20_000_000, 30_000_000, 50_000_000,
-];
-
-function nearestIndex(value: number): number {
-  return AMOUNTS.reduce((best, a, i) => (Math.abs(a - value) < Math.abs(AMOUNTS[best] - value) ? i : best), 0);
-}
+const MIN_AMOUNT = 100_000;
+const MAX_AMOUNT = 50_000_000;
 
 function ScheduleModal({ match, onClose }: { match: ProductMatch | null; onClose: () => void }) {
   const calc = useCalculation(match?.product.code ?? null, match?.amount ?? 0, match?.term_months ?? 0);
@@ -206,94 +198,35 @@ export function MatchPage() {
 
       <Card p={{ base: 'lg', sm: 'xl' }}>
         <Title order={4}>1. Для чего нужны деньги?</Title>
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} mt="md" spacing="sm">
-          {meta.data?.purposes.map((p) => (
-            <UnstyledButton key={p.code} onClick={() => setPurpose(p.code)}>
-              <Paper
-                className="selectable clickable"
-                data-selected={purpose === p.code}
-                p="md"
-                h="100%"
-                bg={purpose === p.code ? undefined : 'gray.0'}
-              >
-                <Group wrap="nowrap" align="flex-start" gap="sm">
-                  <ThemeIcon size={40} radius="md" variant={purpose === p.code ? 'filled' : 'light'}>
-                    <PurposeIcon name={p.icon} />
-                  </ThemeIcon>
-                  <div>
-                    <Text fw={700} lh={1.3}>
-                      {p.title}
-                    </Text>
-                    <Text fz="xs" c="dimmed" mt={2}>
-                      {p.description}
-                    </Text>
-                  </div>
-                </Group>
-              </Paper>
-            </UnstyledButton>
-          )) ?? <Skeleton h={80} />}
-        </SimpleGrid>
+        <div style={{ marginTop: 16, maxWidth: 672 }}>
+          {meta.data ? (
+            <ChoiceList
+              label="Для чего нужны деньги"
+              value={purpose}
+              onChange={setPurpose}
+              options={meta.data.purposes.map((p) => ({ value: p.code, title: p.title, text: p.description }))}
+            />
+          ) : (
+            <Skeleton h={320} radius="md" />
+          )}
+        </div>
 
         <Title order={4} mt={36}>
           2. Сколько и на какой срок
         </Title>
         <SimpleGrid cols={{ base: 1, md: 2 }} mt="md" spacing={40}>
-          <Stack gap="md">
-            <NumberInput
-              label="Сумма"
-              size="md"
-              value={amount}
-              onChange={(v) => setAmount(typeof v === 'number' ? v : Number(v) || 0)}
-              min={100_000}
-              max={50_000_000}
-              step={100_000}
-              thousandSeparator=" "
-              suffix=" ₽"
-              allowNegative={false}
-              allowDecimal={false}
-            />
-            <Slider
-              min={0}
-              max={AMOUNTS.length - 1}
-              step={1}
-              value={nearestIndex(amount)}
-              onChange={(i) => setAmount(AMOUNTS[i])}
-              label={(i) => moneyShort(AMOUNTS[i])}
-              marks={[
-                { value: 0, label: '100 тыс.' },
-                { value: 6, label: '3 млн' },
-                { value: 9, label: '10 млн' },
-                { value: 13, label: '50 млн' },
-              ]}
-              mb="lg"
-            />
-          </Stack>
-          <Stack gap="md">
-            <div>
-              <Text fz="sm" fw={500}>
-                Срок
-              </Text>
-              <Text fz={28} fw={800} lh={1.2} mt={4}>
-                {months(term)}
-              </Text>
-            </div>
-            <Slider
-              min={3}
-              max={60}
-              step={3}
-              value={term}
-              onChange={setTerm}
-              label={(v) => months(v)}
-              marks={[
-                { value: 6, label: '6 мес' },
-                { value: 12, label: '1 год' },
-                { value: 24, label: '2 года' },
-                { value: 36, label: '3 года' },
-                { value: 60, label: '5 лет' },
-              ]}
-              mb="lg"
-            />
-          </Stack>
+          <AmountControl
+            label="Сумма"
+            sliderLabel="Ползунок суммы"
+            value={amount}
+            onChange={setAmount}
+            min={MIN_AMOUNT}
+            max={MAX_AMOUNT}
+            step={100_000}
+            ticks={amountTicks(MIN_AMOUNT, MAX_AMOUNT)}
+          />
+          {/* До выбора продукта — общий диапазон всех продуктов; подбор сам подгонит срок под продукт. */}
+          <TermControl value={term} onChange={setTerm} min={3} max={60} step={3} />
         </SimpleGrid>
       </Card>
 

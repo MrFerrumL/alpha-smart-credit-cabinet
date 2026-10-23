@@ -13,21 +13,17 @@ import {
   Select,
   SimpleGrid,
   Skeleton,
-  Slider,
   Stack,
   Stepper,
   Text,
   Textarea,
   TextInput,
-  ThemeIcon,
   Title,
-  UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import {
   IconArrowLeft,
   IconArrowRight,
-  IconBuildingStore,
   IconCheck,
   IconCloudCheck,
   IconFileUpload,
@@ -50,6 +46,8 @@ import {
 import type { Application, ApplicationForm, Product, Purpose, PurposeInfo } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { DocumentList } from '../components/ApplicationBlocks';
+import { ChoiceList } from '../components/Choice';
+import { AmountControl, TermControl, amountTicks } from '../components/Money';
 import { PurposeIcon, Stat } from '../components/ui';
 import { MAX_DEBT_SHARE, monthlyPayment } from '../lib/finance';
 import { money, moneyShort, months, rate } from '../lib/format';
@@ -278,9 +276,6 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
             </div>
             <Paper bg="gray.0" p="lg" radius="md">
               <Group gap="sm" wrap="nowrap" align="flex-start">
-                <ThemeIcon size={42} radius="md" variant="light">
-                  <IconBuildingStore size={22} />
-                </ThemeIcon>
                 <div style={{ flex: 1 }}>
                   <Group gap="xs">
                     <Text fw={800}>{company.short_name}</Text>
@@ -333,27 +328,19 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 Можно поменять продукт — сумма и срок подстроятся под его условия.
               </Text>
             </div>
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-              {products.map((p) => (
-                <UnstyledButton key={p.code} onClick={() => selectProduct(p)}>
-                  <Paper
-                    className="selectable clickable"
-                    data-selected={p.code === product.code}
-                    p="md"
-                    h="100%"
-                    bg={p.code === product.code ? undefined : 'gray.0'}
-                  >
-                    <Text fw={800}>{p.name}</Text>
-                    <Text fz="xs" c="dimmed" mt={2}>
-                      от {rate(p.rate)} · {p.decision_time}
-                    </Text>
-                    <Text fz="xs" c="dimmed">
-                      {moneyShort(p.min_amount)} – {moneyShort(p.max_amount)}
-                    </Text>
-                  </Paper>
-                </UnstyledButton>
-              ))}
-            </SimpleGrid>
+            <ChoiceList
+              label="Продукт"
+              value={product.code}
+              onChange={(code) => {
+                const p = products.find((x) => x.code === code);
+                if (p) selectProduct(p);
+              }}
+              options={products.map((p) => ({
+                value: p.code,
+                title: p.name,
+                text: `от ${rate(p.rate)} годовых, ${moneyShort(p.min_amount)}–${moneyShort(p.max_amount)}, решение ${p.decision_time}`,
+              }))}
+            />
             <Select
               label="Цель кредита"
               data={productPurposes.map((p) => ({ value: p.code, label: p.title }))}
@@ -364,40 +351,39 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
               allowDeselect={false}
             />
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
-              <NumberInput
+              <AmountControl
                 label="Сумма"
+                sliderLabel="Ползунок суммы"
                 value={params.amount}
-                onChange={(v) => setParams({ ...params, amount: num(v) ?? 0 })}
+                onChange={(v) => setParams({ ...params, amount: v })}
                 min={product.min_amount}
                 max={product.max_amount}
                 step={50_000}
-                thousandSeparator=" "
-                suffix=" ₽"
-                allowNegative={false}
-                allowDecimal={false}
-                description={`от ${moneyShort(product.min_amount)} до ${moneyShort(product.max_amount)}`}
+                ticks={amountTicks(product.min_amount, product.max_amount)}
                 error={err('amount')}
               />
-              <div>
-                <Text fz="sm" fw={500}>
-                  Срок: {months(params.term_months)}
-                </Text>
-                {product.min_term === product.max_term ? (
-                  <Text fz="xs" c="dimmed" mt={6}>
-                    Лимит открывается на {product.min_term} месяцев и продлевается
+              {product.min_term === product.max_term ? (
+                <div>
+                  <Text fz="sm" c="dimmed">
+                    Срок
                   </Text>
-                ) : (
-                  <Slider
-                    mt="md"
-                    min={product.min_term}
-                    max={product.max_term}
-                    step={product.min_term >= 12 ? 6 : 3}
-                    value={params.term_months}
-                    onChange={(v) => setParams({ ...params, term_months: v })}
-                    label={(v) => months(v)}
-                  />
-                )}
-              </div>
+                  <Text fw={600} mt={2}>
+                    {months(product.min_term)}
+                  </Text>
+                  <Text fz="sm" c="dimmed" mt={4}>
+                    Лимит открывается на {months(product.min_term)} и продлевается
+                  </Text>
+                </div>
+              ) : (
+                <TermControl
+                  value={params.term_months}
+                  onChange={(v) => setParams({ ...params, term_months: v })}
+                  min={product.min_term}
+                  max={product.max_term}
+                  step={product.min_term >= 12 ? 6 : 3}
+                  error={err('term_months')}
+                />
+              )}
             </SimpleGrid>
             <Paper bg="brand.0" p="md" radius="md">
               <Group justify="space-between">
@@ -548,9 +534,12 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                   <Paper key={title} withBorder p="md" radius="md">
                     <Group justify="space-between" wrap="nowrap">
                       <Group gap="sm" wrap="nowrap">
-                        <ThemeIcon color={uploaded.length ? 'teal' : 'gray'} variant="light" radius="xl" size={30}>
-                          {uploaded.length ? <IconCheck size={16} /> : <IconFileUpload size={16} />}
-                        </ThemeIcon>
+                        {/* Небольшая линейная иконка без подложки: загружен ли документ. */}
+                        {uploaded.length ? (
+                          <IconCheck size={18} color="var(--ok-text)" aria-label="Загружен" />
+                        ) : (
+                          <IconFileUpload size={18} color="var(--potok-steel)" aria-hidden="true" />
+                        )}
                         <Text fz="sm" fw={600}>
                           {title}
                         </Text>
@@ -567,7 +556,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                       </FileButton>
                     </Group>
                     {uploaded.length > 0 && (
-                      <div style={{ marginTop: 10, marginLeft: 42 }}>
+                      <div style={{ marginTop: 10, marginLeft: 30 }}>
                         <DocumentList documents={uploaded} />
                       </div>
                     )}

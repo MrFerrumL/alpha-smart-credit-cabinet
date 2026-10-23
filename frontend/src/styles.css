@@ -759,7 +759,97 @@ body {
   color: var(--potok-steel);
 }
 
+/* Выбор одного варианта: строки на «Тумане», выбранная — красный край слева и фон на тон темнее. */
+.potok-choices {
+  display: grid;
+  gap: 6px;
+}
+
+.potok-choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 14px 13px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+  text-align: left;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.potok-choice:hover {
+  background: var(--potok-line);
+}
+
+.potok-choice[data-checked] {
+  border-left-color: var(--potok-accent);
+  background: var(--potok-line);
+}
+
+.potok-choice-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.potok-choice-title {
+  font-weight: 500;
+}
+
+.potok-choice-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+/* Быстрые значения срока — под слайдером вместо подписей шкалы; выбранное — графитом. */
+.potok-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.potok-preset {
+  min-width: 64px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+  font: 500 14px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.potok-preset:hover {
+  background: var(--potok-line);
+}
+
+.potok-preset[aria-pressed='true'] {
+  background: var(--potok-ink);
+  color: var(--potok-paper);
+}
+
+.potok-panel .potok-preset:not([aria-pressed='true']) {
+  background: var(--potok-canvas);
+}
+
 @media (max-width: 720px) {
+  .potok-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .potok-preset {
+    height: 44px;
+  }
+
   .potok-ticks span[data-major='false'] {
     display: none;
   }

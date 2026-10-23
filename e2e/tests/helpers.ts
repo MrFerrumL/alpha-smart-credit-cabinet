@@ -1,4 +1,4 @@
-import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
 
 export const PURPOSE = {
   workingCapital: 'Пополнить оборотные средства',
@@ -35,12 +35,6 @@ export function moneyShort(value: number): string {
   return `${Math.round(value / 1_000)} тыс. ₽`;
 }
 
-async function setSlider(slider: Locator, from: number, to: number, step: number): Promise<void> {
-  await slider.focus();
-  const key = to >= from ? 'ArrowRight' : 'ArrowLeft';
-  for (let i = 0; i < Math.abs(to - from) / step; i++) await slider.press(key);
-}
-
 /** Остановки по ходу подачи заявки: запись демо ставит на них подписи и паузы, обычные тесты хук не передают. */
 export type ApplyStep = 'match' | 'company' | 'loan' | 'finance' | 'documents' | 'review' | 'consent';
 export type ApplyHook = (step: ApplyStep) => Promise<void>;
@@ -50,9 +44,9 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   // Запись демо открывает подбор через меню сама, остальные тесты приходят сюда с другой страницы.
   if (!/\/match$/.test(page.url())) await page.goto('/match');
   await page.getByText(input.purpose, { exact: true }).click();
-  await page.getByLabel('Сумма').fill(String(input.amount));
-  // Срок на подборе — от 3 месяцев с шагом 3, по умолчанию 12.
-  await setSlider(page.getByRole('slider').nth(1), 12, input.term, 3);
+  await page.getByLabel('Сумма', { exact: true }).fill(String(input.amount));
+  // Срок вводится в поле «Срок» (рядом — быстрые значения и слайдер).
+  await page.getByLabel('Срок', { exact: true }).fill(String(input.term));
   const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: input.product, exact: true }) });
   // Подбор пересчитывается с задержкой — ждём, пока в карточке появятся введённые срок и сумма.
   await expect(card.getByText('Сумма', { exact: true }).locator('..')).toContainText(moneyShort(input.amount));
@@ -67,7 +61,7 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   await onStep?.('company');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
-  await expect(page.getByText(`Срок: ${input.term} мес`)).toBeVisible();
+  await expect(page.getByLabel('Срок', { exact: true })).toHaveValue(String(input.term));
   await onStep?.('loan');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Финансы компании' })).toBeVisible();
