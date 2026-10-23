@@ -50,7 +50,7 @@ export function shownTerms(app: Application, products?: Product[]) {
     const product = products?.find((p) => p.code === offer.product_code);
     return {
       agreed: true,
-      product: product?.name ?? (sameProduct ? app.product.name : offer.product_code),
+      product: product?.name ?? (sameProduct ? app.product.name : '…'),
       interestOnly: product?.repayment === 'interest_only',
       amount: offer.amount,
       term: offer.term_months,
@@ -102,7 +102,7 @@ function CompareTable({ app }: { app: Application }) {
   const products = useProducts();
   const otherProduct = offer.product_code !== app.product.code;
   const offered = products.data?.find((p) => p.code === offer.product_code);
-  const offeredName = offered?.name ?? offer.product_code;
+  const offeredName = offered?.name ?? '…';
   const interestOnly = offered?.repayment === 'interest_only';
   const offeredPayment = interestOnly ? `${money(offer.monthly_payment)} — только проценты` : money(offer.monthly_payment);
   const rows: [string, string, string, boolean][] = [
@@ -304,7 +304,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
       </Group>
       {done && task.answer && (
         <Text fz="sm" mt="xs">
-          Ваш ответ: <b>{task.answer}</b>
+          {task.kind === 'document' ? 'Приложен файл' : readOnly ? 'Ответ клиента' : 'Ответ'}: <b>{task.answer}</b>
         </Text>
       )}
       {canAnswer && task.kind === 'document' && (
