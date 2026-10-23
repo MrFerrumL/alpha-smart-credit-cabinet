@@ -188,3 +188,62 @@ jobs:
       - name: Stop and remove volumes
         if: always()
         run: docker compose down -v
+
+  # The optional plain-language explanation, switched on, against the fake model in the source emulator. A separate
+  # job: the job above keeps the feature off (the default) and its resource numbers stay clean.
+  explanation:
+    name: Explanation against a fake OpenAI-compatible model
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    env:
+      # docker compose substitutes these into the backend and worker environment.
+      LLM_ENABLED: "true"
+      LLM_BASE_URL: http://mocks:8001/llm/v1
+      LLM_MODEL: fake-explainer
+      LLM_API_KEY: ci-dummy
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start the stack with the explanation on (build, wait for healthchecks)
+        run: docker compose up --build -d --wait --wait-timeout 300
+      - name: The explanation flag is on in /api/meta
+        run: |
+          curl -fsS http://localhost:8080/api/meta | python3 -c '
+          import json, sys
+          sys.exit(0 if json.load(sys.stdin)["llm_explanation"] is True else "llm_explanation is not true in /api/meta")
+          '
+      - name: Smoke test through nginx (the main scenario works with the explanation on)
+        run: python3 scripts/smoke.py http://localhost:8080 --timeout 180
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.16.0"
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install newman and Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Request collection end to end (newman)
+        working-directory: e2e
+        run: npm run api -- --env-var base_url=http://localhost:8080
+      - name: Explanation in the browser, normal and faulty model answers (Playwright)
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+          E2E_MOCKS_URL: http://localhost:8001
+        run: npm run ui:llm
+      - name: Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-explanation
+          path: |
+            e2e/llm-report
+            e2e/llm-results
+          retention-days: 7
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Stop and remove volumes
+        if: always()
+        run: docker compose down -v

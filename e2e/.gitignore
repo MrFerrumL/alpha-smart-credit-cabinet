@@ -3,3 +3,5 @@ test-results/
 playwright-report/
 demo-results/
 demo-video/
+llm-results/
+llm-report/

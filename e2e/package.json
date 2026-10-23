@@ -6,6 +6,7 @@
   "scripts": {
     "api": "newman run ../docs/postman_collection.json --folder \"Сквозной сценарий: от заявки до выдачи\" --reporters cli",
     "ui": "playwright test",
+    "ui:llm": "playwright test -c playwright.llm.config.ts",
     "demo": "playwright test -c playwright.demo.config.ts",
     "submission-pdf": "node scripts/submission-pdf.mjs"
   },
