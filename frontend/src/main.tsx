@@ -1,4 +1,4 @@
-import '@fontsource-variable/manrope';
+import './fonts';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import './styles.css';
