@@ -31,7 +31,9 @@ export function PaymentBars({ rows, firstDate, current }: { rows: BarRow[]; firs
     if (!iso) return [i === 0 || (i + 1) % step === 0 ? `${i + 1}` : '', i === 0];
     const month = new Date(iso).getMonth();
     if (i === 0 || month === 0) return [monthLabel(iso, true), true];
-    return [i % step === 0 ? monthLabel(iso, false) : '', false];
+    // Промежуточная подпись не встаёт вплотную к подписи с годом.
+    const nearMajor = [i - 1, i + 1].some((j) => j >= 0 && j < dated.length && dated[j].date && new Date(dated[j].date!).getMonth() === 0);
+    return [i % step === 0 && !nearMajor ? monthLabel(iso, false) : '', false];
   };
   return (
     <div className="potok-bars" aria-hidden="true">

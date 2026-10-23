@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { useMeta } from '../api/hooks';
 import type { Application, StatusInfo, Tone } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { typo } from '../lib/format';
 
 const CHIP_TONE: Record<Tone, string> = { neutral: 'plain', info: 'info', warning: 'warn', success: 'ok', danger: 'err' };
 
@@ -108,12 +109,15 @@ export function StatusBlock({
   showLabels = false,
   note,
   action = true,
+  hint = true,
 }: {
   app: Application;
   onPage?: boolean;
   showLabels?: boolean;
   note?: ReactNode;
   action?: boolean;
+  /** Подсказка статуса; в блоке решения её заменяет фраза исхода. */
+  hint?: boolean;
 }) {
   const meta = useMeta();
   const { user } = useAuth();
@@ -136,7 +140,7 @@ export function StatusBlock({
             {where}
             {note && <span className="potok-status-note"> — {note}</span>}
           </div>
-          <div className="potok-status-next">{app.status.hint}</div>
+          {hint && <div className="potok-status-next">{typo(app.status.hint)}</div>}
         </div>
         {next &&
           (next.to.startsWith('#') ? (

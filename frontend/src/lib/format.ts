@@ -72,19 +72,21 @@ const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 const dayMonthFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
 const shortDateFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-const monthFmt = new Intl.DateTimeFormat('ru-RU', { month: 'short' });
+const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+// День и месяц не разрываются переносом: «23 октября».
+const glueDay = (s: string) => s.replace(/^(\d{1,2}) /, `$1${NBSP}`);
 
 export function dateTime(iso: string): string {
-  return dateTimeFmt.format(new Date(iso)).replace(' в ', `${NBSP}в${NBSP}`);
+  return glueDay(dateTimeFmt.format(new Date(iso)).replace(' в ', `${NBSP}в${NBSP}`));
 }
 
 export function date(iso: string): string {
-  return dateFmt.format(new Date(iso)).replace(/\s*г\.$/, '');
+  return glueDay(dateFmt.format(new Date(iso)).replace(/\s*г\.$/, ''));
 }
 
 /** 30 октября — без года, для сроков в пределах ближайших недель. */
 export function dayMonth(iso: string): string {
-  return dayMonthFmt.format(new Date(iso));
+  return glueDay(dayMonthFmt.format(new Date(iso)));
 }
 
 /** 23.11.2026 — для таблиц. */
@@ -95,8 +97,16 @@ export function shortDate(iso: string): string {
 /** Подпись месяца на оси графика: «ноя», с годом — «ноя 2026». */
 export function monthLabel(iso: string, withYear: boolean): string {
   const d = new Date(iso);
-  const m = monthFmt.format(d).replace('.', '');
+  const m = MONTHS_SHORT[d.getMonth()];
   return withYear ? `${m}${NBSP}${d.getFullYear()}` : m;
+}
+
+/**
+ * Типографика для текстов с сервера: строка не начинается с тире, диапазон «1–2» не рвётся.
+ * Тире приклеивается к слову слева неразрывным пробелом, у диапазона — «словосоединителем» U+2060.
+ */
+export function typo(text: string): string {
+  return text.replace(/ — /g, `${NBSP}— `).replace(/(\d)–(\d)/g, '$1⁠–⁠$2');
 }
 
 export function yearsSince(iso: string): number {
