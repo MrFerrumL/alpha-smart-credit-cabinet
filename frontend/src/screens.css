@@ -1445,6 +1445,30 @@ a.potok-note-title:hover {
   border-top: 1px solid var(--potok-line);
 }
 
+.potok-checks-wide li {
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.potok-checks-wide li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-checks-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.potok-checks-state {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-checks li[data-state='failed'] svg,
+.potok-checks li[data-state='failed'] .potok-checks-state {
+  color: var(--warn-text);
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;

@@ -217,7 +217,10 @@ export function ApplicationPage() {
         <Stack gap="lg">
           <DecisionReasons app={app} />
           <AgreedTerms app={app} />
-          {checks.data && !decided && <ChecksCard checks={checks.data} active={app.status.code === 'enrichment'} />}
+          {/* Проверки видны, пока банк проверяет заявку; после решения они уже в истории. */}
+          {checks.data && ['submitted', 'validation', 'enrichment', 'scoring', 'manual_review', 'needs_info'].includes(app.status.code) && (
+            <ChecksCard checks={checks.data} active={app.status.code === 'enrichment'} />
+          )}
           <section className="potok-panel">
             <Title order={3}>История</Title>
             {events.data && <History events={events.data} />}

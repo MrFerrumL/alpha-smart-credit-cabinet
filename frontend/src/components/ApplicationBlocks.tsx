@@ -10,7 +10,6 @@ import {
   Stack,
   Text,
   Textarea,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
 import {
@@ -190,49 +189,42 @@ export function TasksCard({ app, tasks, readOnly = false }: { app: Application; 
 
 // --- Проверки во внешних источниках ------------------------------------------------------------
 
+/** Проверки во внешних источниках — список с линейной отметкой; пока идёт проверка, рядом счётчик ожидания. */
 export function ChecksCard({ checks, active }: { checks: SourceCheck[]; active: boolean }) {
   return (
-    <Card p={{ base: 'lg', sm: 'xl' }}>
-      <Title order={4}>Проверка компании</Title>
+    <section className="potok-panel">
+      <Title order={3}>Проверка компании</Title>
       <Text fz="sm" c="dimmed" mt={4}>
         Банк сам запрашивает данные — вам ничего не нужно присылать.
       </Text>
-      <Stack gap="sm" mt="md">
+      <ul className="potok-checks potok-checks-wide">
         {checks.map((check) => (
-          <Group key={check.source} justify="space-between" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap">
-              {check.status === 'ok' ? (
-                <ThemeIcon color="teal" size={28} radius="xl">
-                  <IconCheck size={16} stroke={3} />
-                </ThemeIcon>
-              ) : check.status === 'failed' ? (
-                <ThemeIcon color="orange" size={28} radius="xl" variant="light">
-                  <IconAlertTriangle size={16} />
-                </ThemeIcon>
-              ) : (
-                <ThemeIcon color="gray" size={28} radius="xl" variant="light">
-                  {active ? <Loader size={14} color="gray" /> : <IconClockHour4 size={16} />}
-                </ThemeIcon>
-              )}
-              <Text fz="sm" fw={600}>
-                {check.title}
-              </Text>
-            </Group>
-            <Text fz="xs" c={check.status === 'failed' ? 'orange.7' : 'dimmed'} ta="right">
+          <li key={check.source} data-ok={check.status === 'ok'} data-state={check.status}>
+            {check.status === 'ok' ? (
+              <IconCheck size={16} />
+            ) : check.status === 'failed' ? (
+              <IconAlertTriangle size={16} />
+            ) : active ? (
+              <Loader size={14} color="gray" />
+            ) : (
+              <IconClockHour4 size={16} />
+            )}
+            <span className="potok-checks-name">{check.title}</span>
+            <span className="potok-checks-state">
               {check.status === 'ok'
-                ? 'Данные получены'
+                ? 'данные получены'
                 : check.status === 'failed'
                   ? active
-                    ? 'Не отвечает — повторяем'
-                    : 'Не ответил'
+                    ? 'не отвечает — повторяем'
+                    : 'не ответил'
                   : active
-                    ? 'Запрашиваем…'
-                    : 'В очереди'}
-            </Text>
-          </Group>
+                    ? 'запрашиваем…'
+                    : 'в очереди'}
+            </span>
+          </li>
         ))}
-      </Stack>
-    </Card>
+      </ul>
+    </section>
   );
 }
 
