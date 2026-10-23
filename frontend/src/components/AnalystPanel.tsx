@@ -40,16 +40,21 @@ function Coverage({ value, min }: { value: number | null; min: number }) {
 /** Условия: что просит клиент и что предложил бы конвейер. Нагрузка — одна величина из оценки банка. */
 function TermsTable({ a }: { a: Assessment }) {
   const rec = a.recommendation;
-  const rows: [string, (t: Terms) => ReactNode][] = [
-    ['Сумма', (t) => money(t.amount)],
-    ['Срок', (t) => months(t.term_months)],
-    ['Ставка', (t) => rate(t.rate)],
-    ['Платёж в месяц', (t) => money(t.monthly_payment)],
-    [`Нагрузка на выручку, лимит ${percent(a.max_dsr, 0)}`, (t) => <Load value={t.dsr} max={a.max_dsr} />],
-    [`Покрытие платежа прибылью, минимум ×${decimal(a.min_coverage, 1)}`, (t) => <Coverage value={t.coverage} min={a.min_coverage} />],
+  // Порог — отдельной строкой под названием, чтобы подпись не растягивалась на 4–5 строк в узкой колонке.
+  const rows: { label: string; hint?: string; render: (t: Terms) => ReactNode }[] = [
+    { label: 'Сумма', render: (t) => money(t.amount) },
+    { label: 'Срок', render: (t) => months(t.term_months) },
+    { label: 'Ставка', render: (t) => rate(t.rate) },
+    { label: 'Платёж в месяц', render: (t) => money(t.monthly_payment) },
+    { label: 'Нагрузка на выручку', hint: `лимит${NBSP}${percent(a.max_dsr, 0)}`, render: (t) => <Load value={t.dsr} max={a.max_dsr} /> },
+    {
+      label: 'Покрытие платежа прибылью',
+      hint: `минимум${NBSP}×${decimal(a.min_coverage, 1)}`,
+      render: (t) => <Coverage value={t.coverage} min={a.min_coverage} />,
+    },
   ];
   return (
-    <Table withRowBorders verticalSpacing={10} aria-label="Условия">
+    <Table className="potok-terms" withRowBorders verticalSpacing={10} aria-label="Условия">
       <Table.Thead>
         <Table.Tr>
           <Table.Th />
@@ -58,9 +63,12 @@ function TermsTable({ a }: { a: Assessment }) {
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map(([label, render]) => (
+        {rows.map(({ label, hint, render }) => (
           <Table.Tr key={label}>
-            <Table.Td c="dimmed">{label}</Table.Td>
+            <Table.Td c="dimmed">
+              {label}
+              {hint && <span className="potok-terms-hint">{hint}</span>}
+            </Table.Td>
             <Table.Td ta="right">{render(a.requested)}</Table.Td>
             {rec && <Table.Td ta="right">{render(rec)}</Table.Td>}
           </Table.Tr>
