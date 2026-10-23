@@ -8,6 +8,7 @@ import {
   IconListCheck,
   IconLogout,
   IconSearch,
+  IconUser,
   type Icon,
 } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -62,6 +63,9 @@ function ProfileMenu() {
           )}
         </div>
         <Menu.Divider />
+        <Menu.Item component={Link} to="/profile" leftSection={<IconUser size={18} />}>
+          Профиль
+        </Menu.Item>
         <Menu.Item leftSection={<IconLogout size={18} />} onClick={signOut}>
           Выйти
         </Menu.Item>
