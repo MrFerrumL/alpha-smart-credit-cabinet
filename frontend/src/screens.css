@@ -124,6 +124,20 @@
   margin-bottom: 16px;
 }
 
+/* Подписание: «Открыть договор…» и «Подробнее» — одной строкой ссылок; вторая тише и переносится под первую. */
+.potok-sign-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 24px;
+  margin-top: 20px;
+}
+
+.potok-link.potok-link-quiet {
+  color: var(--potok-steel) !important;
+  font-weight: 400;
+}
+
 .potok-table-wrap {
   max-height: 360px;
   margin-top: 12px;

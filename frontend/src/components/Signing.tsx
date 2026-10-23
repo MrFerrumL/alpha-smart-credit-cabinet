@@ -150,8 +150,8 @@ function nextMonth(): string {
 
 /**
  * Подписание — главный блок страницы: компактный статус, договор (сумма крупно, условия, переплата из договора,
- * мини-график), согласие и подпись кодом. Хеш условий — под «Подробнее». На телефоне «Подписать кодом» закреплена
- * внизу. После подписи — настоящее состояние перевода, а не демонстрационная вставка.
+ * мини-график), согласие и подпись кодом. Хеш условий — под «Подробнее», рядом со ссылкой на договор. На телефоне
+ * «Подписать кодом» закреплена внизу. После подписи — настоящее состояние перевода, а не демонстрационная вставка.
  */
 export function SigningCard({ app, extra }: { app: Application; extra?: ReactNode }) {
   const contract = useContract(app.id, true);
@@ -210,9 +210,23 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
         </>
       )}
 
-      <Anchor component={Link} to={`/applications/${app.id}/contract`} className="potok-link" display="inline-block" mt="lg">
-        Открыть договор и график платежей
-      </Anchor>
+      <div className="potok-sign-links">
+        <Anchor component={Link} to={`/applications/${app.id}/contract`} className="potok-link">
+          Открыть договор и график платежей
+        </Anchor>
+        {c && (
+          <Anchor component="button" type="button" className="potok-link potok-link-quiet" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+            {more ? 'Скрыть подробности' : 'Подробнее'}
+          </Anchor>
+        )}
+      </div>
+      {c && (
+        <Collapse in={more}>
+          <Text fz="sm" c="dimmed" mt={8}>
+            Подпись привязана к условиям договора и графику: SHA-256 {c.terms_hash.slice(0, 16)}…
+          </Text>
+        </Collapse>
+      )}
 
       {signed ? (
         <div className="potok-inline-note" data-tone={c?.issue_delayed || app.open_tasks > 0 ? 'warn' : 'ok'} role="status">
@@ -246,19 +260,6 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
         <>
           <div className="potok-inline-note">Подписать договор может только руководитель компании.</div>
           {extra && <div className="potok-cta">{extra}</div>}
-        </>
-      )}
-
-      {c && (
-        <>
-          <Button variant="subtle" px={0} mt="md" size="compact-md" onClick={() => setMore((m) => !m)} aria-expanded={more}>
-            {more ? 'Скрыть подробности' : 'Подробнее'}
-          </Button>
-          <Collapse in={more}>
-            <Text fz="sm" c="dimmed" mt={4}>
-              Подпись привязана к условиям договора и графику: SHA-256 {c.terms_hash.slice(0, 16)}…
-            </Text>
-          </Collapse>
         </>
       )}
     </section>
