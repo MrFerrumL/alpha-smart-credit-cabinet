@@ -1,39 +1,27 @@
-import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { tokenStore } from './client';
 import type { StreamSnapshot } from './types';
-
-const TONE_COLOR: Record<StreamSnapshot['tone'], string> = {
-  neutral: 'gray',
-  info: 'blue',
-  warning: 'orange',
-  success: 'teal',
-  danger: 'red',
-};
 
 /**
  * Живой статус заявки: читает поток Server-Sent Events /api/applications/{id}/stream.
  * EventSource не умеет передавать заголовок Authorization, поэтому поток читается через fetch.
  * При обрыве соединение восстанавливается с растущей паузой; когда заявка доходит до финального
- * статуса, сервер закрывает поток сам.
+ * статуса, сервер закрывает поток сам. Отдельного всплывающего сообщения о смене статуса нет: поток работает только
+ * на странице заявки, где статус и так меняется на глазах.
  */
 export function useApplicationStream(id: number, enabled: boolean): boolean {
   const qc = useQueryClient();
   const [live, setLive] = useState(false);
-  const lastStatus = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
     let attempt = 0;
 
-    const onSnapshot = (snap: StreamSnapshot) => {
-      if (lastStatus.current && lastStatus.current !== snap.status) {
-        notifications.show({ color: TONE_COLOR[snap.tone], title: 'Статус заявки обновился', message: snap.title });
-      }
-      lastStatus.current = snap.status;
+    // Новый снимок статуса: данные заявки и списка перечитываются, экран обновляется сам.
+    const onSnapshot = () => {
       qc.invalidateQueries({ queryKey: ['application', id] });
       qc.invalidateQueries({ queryKey: ['applications'] });
     };
@@ -66,7 +54,7 @@ export function useApplicationStream(id: number, enabled: boolean): boolean {
                 .join('');
               if (data) {
                 const snap = JSON.parse(data) as StreamSnapshot;
-                onSnapshot(snap);
+                onSnapshot();
                 finished = snap.terminal;
               }
             }
