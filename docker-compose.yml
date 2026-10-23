@@ -88,6 +88,45 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Необязательная локальная модель для пояснения решения: включается профилем llm (COMPOSE_PROFILES=llm) вместе с
+  # LLM_ENABLED=true. Без профиля сервис не создаётся. Работает на процессоре; с видеокартой быстрее запустить Ollama
+  # на самом ПК и указать LLM_BASE_URL=http://host.docker.internal:11434/v1 (см. README).
+  ollama:
+    image: ollama/ollama:0.40.2
+    profiles: ["llm"]
+    init: true
+    # Модель качается при первом запуске, если её ещё нет в томе, и сразу загружается в память: healthcheck станет
+    # «здоров», когда модель готова отвечать. Без интернета при первом запуске pull упадёт, и up --wait — тоже.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        rm -f /tmp/ready
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama show "$$LLM_MODEL" >/dev/null 2>&1 || ollama pull "$$LLM_MODEL"
+        ollama run "$$LLM_MODEL" "ок" >/dev/null
+        touch /tmp/ready
+        wait
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "2048"
+    # Порт наружу не публикуется: воркер ходит к модели по сети compose, а у пользователя может быть свой Ollama на 11434.
+    volumes:
+      - ollama:/root/.ollama
+    # Модель 7B в Q4 занимает около 5 ГБ памяти; при нехватке упадёт только этот сервис, а не база.
+    mem_limit: 7g
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/ready"]
+      interval: 10s
+      timeout: 3s
+      start_period: 1800s
+      retries: 3
+    restart: unless-stopped
+
   frontend:
     build: ./frontend
     depends_on:
@@ -100,3 +139,5 @@ services:
 volumes:
   pgdata:
   uploads:
+  # Модель локального профиля (около 4,5 ГБ). docker compose down -v удаляет и её: при следующем запуске — новая загрузка.
+  ollama:
