@@ -1,7 +1,5 @@
 import {
-  Badge,
   Button,
-  Card,
   FileButton,
   Group,
   Loader,
@@ -24,6 +22,7 @@ import { useState } from 'react';
 import { useAnswerTask, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, Product, SourceCheck, UploadedDocument } from '../api/types';
 import { money, months, rate } from '../lib/format';
+import { Chip } from './Status';
 
 // --- Решение банка -----------------------------------------------------------------------------
 
@@ -72,10 +71,10 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
     task.status === 'open' && !readOnly && app.allowed_actions.includes(signerOnly ? 'confirm_guarantee' : 'answer_tasks');
 
   return (
-    <Paper withBorder p="md" radius="md" bg={done ? 'gray.0' : 'white'}>
+    <Paper p="md" radius={16} className="potok-task" data-done={done}>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <div>
-          <Text fw={700}>{task.title}</Text>
+          <Text fw={600}>{task.title}</Text>
           {task.description && (
             <Text fz="sm" c="dimmed" mt={2}>
               {task.description}
@@ -83,17 +82,11 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
           )}
         </div>
         {done ? (
-          <Badge color="teal" variant="light" leftSection={<IconCheck size={12} />} style={{ flex: '0 0 auto' }}>
-            Готово
-          </Badge>
+          <Chip tone="success">Готово</Chip>
         ) : task.status === 'expired' ? (
-          <Badge color="gray" variant="light" style={{ flex: '0 0 auto' }}>
-            Запрос закрыт
-          </Badge>
+          <Chip tone="neutral">Запрос закрыт</Chip>
         ) : (
-          <Badge color="orange" variant="light" style={{ flex: '0 0 auto' }}>
-            Ждём ответа
-          </Badge>
+          <Chip tone="warning">Ждём ответа</Chip>
         )}
       </Group>
       {done && task.answer && (
@@ -109,7 +102,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
           accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.doc,.docx,.txt"
         >
           {(props) => (
-            <Button {...props} mt="md" leftSection={<IconFileUpload size={18} />} loading={upload.isPending}>
+            <Button {...props} mt="md" variant="default" size="md" leftSection={<IconFileUpload size={18} />} loading={upload.isPending}>
               Загрузить файл
             </Button>
           )}
@@ -165,8 +158,8 @@ export function TasksCard({ app, tasks, readOnly = false }: { app: Application; 
   const open = tasks.filter((t) => t.status === 'open').length;
   const signing = app.status.code === 'signing';
   return (
-    <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in" style={open ? { border: '2px solid var(--mantine-color-orange-5)' } : undefined}>
-      <Title order={4}>{signing ? 'Условия выдачи' : open ? 'Банк просит уточнить' : 'Запросы банка'}</Title>
+    <section className="potok-panel fade-in">
+      <Title order={3}>{signing ? 'Условия выдачи' : open ? 'Банк просит уточнить' : 'Запросы банка'}</Title>
       <Text fz="sm" c="dimmed" mt={4}>
         {signing
           ? open
@@ -183,7 +176,7 @@ export function TasksCard({ app, tasks, readOnly = false }: { app: Application; 
           <TaskItem key={task.id} app={app} task={task} readOnly={readOnly} />
         ))}
       </Stack>
-    </Card>
+    </section>
   );
 }
 

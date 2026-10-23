@@ -1469,6 +1469,23 @@ a.potok-note-title:hover {
   color: var(--warn-text);
 }
 
+/* Запрос банка: строка на «Тумане», без цветной рамки вокруг всей карточки — статус говорит чип. */
+.potok-task {
+  background: var(--potok-canvas) !important;
+}
+
+.potok-task[data-done='true'] {
+  opacity: 0.8;
+}
+
+.potok-contract {
+  padding: 48px;
+}
+
+.potok-contract-h {
+  font-size: 32px !important;
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;
@@ -2196,6 +2213,14 @@ a.potok-note-title:hover {
 
   .potok-login-form {
     padding: 20px 16px;
+  }
+
+  .potok-contract {
+    padding: 20px 16px;
+  }
+
+  .potok-contract-h {
+    font-size: 24px !important;
   }
 
 
