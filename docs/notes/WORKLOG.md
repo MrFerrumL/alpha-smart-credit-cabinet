@@ -254,6 +254,20 @@ purpose so the stages are visible.
   - local stack note: stale uvicorn/worker processes from 22.10 were still bound to 8000/8001 with old code;
     always stop old processes before starting a local stack.
 
+- D15 (23.10) Jury break-the-demo pass: 18 findings, each re-checked independently (reproduce, then fix vs
+  feature); all 18 reproduced, 16 fixed, 2 documented (deep link after login lands on home; `new@` links once).
+  Main ones:
+  - repeat applications ignored loans this bank had issued, and declared debt payments were ignored
+    (`813e1af`): existing payments = max(bureau + own active loans, declared);
+  - accepted and issued applications showed the requested terms (`daa5dac`); the overdraft read as money
+    credited (`c1b3b41`, `efff6b4`);
+  - raw English validation messages (`1f3d178`); huge path ids gave 500 (`0301bf1`);
+  - signing code requested anew on every reload, burning the 5-per-hour limit (`23455b0`, `8a046f8`);
+  - the mock registry invented cards for real INNs (`30a0cdc`): only the synthetic `00` range answers now.
+  A review of the combined diff found no high issues; its follow-ups are `efff6b4`..`49a2615`.
+  Local e2e on a fresh stack: newman 10/10, Playwright 12/12. Rerunning the browser suite on a used stand fails
+  by design (`new@` links once; own loans now raise the debt load), so CI and docs require a clean stand.
+
 ## Verification commands
 
 ```bash
@@ -265,7 +279,6 @@ cd frontend && npm ci && npm run build
 
 ## Next step
 
-23.10 night: end-to-end verification on `feat/e2e-completion`; waiting for CI on the pushed head, then the
-adversarial jury pass findings. Then report to Kirill. Still his calls: read access for `alfa-hack-2026`,
-merge to `main` and `v1.0.0-rc2`/`v1.0.0`, deleting `confident-mccarthy-bv4por`, whether `docs/notes/` stays in the
-release tree.
+23.10 night: verification fixes pushed (`49a2615`), CI running. Then report to Kirill. Still his calls: read access
+for `alfa-hack-2026`, merge to `main` and `v1.0.0-rc2`/`v1.0.0`, deleting `confident-mccarthy-bv4por`, whether
+`docs/notes/` stays in the release tree.
