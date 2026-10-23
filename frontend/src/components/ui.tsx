@@ -45,27 +45,23 @@ export function PurposeIcon({ name, size = 22 }: { name: string; size?: number }
   return <Cmp size={size} stroke={1.8} />;
 }
 
-export function Logo({ inverted = false }: { inverted?: boolean }) {
+/** Знак «Поток» — волна потока — и название. Цвет знака — акцент Альфы, без подложки. */
+export function Logo({ inverted = false, size = 20 }: { inverted?: boolean; size?: number }) {
   return (
-    <Group gap={10} wrap="nowrap">
-      <svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true">
-        <rect width="64" height="64" rx="16" fill={inverted ? '#ffffff' : '#ef3124'} />
+    <Group gap={10} wrap="nowrap" aria-label={BRAND.name}>
+      <svg height={Math.round(size * 0.85)} viewBox="2 16 60 32" aria-hidden="true" style={{ flex: 'none' }}>
         <path
-          d="M14 40c8 0 10-16 18-16s10 16 18 16"
+          d="M6 36c6 0 8-14 14-14s8 20 14 20 8-20 14-20 8 14 10 14"
           fill="none"
-          stroke={inverted ? '#ef3124' : '#ffffff'}
-          strokeWidth="6"
+          stroke={inverted ? '#ffffff' : 'var(--potok-accent)'}
+          strokeWidth="5.5"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
-      <div>
-        <Text fw={800} fz={20} lh={1.1} c={inverted ? 'white' : undefined}>
-          {BRAND.name}
-        </Text>
-        <Text fz={11} lh={1.2} c={inverted ? 'rgba(255,255,255,0.85)' : 'dimmed'}>
-          {BRAND.caption}
-        </Text>
-      </div>
+      <Text component="span" ff="var(--font-display)" fw={600} fz={size} lh={1} c={inverted ? 'white' : undefined}>
+        {BRAND.name}
+      </Text>
     </Group>
   );
 }
