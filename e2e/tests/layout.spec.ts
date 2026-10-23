@@ -29,13 +29,13 @@ test('ширина 390: экраны клиента и аналитика без
   const draft = new URL(page.url()).pathname;
 
   await page.setViewportSize(PHONE);
-  for (const path of ['/', '/match', '/applications', `/applications/${id}`, `/applications/${id}/contract`, draft, '/loans', loan]) {
+  for (const path of ['/', '/match', '/applications', `/applications/${id}`, `/applications/${id}/contract`, draft, '/loans', loan, '/profile']) {
     await expectFits(page, path);
   }
 
   const analyst = await session(browser, 'Мария Кредитова');
   await analyst.setViewportSize(PHONE);
-  for (const path of ['/queue', '/policy', `/applications/${id}`]) {
+  for (const path of ['/queue', '/policy', `/applications/${id}`, '/profile']) {
     await expectFits(analyst, path);
   }
 
