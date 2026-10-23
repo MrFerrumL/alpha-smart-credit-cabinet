@@ -1,4 +1,5 @@
 import { Button, Skeleton, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
@@ -14,12 +15,12 @@ const PIPELINE = ['submitted', 'validation', 'enrichment', 'scoring'];
 const waitsForBank = (a: Application) => a.status.code === 'manual_review' || PIPELINE.includes(a.status.code);
 
 const FILTERS: { value: string; label: string; match: (a: Application) => boolean }[] = [
+  { value: 'all', label: 'Все', match: () => true },
   { value: 'review', label: 'Ждут решения', match: (a) => a.status.code === 'manual_review' },
   { value: 'pipeline', label: 'В конвейере', match: (a) => PIPELINE.includes(a.status.code) },
   { value: 'info', label: 'Нужна информация', match: (a) => a.status.code === 'needs_info' },
   { value: 'offer', label: 'Есть предложение', match: (a) => ['approved', 'counter_offer', 'signing'].includes(a.status.code) },
   { value: 'done', label: 'Завершённые', match: (a) => a.status.terminal },
-  { value: 'all', label: 'Все', match: () => true },
 ];
 
 const waitMs = (a: Application) => (a.submitted_at ? Date.now() - new Date(a.submitted_at).getTime() : 0);
@@ -49,8 +50,8 @@ export function QueuePage() {
   const apps = all.data ?? [];
   const [filter, setFilter] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  // По умолчанию — «Ждут решения», а если там пусто — «Все».
-  const current = filter ?? (apps.some(FILTERS[0].match) ? 'review' : 'all');
+  // По умолчанию — «Все»: сверху те, кто дольше ждёт банк, ниже остальные.
+  const current = filter ?? 'all';
   const active = FILTERS.find((f) => f.value === current)!;
   const q = query.trim().toLowerCase();
   const list = apps
@@ -74,8 +75,10 @@ export function QueuePage() {
           </Text>
         </div>
         <TextInput
-          className="potok-q-search on-canvas"
-          label="Компания, ИНН или номер"
+          className="potok-q-search potok-search"
+          placeholder="Компания, ИНН или номер"
+          aria-label="Поиск по очереди"
+          leftSection={<IconSearch size={18} />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />

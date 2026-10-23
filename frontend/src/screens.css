@@ -1126,8 +1126,23 @@ a.potok-note-title:hover {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 16px;
+}
+
+/* Поиск — той же высоты, что лента фильтров (44 px), подсказка внутри поля, лупа слева; белый на «Тумане». */
+.potok-search .mantine-Input-input {
+  min-height: 44px;
+  height: 44px;
+  padding-top: 0;
+  padding-left: 40px;
+  background: var(--potok-paper);
+  border-color: var(--potok-line-strong);
+  font-weight: 400;
+}
+
+.potok-search .mantine-Input-section {
+  color: var(--potok-steel);
 }
 
 .potok-q-search {
