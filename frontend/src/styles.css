@@ -1,164 +1,985 @@
+/* Токены «Потока». Цвета — из открытой дизайн-системы Альфа-Банка core-ds/core-components (MIT), тема bluetint:
+   в комментарии — исходный токен. Свои имена, чтобы интерфейс не зависел от их переименований. */
 :root {
-  --app-bg: #f2f3f6;
-  --app-ink: #111827;
-  --app-muted: #6b7280;
-  --app-line: #e7e8ec;
-  --brand-gradient: linear-gradient(135deg, #ef3124 0%, #ff6a3d 55%, #ff9a5a 100%);
+  --potok-ink: #212124; /* neutral-1300: текст и данные */
+  --potok-steel: #5f5f66; /* neutral-700-press: вторичный текст, 6,3:1 на белом */
+  --potok-paper: #ffffff; /* base-bg-primary: поверхности */
+  --potok-canvas: #f2f3f5; /* base-bg-secondary, neutral-100: холст и поля */
+  --potok-line: #e7e8eb; /* neutral-300: разделители */
+  --potok-line-strong: #d2d3d9; /* neutral-400: рамки полей */
+  --potok-muted: #babbc2; /* neutral-500 */
+  --potok-neutral-700: #898991; /* neutral-700 */
+  --potok-hover: rgba(38, 55, 88, 0.06); /* neutral-translucent-100 */
+  --potok-press: rgba(30, 43, 68, 0.08); /* neutral-translucent-200 */
+
+  --potok-accent: #ef3124; /* accent-primary: активный шаг, фокус, метки */
+  --potok-accent-fill: #e32a17; /* accent-primary-hover: заливка кнопки — 4,56:1 с белым текстом */
+  --potok-accent-hover: #d72505; /* accent-primary-press */
+  --potok-accent-press: #c41400; /* corp ruby wine */
+
+  --ok-dot: #0cc44d; /* status-positive */
+  --ok-bg: #d1f1d7; /* status-muted-alt-positive */
+  --ok-ink: #253528; /* status-muted-alt-positive-inverted */
+  --ok-text: #0a7d2c; /* text-positive-hover */
+  --warn-dot: #fa9313;
+  --warn-bg: #fde6c8;
+  --warn-ink: #412f22;
+  --warn-text: #b45a06; /* text-attention-press */
+  --err-dot: #ff4837;
+  --err-bg: #ffdfdf;
+  --err-ink: #442926;
+  --err-text: #c7241f; /* text-negative-hover */
+  --info-dot: #2288fa;
+  --info-bg: #d8eaff;
+  --info-ink: #293044;
+
+  --font-ui: 'Onest', 'Segoe UI', sans-serif;
+  --font-display: 'Geologica', 'Onest', sans-serif;
+
+  --r-6: 6px;
+  --r-12: 12px;
+  --r-16: 16px;
+  --r-24: 24px;
+  --r-32: 32px;
+
+  /* Тени — только у плавающих слоёв (меню, шторки, тосты); поверхности разделяет тон. */
+  --shadow-m: 0 20px 24px rgba(0, 0, 0, 0.08), 0 12px 16px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.04),
+    0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-l-up: 0 0 24px rgba(0, 0, 0, 0.12), 0 -12px 24px rgba(0, 0, 0, 0.24);
+
+  /* Движение: значения сняты с интерфейса T-Bank (computed styles). */
+  --ease: cubic-bezier(0.2, 0, 0.4, 0.9);
+  --ease-in: cubic-bezier(0, 0, 0.4, 1);
+  --dur-press: 100ms;
+  --dur-hover: 200ms;
+  --dur-panel: 240ms;
+
+  /* Совместимость со старыми именами, пока экраны переходят на новые токены. */
+  --app-bg: var(--potok-canvas);
+  --app-ink: var(--potok-ink);
+  --app-muted: var(--potok-steel);
+  --app-line: var(--potok-line);
 }
 
 html,
 body {
-  background: var(--app-bg);
-  color: var(--app-ink);
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
   -webkit-font-smoothing: antialiased;
 }
 
-.hero {
+/* Слово с дефисом (номер заявки, «Экспресс-оборот») не переносится — см. lib/nobreak.tsx. */
+.potok-nowrap {
+  white-space: nowrap;
+}
+
+/* Табличные цифры — только в таблицах, колонках и крупных цифрах; в тексте «12 месяцев» они разъезжаются. */
+.num,
+.mantine-Table-td {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--potok-accent);
+  outline-offset: 2px;
+}
+
+/* Поля в стиле банка: серая заливка, подпись внутри поля сверху, подсказка под полем. */
+.potok-field {
   position: relative;
+}
+
+.potok-field > .mantine-InputWrapper-label {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 17px;
+  right: 48px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--potok-steel);
+  pointer-events: none;
+  white-space: nowrap;
   overflow: hidden;
-  background: var(--brand-gradient);
-  color: #fff;
+  text-overflow: ellipsis;
 }
 
-.hero::after {
-  content: '';
-  position: absolute;
-  right: -80px;
-  top: -80px;
-  width: 280px;
-  height: 280px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  pointer-events: none;
+.potok-field .mantine-Input-input {
+  min-height: 56px;
+  padding-top: 22px;
+  padding-left: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--potok-canvas);
+  border: 1px solid transparent;
+  border-radius: var(--r-12);
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    border-color var(--dur-hover) var(--ease);
 }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  right: 90px;
-  bottom: -120px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  pointer-events: none;
+.potok-field textarea.mantine-Input-input {
+  padding-top: 26px;
 }
 
-/* На широком экране левая панель входа стоит на месте, пока прокручивается список учёток. */
-@media (min-width: 62em) {
-  .login-hero {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    align-self: start;
-  }
+/* Поле прямо на «Тумане» (поиск в очереди) — белое с тонкой рамкой, иначе сливается с фоном. */
+.on-canvas.potok-field .mantine-Input-input,
+.on-canvas .potok-field .mantine-Input-input {
+  background: var(--potok-paper);
+  border-color: var(--potok-line-strong);
+}
+
+.potok-field .mantine-Input-input:hover {
+  background: var(--potok-line);
+}
+
+.potok-field .mantine-Input-input:focus,
+.potok-field .mantine-Input-input:focus-within {
+  background: var(--potok-paper);
+  border-color: var(--potok-ink);
+}
+
+.potok-field .mantine-Input-input[data-error] {
+  background: var(--potok-paper);
+  border-color: var(--err-text);
+}
+
+.potok-field .mantine-Input-input:disabled {
+  opacity: 1;
+  color: var(--potok-steel);
+  background: var(--potok-canvas);
+}
+
+.potok-field .mantine-Input-section {
+  padding-top: 22px;
+  color: var(--potok-steel);
+}
+
+.potok-field .mantine-InputWrapper-description,
+.potok-field .mantine-InputWrapper-error {
+  margin: 6px 0 0 16px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.potok-field .mantine-InputWrapper-description {
+  color: var(--potok-steel);
+}
+
+.potok-field .mantine-InputWrapper-error {
+  color: var(--err-text);
+}
+
+/* На белой поверхности поле серое; на холсте — белое с рамкой. */
+.on-canvas .potok-field .mantine-Input-input {
+  background: var(--potok-paper);
+  border-color: var(--potok-line-strong);
 }
 
 .clickable {
   cursor: pointer;
-  transition:
-    transform 120ms ease,
-    box-shadow 160ms ease,
-    border-color 160ms ease;
+  transition: background-color var(--dur-hover) var(--ease);
 }
 
 .clickable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.08);
+  background-color: #fafafb;
 }
 
 .selectable {
-  border: 2px solid transparent;
+  border: 1px solid var(--potok-line-strong);
 }
 
 .selectable[data-selected='true'] {
-  border-color: var(--mantine-color-brand-6);
-  background: var(--mantine-color-brand-0);
+  border-color: var(--potok-ink);
+  box-shadow: inset 0 0 0 1px var(--potok-ink);
 }
 
 .best-offer {
-  border: 2px solid var(--mantine-color-brand-6);
+  box-shadow: inset 0 0 0 2px var(--potok-ink);
 }
 
 .nav-link {
-  border-radius: 12px;
-  font-weight: 600;
+  border-radius: var(--r-12);
+  font-weight: 500;
 }
 
 .stage-line {
   flex: 1;
   height: 3px;
   border-radius: 3px;
-  background: var(--app-line);
+  background: var(--potok-line);
   margin-top: 14px;
 }
 
 .stage-line[data-done='true'] {
-  background: var(--mantine-color-brand-6);
+  background: var(--potok-ink);
 }
 
+.hero {
+  background: var(--potok-paper);
+}
+
+/* Появление: только у результата действия человека, не у каждой секции. */
 .fade-in {
-  animation: fade-in 260ms ease both;
+  animation: fade-in var(--dur-panel) var(--ease-in) both;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
-.pulse {
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(239, 49, 36, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(239, 49, 36, 0);
-  }
-}
-
+.pulse,
 .pulse-green {
-  animation: pulse-green 1.6s ease-in-out infinite;
+  animation: none;
 }
 
-@keyframes pulse-green {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(18, 184, 134, 0.45);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(18, 184, 134, 0);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
 /* Печать договора и графика платежей: только документ, без меню и кнопок. */
 @media print {
-  .mantine-AppShell-navbar,
-  .mantine-AppShell-header,
+  .potok-header,
+  .potok-tabbar,
   .mantine-Notifications-root,
   .no-print {
     display: none !important;
-  }
-
-  .mantine-AppShell-main {
-    padding: 0 !important;
   }
 
   html,
   body {
     background: #fff;
   }
+}
 
-  .mantine-Card-root {
-    box-shadow: none !important;
+/* --- Каркас: шапка в две строки и нижняя панель вкладок на телефоне ------------------------------ */
+.potok-wrap {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.potok-header {
+  background: var(--potok-canvas);
+}
+
+.potok-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 64px;
+  /* Линия — по ширине контента, без полей контейнера. */
+  background: linear-gradient(var(--potok-line), var(--potok-line)) center bottom / calc(100% - 48px) 1px no-repeat;
+}
+
+.potok-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.potok-org {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.potok-spacer {
+  flex: 1;
+}
+
+.potok-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 4px;
+  border-radius: var(--r-12);
+  font-size: 14px;
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+.potok-profile:hover {
+  background: var(--potok-hover);
+}
+
+.potok-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--potok-line-strong);
+  font: 600 13px/1 var(--font-ui);
+  color: var(--potok-ink);
+}
+
+.potok-profile-card {
+  padding: 12px 12px 8px;
+}
+
+.potok-tabs {
+  display: flex;
+  gap: 32px;
+  height: 56px;
+}
+
+.potok-tabs a {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  color: var(--potok-steel);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.potok-tabs a:hover {
+  color: var(--potok-ink);
+}
+
+.potok-tabs a[aria-current='page'] {
+  color: var(--potok-ink);
+  font-weight: 500;
+  border-bottom-color: var(--potok-ink);
+}
+
+.potok-page {
+  padding-top: 40px;
+  padding-bottom: 96px;
+}
+
+.potok-tabbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .potok-wrap {
+    padding: 0 16px;
   }
+
+  .potok-top {
+    height: 56px;
+    gap: 12px;
+    background-size: calc(100% - 32px) 1px;
+  }
+
+  .potok-org,
+  .potok-profile-name,
+  .potok-tabs {
+    display: none;
+  }
+
+  .potok-page {
+    padding-top: 20px;
+  }
+
+  .potok-shell[data-tabbar='true'] .potok-page {
+    padding-bottom: 96px;
+  }
+
+  .potok-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: grid;
+    height: 64px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--potok-paper);
+    border-top: 1px solid var(--potok-line);
+  }
+
+  .potok-tabbar a {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--potok-steel);
+    text-decoration: none;
+  }
+
+  .potok-tabbar a[aria-current='page'] {
+    color: var(--potok-ink);
+    font-weight: 600;
+  }
+}
+
+/* --- Чипы статусов: приглушённый фон, тёмный текст, точка; не обрезаются ------------------------- */
+.potok-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-6);
+  font: 500 13px/1 var(--font-ui);
+  white-space: nowrap;
+  flex: none;
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+}
+
+.potok-chip[data-dot='true']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.potok-chip[data-tone='plain']::before {
+  background: var(--potok-neutral-700);
+}
+
+.potok-chip[data-tone='ok'] {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.potok-chip[data-tone='ok']::before {
+  background: var(--ok-dot);
+}
+
+.potok-chip[data-tone='warn'] {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.potok-chip[data-tone='warn']::before {
+  background: var(--warn-dot);
+}
+
+.potok-chip[data-tone='err'] {
+  background: var(--err-bg);
+  color: var(--err-ink);
+}
+
+.potok-chip[data-tone='err']::before {
+  background: var(--err-dot);
+}
+
+.potok-chip[data-tone='info'] {
+  background: var(--info-bg);
+  color: var(--info-ink);
+}
+
+.potok-chip[data-tone='info']::before {
+  background: var(--info-dot);
+}
+
+/* --- Степпер из сегментов и компонент статуса --------------------------------------------------- */
+.potok-stepper {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-stepper li {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--potok-steel);
+}
+
+.potok-stepper li::before {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--potok-line-strong);
+  transition: background-color var(--dur-panel) var(--ease);
+}
+
+.potok-stepper[data-labels='true'] li::before {
+  margin-bottom: 8px;
+}
+
+.potok-stepper[data-labels='false'] .potok-stepper-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.potok-stepper li[data-seg='done'] {
+  color: var(--potok-ink);
+}
+
+.potok-stepper li[data-seg='done']::before {
+  background: var(--potok-ink);
+}
+
+.potok-stepper li[data-seg='now'] {
+  color: var(--potok-ink);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='now']::before {
+  background: var(--potok-accent);
+}
+
+.potok-stepper li[data-seg='stop'] {
+  color: var(--err-text);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='stop']::before {
+  background: var(--err-dot);
+}
+
+.potok-stepper li[data-seg='closed'] {
+  color: var(--potok-ink);
+  font-weight: 600;
+}
+
+.potok-stepper li[data-seg='closed']::before {
+  background: var(--potok-neutral-700);
+}
+
+.potok-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.potok-status-where {
+  font-weight: 600;
+}
+
+.potok-status-note {
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
+.potok-status-next {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--potok-steel);
+  max-width: 68ch;
+}
+
+@media (max-width: 720px) {
+  .potok-stepper[data-labels='true'] .potok-stepper-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .potok-stepper[data-labels='true'] li::before {
+    margin-bottom: 0;
+  }
+
+  .potok-status-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
+
+/* --- Кнопки: главная — красная (одна на экране), вторичная — тон, текстовая — подчёркнутая ------- */
+/* Кнопка в строке с текстом не сжимается: подпись не обрезается, переносится текст рядом. */
+.mantine-Button-root {
+  flex-shrink: 0;
+}
+
+.mantine-Button-root[data-variant='default'] {
+  background: var(--potok-canvas);
+  border: 0;
+  color: var(--potok-ink);
+}
+
+.mantine-Button-root[data-variant='default']:hover {
+  background: var(--potok-line);
+}
+
+.on-canvas .mantine-Button-root[data-variant='default'] {
+  background: var(--potok-paper);
+}
+
+.mantine-Button-root[data-variant='subtle'] {
+  color: var(--potok-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.mantine-Button-root[data-variant='subtle']:hover {
+  background: transparent;
+  text-decoration-thickness: 2px;
+}
+
+.mantine-Button-root:active:not([data-disabled]) {
+  transform: scale(0.98);
+  transition: transform var(--dur-press) var(--ease);
+}
+
+/* --- График платежей ------------------------------------------------------------------------------ */
+.potok-bars-plot {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  height: 96px;
+}
+
+.potok-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 56%;
+  height: 100%;
+  justify-self: center;
+}
+
+.potok-bar-i {
+  background: var(--potok-line-strong);
+  border-radius: 3px 3px 0 0;
+}
+
+.potok-bar-p {
+  background: var(--potok-neutral-700);
+  border-radius: 0 0 3px 3px;
+}
+
+/* Текущий платёж на графике — чуть темнее, без красной черты (её читали как подчёркивание заголовка). */
+.potok-bar[data-current='true'] .potok-bar-p {
+  background: var(--potok-ink);
+}
+
+.potok-bars-axis {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--potok-steel);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.potok-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+.potok-legend i[data-kind='p'] {
+  background: var(--potok-neutral-700);
+}
+
+.potok-legend i[data-kind='i'] {
+  background: var(--potok-line-strong);
+}
+
+@media (max-width: 720px) {
+  .potok-bars-plot {
+    gap: 3px;
+    height: 72px;
+  }
+
+  .potok-bar {
+    width: 70%;
+  }
+
+  .potok-bars-axis {
+    gap: 3px;
+  }
+
+  .potok-bars-axis span[data-major='false'] {
+    visibility: hidden;
+  }
+}
+
+/* --- Поле суммы и слайдер ------------------------------------------------------------------------- */
+.potok-unit {
+  font-size: 16px;
+  color: var(--potok-steel);
+}
+
+/* Слайдер суммы — своя строка под полем, той же высоты, что строка быстрых значений срока: колонки совпадают. */
+.potok-amount-row {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  margin-top: 12px;
+}
+
+.potok-amount-slider {
+  flex: 1;
+}
+
+/* Сумма и срок — две равные колонки; на телефоне — одна под другой. */
+.potok-amount-term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 24px;
+  align-items: start;
+}
+
+/* «₽» и «мес.» — с одинаковым отступом от правого края поля. */
+.potok-field .mantine-Input-section[data-position='right']:has(.potok-unit) {
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+
+.potok-term-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-term-fixed b {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--potok-ink);
+}
+
+.potok-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--potok-steel);
+}
+
+.potok-amount-hint {
+  margin: 6px 0 0 16px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+/*
+ * Выбор одного варианта — один стиль на всё приложение (цели, продукты, исход решения аналитика): тонкая
+ * нейтральная рамка; у выбранного — красная рамка 2 px со всех сторон и красная галочка. Рамка всегда 1 px,
+ * второй пиксель у выбранного — внутренняя обводка, поэтому размер строки не меняется. Наведение темнит только рамку.
+ */
+.potok-choices {
+  display: grid;
+  gap: 8px;
+}
+
+.potok-choice,
+.potok-outcome {
+  border: 1px solid var(--potok-line-strong);
+  border-radius: var(--r-12);
+  background: var(--potok-paper);
+  color: var(--potok-ink);
+  transition: border-color var(--dur-press) var(--ease), box-shadow var(--dur-press) var(--ease);
+}
+
+/* Заголовок и пояснение — один блок по центру строки, отметка по центру справа; отступы 16 и 20 px. */
+.potok-choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  text-align: left;
+}
+
+.potok-choice:hover,
+.potok-outcome:hover {
+  border-color: var(--potok-muted);
+}
+
+.potok-choice[data-checked],
+.potok-outcome[data-checked] {
+  border-color: var(--potok-accent);
+  box-shadow: inset 0 0 0 1px var(--potok-accent);
+}
+
+.potok-choice-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--potok-line-strong);
+  border-radius: 50%;
+  color: transparent;
+}
+
+.potok-choice[data-checked] .potok-choice-mark {
+  border-color: var(--potok-accent);
+  background: var(--potok-accent);
+  color: #fff;
+}
+
+.potok-choice-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.potok-choice-title {
+  font-weight: 500;
+}
+
+.potok-choice-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+/* Быстрые значения срока — под слайдером вместо подписей шкалы; выбранное — графитом. */
+/* Быстрые значения — сетка 3×2 равной ширины, на любом экране. */
+.potok-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.potok-preset {
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+  font: 500 14px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.potok-preset:hover {
+  background: var(--potok-line);
+}
+
+.potok-preset[aria-pressed='true'] {
+  background: var(--potok-ink);
+  color: var(--potok-paper);
+}
+
+.potok-panel .potok-preset:not([aria-pressed='true']) {
+  background: var(--potok-canvas);
+}
+
+@media (max-width: 720px) {
+  .potok-preset {
+    height: 44px;
+  }
+
+  .potok-amount-row {
+    height: 44px;
+  }
+
+  .potok-amount-term {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Пустые состояния, ошибки, скелетоны ---------------------------------------------------------- */
+.potok-empty {
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--potok-paper);
+  border-radius: var(--r-24);
+}
+
+.potok-empty-action {
+  margin-top: 20px;
+}
+
+.potok-error {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 32px;
+  align-items: start;
+  max-width: 776px;
+  padding: 40px;
+  background: var(--potok-paper);
+  border-radius: var(--r-24);
+}
+
+.potok-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.potok-sk-figures {
+  display: flex;
+  gap: 96px;
+  margin-top: 12px;
+}
+
+.potok-sk-bars {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 96px;
+  margin-top: 40px;
+}
+
+@media (max-width: 720px) {
+  .potok-error {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 24px 16px;
+  }
+
+  .potok-sk-figures {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+/* --- Тосты: тёмная плашка, выезжает с края ------------------------------------------------------- */
+.mantine-Notification-root {
+  background: var(--potok-ink);
+  border-radius: var(--r-16);
+  box-shadow: var(--shadow-m);
+}
+
+.mantine-Notification-root::before {
+  display: none;
+}
+
+.mantine-Notification-title,
+.mantine-Notification-description {
+  color: #fff;
+}
+
+.mantine-Notification-description {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.mantine-Notification-closeButton {
+  color: rgba(255, 255, 255, 0.78);
 }

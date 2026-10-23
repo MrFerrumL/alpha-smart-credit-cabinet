@@ -1,100 +1,68 @@
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Divider,
-  Group,
-  NumberInput,
-  SegmentedControl,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Textarea,
-  ThemeIcon,
-  Title,
-} from '@mantine/core';
-import { IconAlertTriangle, IconArrowRight, IconCheck, IconGavel, IconInfoCircle, IconRepeat, IconX } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { Alert, Button, Collapse, Group, NumberInput, Radio, SegmentedControl, Skeleton, Stack, Table, Text, TextInput, Textarea, Title } from '@mantine/core';
+import { IconCheck, IconInfoCircle, IconRepeat, IconX } from '@tabler/icons-react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { ApiError } from '../api/client';
-import { useAnalystDecision, useAssessment, useReplay } from '../api/hooks';
-import type { Application, Assessment, DecisionOutcome, Terms, TraceStep } from '../api/types';
+import { useAnalystDecision, useAssessment, useChecks, useReplay } from '../api/hooks';
+import type { Application, ApplicationEvent, Assessment, DecisionOutcome, Terms, TraceStep } from '../api/types';
 import { monthlyPayment } from '../lib/finance';
-import { money, moneyShort, months, rate } from '../lib/format';
-import { Stat } from './ui';
-
-const GRADE_COLOR: Record<string, string> = { A: 'teal', B: 'green', C: 'yellow', D: 'orange', E: 'red' };
-
-const REASON_COLOR: Record<NonNullable<Assessment['review_reason']>, string> = {
-  manual_product: 'blue',
-  grade: 'yellow',
-  source_failure: 'orange',
-  pipeline_failure: 'red',
-  other: 'gray',
-};
+import { NBSP, decimal, duration, money, months, percent, rate } from '../lib/format';
+import { nb } from '../lib/nobreak';
+import { History } from './History';
+import { MoneyInput } from './Money';
+import { Chip, StatusBlock, StatusChip } from './Status';
 
 const OUTCOMES: { value: DecisionOutcome; label: string }[] = [
   { value: 'approve', label: 'Одобрить' },
   { value: 'counter_offer', label: 'Контрпредложение' },
-  { value: 'request_info', label: 'Запросить' },
+  { value: 'request_info', label: 'Запросить документы' },
   { value: 'reject', label: 'Отказать' },
   { value: 'retry_checks', label: 'Повторить проверки' },
 ];
 
-function pct(value: number | null): string {
-  return value === null ? '—' : `${Math.round(value * 100)}%`;
+/** Версия правил по-человечески: в интерфейсе нет технических номеров. */
+export function policyName(version: string | null | undefined): string {
+  if (version === 'policy-1.1') return 'правила от 22 октября';
+  if (version === 'policy-1.0') return 'прежние правила';
+  return 'правила банка';
 }
 
-function DsrBadge({ dsr, max }: { dsr: number | null; max: number }) {
-  if (dsr === null) return <Text fz="sm">—</Text>;
-  return (
-    <Badge color={dsr > max ? 'red' : dsr > max * 0.7 ? 'yellow' : 'teal'} variant="light">
-      {pct(dsr)} выручки
-    </Badge>
-  );
+function Load({ value, max }: { value: number | null; max: number }) {
+  if (value === null) return <span className="potok-muted-text">—</span>;
+  return <span className={value > max ? 'potok-bad' : undefined}>{percent(value)}</span>;
 }
 
-function CoverageBadge({ value, min }: { value: number | null; min: number }) {
-  if (value === null) return <Text fz="sm">нет данных ФНС</Text>;
-  return (
-    <Badge color={value < min ? 'red' : value < min * 1.25 ? 'yellow' : 'teal'} variant="light">
-      ×{value.toFixed(2).replace('.', ',')}
-    </Badge>
-  );
+function Coverage({ value, min }: { value: number | null; min: number }) {
+  if (value === null) return <span className="potok-muted-text">нет данных ФНС</span>;
+  return <span className={value < min ? 'potok-bad' : undefined}>×{decimal(value, 2)}</span>;
 }
 
+/** Условия: что просит клиент и что предложил бы конвейер. Нагрузка — одна величина из оценки банка. */
 function TermsTable({ a }: { a: Assessment }) {
-  const rows: [string, (t: Terms) => React.ReactNode][] = [
-    ['Сумма', (t) => moneyShort(t.amount)],
+  const rec = a.recommendation;
+  const rows: [string, (t: Terms) => ReactNode][] = [
+    ['Сумма', (t) => money(t.amount)],
     ['Срок', (t) => months(t.term_months)],
     ['Ставка', (t) => rate(t.rate)],
     ['Платёж в месяц', (t) => money(t.monthly_payment)],
-    ['Нагрузка', (t) => <DsrBadge dsr={t.dsr} max={a.max_dsr} />],
-    ['Покрытие платежа прибылью', (t) => <CoverageBadge value={t.coverage} min={a.min_coverage} />],
+    [`Нагрузка на выручку, лимит ${percent(a.max_dsr, 0)}`, (t) => <Load value={t.dsr} max={a.max_dsr} />],
+    [`Покрытие платежа прибылью, минимум ×${decimal(a.min_coverage, 1)}`, (t) => <Coverage value={t.coverage} min={a.min_coverage} />],
   ];
   return (
-    <Table verticalSpacing="xs" withRowBorders={false}>
+    <Table withRowBorders verticalSpacing={10} aria-label="Условия">
       <Table.Thead>
         <Table.Tr>
           <Table.Th />
-          <Table.Th>Клиент просит</Table.Th>
-          <Table.Th>Конвейер предлагает</Table.Th>
+          <Table.Th ta="right">Клиент просит</Table.Th>
+          {rec && <Table.Th ta="right">Конвейер предлагает</Table.Th>}
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
         {rows.map(([label, render]) => (
           <Table.Tr key={label}>
-            <Table.Td>
-              <Text fz="sm" c="dimmed">
-                {label}
-              </Text>
-            </Table.Td>
-            <Table.Td>{render(a.requested)}</Table.Td>
-            <Table.Td>{a.recommendation ? render(a.recommendation) : <Text fz="sm">нет рекомендации</Text>}</Table.Td>
+            <Table.Td c="dimmed">{label}</Table.Td>
+            <Table.Td ta="right">{render(a.requested)}</Table.Td>
+            {rec && <Table.Td ta="right">{render(rec)}</Table.Td>}
           </Table.Tr>
         ))}
       </Table.Tbody>
@@ -102,116 +70,181 @@ function TermsTable({ a }: { a: Assessment }) {
   );
 }
 
-function AssessmentCard({ a }: { a: Assessment }) {
-  const factors = [...a.factors].sort((x, y) => x.points - y.points);
+function Facts({ app, a }: { app: Application; a: Assessment | undefined }) {
+  const collateral = app.form?.collateral;
+  const items: [string, ReactNode][] = [
+    ['Сумма', money(app.amount)],
+    ['Срок', months(app.term_months)],
+    ['Цель', app.purpose_title],
+  ];
+  if (collateral?.kind) items.push(['Залог', `${collateral.description ?? 'указан'}${collateral.value ? `, ${money(collateral.value)}` : ''}`]);
+  if (a?.revenue) {
+    items.push([`Выручка в месяц ${a.revenue.source === 'fns' ? 'по ФНС' : 'по выписке'}`, a.revenue.confirmed_monthly ? money(a.revenue.confirmed_monthly) : '—']);
+    items.push(['Выручка в месяц со слов клиента', a.revenue.declared_monthly ? money(a.revenue.declared_monthly) : 'не указана']);
+  }
+  if (a) {
+    if (a.monthly_profit !== null) items.push(['Прибыль в месяц по ФНС', money(a.monthly_profit)]);
+    items.push(['Платежи по кредитам в месяц: БКИ и наш банк', a.existing_payments !== null ? money(a.existing_payments) : '—']);
+    items.push(['Платежи по кредитам в месяц со слов клиента', a.declared_debt_payments ? money(a.declared_debt_payments) : 'не указаны']);
+    if (a.revenue_limit !== null) items.push(['Лимит по выручке', money(a.revenue_limit)]);
+  }
   return (
-    <Card p={{ base: 'lg', sm: 'xl' }}>
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={4}>Оценка заявки</Title>
-          <Text fz="sm" c="dimmed">
-            {a.scored ? `Скоринг ${a.model_version} · правила решения ${a.policy_version}` : 'Оценки ещё нет'}
-          </Text>
-        </div>
-        {a.grade && (
-          <Group gap="lg">
-            <Stat label="Балл" value={a.score ?? '—'} />
-            <Stat label="Вероятность дефолта" value={a.probability_default !== null ? pct(a.probability_default) : '—'} />
-            <Badge size="xl" radius="md" color={GRADE_COLOR[a.grade] ?? 'gray'}>
-              Грейд {a.grade}
-            </Badge>
-          </Group>
-        )}
-      </Group>
+    <section className="potok-panel">
+      <Title order={3}>Заявка и компания</Title>
+      <dl className="potok-facts">
+        {items.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
 
-      {a.review_reason && (
-        <Alert mt="lg" color={REASON_COLOR[a.review_reason]} variant="light" radius="md" icon={<IconAlertTriangle />}>
-          <Text fw={700} fz="sm">
-            Почему заявка у специалиста
-          </Text>
-          <Text fz="sm">{a.review_reason_title}</Text>
-          {a.failed_sources.length > 0 && (
-            <Text fz="sm" mt={4}>
-              Не ответили: {a.failed_sources.join(', ')}
-            </Text>
-          )}
+function AssessmentPanel({ a }: { a: Assessment }) {
+  const [stopsOpen, setStopsOpen] = useState(false);
+  const factors = [...a.factors].sort((x, y) => y.points - x.points);
+  const maxPoints = Math.max(1, ...factors.map((f) => Math.abs(f.points)));
+  const failed = a.stop_checks.filter((c) => !c.passed);
+  if (!a.scored) {
+    return (
+      <section className="potok-panel">
+        <Title order={3}>Оценка</Title>
+        <Text c="dimmed" mt="sm">
+          Оценки ещё нет{a.failed_sources.length ? `: не ответили ${a.failed_sources.join(', ')}` : ''}.
+        </Text>
+      </section>
+    );
+  }
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Оценка</Title>
+      <div className="potok-grade">
+        <span className="potok-grade-g">Грейд {a.grade}</span>
+        <span>
+          балл <b>{a.score}</b> из{NBSP}100
+        </span>
+        {a.probability_default !== null && <span className="potok-muted-text">вероятность дефолта {percent(a.probability_default, 0)}</span>}
+      </div>
+      <div className="potok-factors">
+        {factors.map((f) => (
+          <div key={f.code} className="potok-factor">
+            <div>
+              {f.title}
+              {/* Нагрузку показываем одной величиной — в таблице условий; здесь только вклад фактора. */}
+              {f.code !== 'debt_load' && <span>{f.value}</span>}
+            </div>
+            <div className="potok-factor-bar">
+              <i
+                data-sign={f.points >= 0 ? 'plus' : 'minus'}
+                style={{ width: `${(Math.abs(f.points) / maxPoints) * 50}%` }}
+              />
+            </div>
+            <div className="potok-factor-p num">{f.points > 0 ? `+${f.points}` : f.points < 0 ? `−${-f.points}` : '0'}</div>
+          </div>
+        ))}
+      </div>
+      <div className="potok-stops">
+        <Group gap="sm">
+          <Chip tone={failed.length ? 'danger' : 'success'}>
+            {failed.length ? `Стоп-факторы: не пройдено ${failed.length}` : `Стоп-факторы пройдены: ${a.stop_checks.length} из ${a.stop_checks.length}`}
+          </Chip>
+          <Button variant="subtle" size="compact-sm" px={0} onClick={() => setStopsOpen((o) => !o)} aria-expanded={stopsOpen}>
+            {stopsOpen ? 'Скрыть' : 'Показать'}
+          </Button>
+        </Group>
+        <Collapse in={stopsOpen || failed.length > 0}>
+          <ul className="potok-checks">
+            {a.stop_checks.map((c) => (
+              <li key={c.title} data-ok={c.passed}>
+                {c.passed ? <IconCheck size={14} /> : <IconX size={14} />}
+                {c.title}
+              </li>
+            ))}
+          </ul>
+        </Collapse>
+      </div>
+    </section>
+  );
+}
+
+const TRACE_ICON: Record<TraceStep['result'], ReactNode> = {
+  pass: <IconCheck size={14} />,
+  fail: <IconX size={14} />,
+  info: <IconInfoCircle size={14} />,
+  triggered: <IconInfoCircle size={14} />,
+};
+
+/** Как конвейер принял решение: правила по порядку (стоп-факторы — уже в оценке) и воспроизведение. */
+function TracePanel({ app, a }: { app: Application; a: Assessment }) {
+  const replay = useReplay(app.id);
+  const [open, setOpen] = useState(false);
+  if (!a.scored) return null;
+  const steps = a.trace.filter((s) => !s.title.startsWith('Стоп-фактор'));
+  return (
+    <section className="potok-panel">
+      <Group justify="space-between" align="center" gap="sm">
+        <Title order={3}>Как принималось решение</Title>
+        <Button variant="default" size="md" leftSection={<IconRepeat size={16} />} loading={replay.isPending} onClick={() => replay.mutate()}>
+          Воспроизвести решение
+        </Button>
+      </Group>
+      <Text fz="sm" c="dimmed" mt={4}>
+        {steps.length} правил, {policyName(a.policy_version)} — ровно те проверки, что прошла заявка.
+      </Text>
+      {replay.error && (
+        <Alert mt="md" radius="md" variant="light" color="red">
+          {replay.error instanceof ApiError ? replay.error.message : 'Не удалось воспроизвести решение'}
         </Alert>
       )}
-
-      {a.scored && (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" mt="xl">
-          <div>
-            <Text fw={700} mb="xs">
-              Факторы оценки
-            </Text>
-            <Stack gap={6}>
-              {factors.map((f) => (
-                <Group key={f.code} justify="space-between" wrap="nowrap" gap="sm">
-                  <div>
-                    <Text fz="sm">{f.title}</Text>
-                    <Text fz="xs" c="dimmed">
-                      {f.value}
-                    </Text>
-                  </div>
-                  <Badge variant="light" color={f.points > 0 ? 'teal' : f.points < 0 ? 'red' : 'gray'}>
-                    {f.points > 0 ? `+${f.points}` : f.points}
-                  </Badge>
-                </Group>
-              ))}
-            </Stack>
-          </div>
-          <div>
-            <Text fw={700} mb="xs">
-              Стоп-факторы
-            </Text>
-            <Stack gap={6}>
-              {a.stop_checks.map((c) => (
-                <Group key={c.title} gap="xs" wrap="nowrap">
-                  <ThemeIcon size={20} radius="xl" color={c.passed ? 'teal' : 'red'} variant="light">
-                    {c.passed ? <IconCheck size={14} /> : <IconX size={14} />}
-                  </ThemeIcon>
-                  <Text fz="sm">{c.title}</Text>
-                </Group>
-              ))}
-            </Stack>
-            {a.revenue && (
-              <>
-                <Text fw={700} mt="lg" mb="xs">
-                  Выручка и нагрузка
+      {replay.data && (
+        <div className="potok-inline-note" data-tone={replay.data.matches ? 'ok' : 'warn'}>
+          {replay.data.matches
+            ? `Совпадает: на сохранённых признаках ${policyName(replay.data.policy_version_current)} дают тот же исход, грейд и условия.`
+            : `Расхождение с сохранённым решением (${policyName(replay.data.policy_version_stored)} и ${policyName(replay.data.policy_version_current)}): ${replay.data.differences.join('; ')}.`}
+        </div>
+      )}
+      <Button variant="subtle" px={0} mt="xs" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? 'Скрыть правила' : 'Показать правила'}
+      </Button>
+      <Collapse in={open}>
+        <ul className="potok-trace">
+          {steps.map((s, i) => (
+            <li key={i} data-result={s.result}>
+              {TRACE_ICON[s.result]}
+              <div>
+                <Text fz="sm" fw={500}>
+                  {s.title}
                 </Text>
-                <SimpleGrid cols={2} spacing="sm">
-                  <Stat label="Заявлено в месяц" value={a.revenue.declared_monthly ? moneyShort(a.revenue.declared_monthly) : '—'} />
-                  <Stat
-                    label={a.revenue.source === 'fns' ? 'Принято по ФНС' : 'Принято по выписке'}
-                    value={a.revenue.confirmed_monthly ? moneyShort(a.revenue.confirmed_monthly) : '—'}
-                  />
-                  <Stat label="Учтённые платежи по кредитам" value={a.existing_payments !== null ? money(a.existing_payments) : '—'} />
-                  <Stat label="Заявлено в анкете" value={a.declared_debt_payments ? money(a.declared_debt_payments) : '—'} />
-                  <Stat
-                    label="Расхождение с заявленным"
-                    value={a.revenue.gap_pct !== null ? `${a.revenue.gap_pct > 0 ? '+' : ''}${a.revenue.gap_pct}%` : '—'}
-                  />
-                </SimpleGrid>
-              </>
-            )}
-          </div>
-        </SimpleGrid>
-      )}
+                <Text fz="xs" c="dimmed">
+                  {s.detail}
+                </Text>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Collapse>
+    </section>
+  );
+}
 
-      {a.scored && (
-        <>
-          <Divider my="lg" />
-          <TermsTable a={a} />
-          <Text fz="xs" c="dimmed" mt="xs">
-            Политика: нагрузка не выше {pct(a.max_dsr)} выручки, прибыль покрывает платёж не меньше чем в{' '}
-            {a.min_coverage.toFixed(1).replace('.', ',')} раза, ставка для грейда — от{' '}
-            {a.min_rate !== null ? rate(a.min_rate) : '—'}, лимит по выручке —{' '}
-            {a.revenue_limit !== null ? `до ${moneyShort(a.revenue_limit)}` : 'не рассчитан'}, полномочия аналитика — до{' '}
-            {moneyShort(a.authority_limit)}.
-          </Text>
-        </>
-      )}
-    </Card>
+function SourcesPanel({ app }: { app: Application }) {
+  const checks = useChecks(app.id, app);
+  if (!checks.data?.length) return null;
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Ответы источников</Title>
+      <ul className="potok-checks">
+        {checks.data.map((c) => (
+          <li key={c.source} data-ok={c.status === 'ok'}>
+            {c.status === 'ok' ? <IconCheck size={14} /> : <IconX size={14} />}
+            {c.title}: {c.status === 'ok' ? 'данные получены' : c.status === 'failed' ? 'не ответил' : 'в очереди'}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -239,18 +272,14 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
 
   useEffect(() => setError(null), [outcome]);
 
-  const repayment = a.repayment;
   const offerAmount = outcome === 'approve' ? app.amount : amount;
   const offerTerm = outcome === 'approve' ? app.term_months : term;
-  const payment = monthlyPayment(offerAmount, rateValue, offerTerm, repayment);
+  const payment = monthlyPayment(offerAmount, rateValue, offerTerm, a.repayment);
   const revenue = a.revenue?.confirmed_monthly ?? null;
   const dsr = revenue ? ((a.existing_payments ?? 0) + payment) / revenue : null;
   const cover = a.monthly_profit !== null && payment > 0 ? a.monthly_profit / payment : null;
   const deviates =
-    !a.recommendation ||
-    offerAmount > a.recommendation.amount ||
-    offerTerm !== a.recommendation.term_months ||
-    rateValue !== a.recommendation.rate;
+    !a.recommendation || offerAmount > a.recommendation.amount || offerTerm !== a.recommendation.term_months || rateValue !== a.recommendation.rate;
   const options = OUTCOMES.filter((o) =>
     o.value === 'retry_checks' ? a.failed_sources.length > 0 : a.scored || ['request_info', 'reject'].includes(o.value),
   );
@@ -270,120 +299,106 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
       {
         // В errors[] сказано, какое поле неверно, — это точнее общего detail.
         onError: (e) =>
-          setError(
-            e instanceof ApiError
-              ? e.errors?.length
-                ? e.errors.map((x) => x.message).join('. ')
-                : e.message
-              : 'Не удалось сохранить решение',
-          ),
+          setError(e instanceof ApiError ? (e.errors?.length ? e.errors.map((x) => x.message).join('. ') : e.message) : 'Не удалось сохранить решение'),
       },
     );
   };
 
   return (
-    <Card p={{ base: 'lg', sm: 'xl' }} style={{ border: '2px solid var(--mantine-color-brand-5)' }}>
-      <Group gap="sm">
-        <ThemeIcon size={40} radius="md">
-          <IconGavel size={22} />
-        </ThemeIcon>
-        <div>
-          <Title order={4}>Решение по заявке</Title>
-          <Text fz="sm" c="dimmed">
-            Клиент увидит решение сразу — статус обновится у него в кабинете.
-          </Text>
+    <section className="potok-panel" id="decision">
+      <Title order={3}>Решение по заявке</Title>
+      {/* Исходы — сеткой в две колонки: в узкой панели сегменты в одну строку не помещаются. */}
+      <Radio.Group value={outcome} onChange={(v) => setOutcome(v as DecisionOutcome)} aria-label="Исход">
+        <div className="potok-outcomes">
+          {options.map((o) => (
+            <Radio.Card key={o.value} value={o.value} className="potok-outcome">
+              {o.label}
+            </Radio.Card>
+          ))}
         </div>
-      </Group>
-
-      <SegmentedControl mt="lg" fullWidth value={outcome} onChange={(v) => setOutcome(v as DecisionOutcome)} data={options} />
-
-      <Stack mt="lg" gap="md">
+      </Radio.Group>
+      <Stack mt="md" gap="md">
         {(outcome === 'approve' || outcome === 'counter_offer') && (
           <>
-            <SimpleGrid cols={{ base: 1, sm: 3 }}>
-              <NumberInput
-                label="Сумма, ₽"
+            <div className="potok-decide-terms">
+              <MoneyInput
+                label="Сумма"
                 value={offerAmount}
                 onChange={(v) => setAmount(Number(v) || 0)}
                 disabled={outcome === 'approve'}
-                thousandSeparator=" "
                 step={50_000}
                 min={a.product_limits.min_amount}
                 max={a.product_limits.max_amount}
-                allowNegative={false}
-                allowDecimal={false}
               />
-              <NumberInput
-                label="Срок, мес."
+              <MoneyInput
+                label="Срок"
+                unit="мес."
+                thousandSeparator={undefined}
                 value={offerTerm}
                 onChange={(v) => setTerm(Number(v) || 0)}
                 disabled={outcome === 'approve'}
                 min={a.product_limits.min_term}
                 max={a.product_limits.max_term}
-                allowNegative={false}
-                allowDecimal={false}
               />
               <NumberInput
-                label="Ставка, %"
+                label="Ставка"
                 value={rateValue}
                 onChange={(v) => setRateValue(Number(v) || 0)}
                 decimalScale={2}
+                decimalSeparator=","
                 step={0.5}
                 min={a.min_rate ?? 0.01}
                 max={99.99}
+                rightSection={<span className="potok-unit">%</span>}
+                rightSectionPointerEvents="none"
               />
-            </SimpleGrid>
-            <Group gap="lg">
-              <Stat label="Платёж в месяц" value={money(Math.round(payment))} accent />
-              <div>
-                <Text fz="xs" c="dimmed">
-                  Нагрузка при этих условиях
-                </Text>
-                <DsrBadge dsr={dsr} max={a.max_dsr} />
-              </div>
-              <div>
-                <Text fz="xs" c="dimmed">
-                  Покрытие прибылью
-                </Text>
-                <CoverageBadge value={cover} min={a.min_coverage} />
-              </div>
-              {deviates && (
-                <Badge color="orange" variant="light" size="lg">
-                  {a.recommendation ? 'Отклонение от рекомендации' : 'Конвейер не предложил условий'} — будет отмечено в журнале
-                </Badge>
-              )}
-            </Group>
+            </div>
+            <div className="potok-calc">
+              <span>
+                Платёж <b>{money(Math.round(payment))}</b>
+              </span>
+              <span>
+                Нагрузка <b><Load value={dsr} max={a.max_dsr} /></b>
+              </span>
+              <span>
+                Покрытие <b><Coverage value={cover} min={a.min_coverage} /></b>
+              </span>
+            </div>
+            {deviates && (
+              <Text fz="sm" c="dimmed">
+                {a.recommendation ? 'Отклонение от рекомендации конвейера' : 'Конвейер не предложил условий'} — будет отмечено в журнале.
+              </Text>
+            )}
           </>
         )}
         {outcome === 'request_info' && (
-          <SegmentedControl
-            value={taskKind}
-            onChange={(v) => setTaskKind(v as 'document' | 'question')}
-            data={[
-              { value: 'document', label: 'Загрузить документ' },
-              { value: 'question', label: 'Ответить на вопрос' },
-            ]}
-            w="fit-content"
-          />
-        )}
-        {outcome === 'request_info' && (
-          <TextInput
-            label="Что нужно от клиента"
-            placeholder="Например: договор поставки оборудования"
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.currentTarget.value)}
-            maxLength={255}
-          />
+          <>
+            <SegmentedControl
+              value={taskKind}
+              onChange={(v) => setTaskKind(v as 'document' | 'question')}
+              data={[
+                { value: 'document', label: 'Загрузить документ' },
+                { value: 'question', label: 'Ответить на вопрос' },
+              ]}
+            />
+            <TextInput
+              label="Что нужно от клиента"
+              placeholder="Например: договор поставки оборудования"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.currentTarget.value)}
+              maxLength={255}
+            />
+          </>
         )}
         {outcome === 'reject' && (
           <>
             <TextInput label="Причина отказа для клиента" value={reason} onChange={(e) => setReason(e.currentTarget.value)} maxLength={300} />
-            <TextInput label="Что можно улучшить (необязательно)" value={tip} onChange={(e) => setTip(e.currentTarget.value)} maxLength={300} />
+            <TextInput label="Что можно улучшить, необязательно" value={tip} onChange={(e) => setTip(e.currentTarget.value)} maxLength={300} />
           </>
         )}
         <Textarea
           label="Обоснование для журнала аудита"
-          description="Обязательно. Клиент его не видит."
+          description="Обязательно, не меньше 10 знаков. Клиент его не видит."
           value={comment}
           onChange={(e) => setComment(e.currentTarget.value)}
           maxLength={2000}
@@ -391,7 +406,7 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
           minRows={2}
         />
         <Textarea
-          label="Сообщение клиенту (необязательно)"
+          label="Сообщение клиенту, необязательно"
           value={clientMessage}
           onChange={(e) => setClientMessage(e.currentTarget.value)}
           maxLength={1000}
@@ -403,89 +418,99 @@ function DecisionForm({ app, a }: { app: Application; a: Assessment }) {
             {error}
           </Alert>
         )}
-        <Group>
-          <Button size="md" onClick={submit} loading={decide.isPending} disabled={comment.trim().length < 10}>
-            Сохранить решение
-          </Button>
-        </Group>
-      </Stack>
-    </Card>
-  );
-}
-
-const TRACE_ICON: Record<TraceStep['result'], { color: string; icon: React.ReactNode }> = {
-  pass: { color: 'teal', icon: <IconCheck size={14} /> },
-  fail: { color: 'red', icon: <IconX size={14} /> },
-  info: { color: 'gray', icon: <IconInfoCircle size={14} /> },
-  triggered: { color: 'orange', icon: <IconArrowRight size={14} /> },
-};
-
-/** Как конвейер принял решение: правила по порядку и проверка воспроизводимости на сохранённых признаках. */
-function TraceCard({ app, a }: { app: Application; a: Assessment }) {
-  const replay = useReplay(app.id);
-  if (!a.scored) return null;
-  return (
-    <Card p={{ base: 'lg', sm: 'xl' }}>
-      <Group justify="space-between" align="flex-start">
-        <div>
-          <Title order={4}>Как принималось решение</Title>
-          <Text fz="sm" c="dimmed">
-            Правила {a.policy_version} по порядку — ровно те проверки, что прошла заявка в конвейере.
-          </Text>
-        </div>
-        <Button variant="light" leftSection={<IconRepeat size={16} />} loading={replay.isPending} onClick={() => replay.mutate()}>
-          Воспроизвести решение
+        <Button size="lg" fullWidth onClick={submit} loading={decide.isPending} disabled={comment.trim().length < 10}>
+          Сохранить решение
         </Button>
-      </Group>
-      {replay.error && (
-        <Alert mt="md" radius="md" variant="light" color="red">
-          {replay.error instanceof ApiError ? replay.error.message : 'Не удалось воспроизвести решение'}
-        </Alert>
-      )}
-      {!a.trace.length && (
-        <Text fz="sm" c="dimmed" mt="md">
-          Трасса не сохранена: решение принималось до версии с трассой. Воспроизведение всё равно доступно.
-        </Text>
-      )}
-      {replay.data && (
-        <Alert mt="md" radius="md" variant="light" color={replay.data.matches ? 'teal' : 'orange'}>
-          {replay.data.matches
-            ? `Совпадает: на сохранённых признаках правила ${replay.data.policy_version_current} дают тот же исход, грейд и условия.`
-            : `Расхождение с сохранённым решением (${replay.data.policy_version_stored ?? 'версия неизвестна'} → ${replay.data.policy_version_current}): ${replay.data.differences.join('; ')}.`}
-        </Alert>
-      )}
-      <Stack gap={8} mt="lg">
-        {a.trace.map((s, i) => (
-          <Group key={i} gap="sm" wrap="nowrap" align="flex-start">
-            <ThemeIcon size={22} radius="xl" variant="light" color={TRACE_ICON[s.result].color}>
-              {TRACE_ICON[s.result].icon}
-            </ThemeIcon>
-            <div>
-              <Text fz="sm" fw={600}>
-                {s.title}
-              </Text>
-              <Text fz="xs" c="dimmed">
-                {s.detail}
-              </Text>
-            </div>
-          </Group>
-        ))}
       </Stack>
-    </Card>
+    </section>
   );
 }
 
-/** Рабочее место аналитика на странице заявки: оценка и, если заявка у специалиста, — решение. */
-export function AnalystPanel({ app }: { app: Application }) {
+/** Решение уже принято — коротко, кто и что решил. */
+function DecidedPanel({ app }: { app: Application }) {
+  const d = app.decision;
+  if (!d) return null;
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Решение</Title>
+      <Group mt="sm" gap="sm">
+        <StatusChip app={app} />
+      </Group>
+      {d.reasons.length > 0 && (
+        <ul className="potok-list">
+          {d.reasons.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Карточка аналитика: слева факты, оценка, условия и трасса; справа — решение (липкое, в первом экране) и
+ * история. Клиентских текстов здесь нет.
+ */
+export function AnalystCard({ app, back, events }: { app: Application; back: ReactNode; events?: ApplicationEvent[] }) {
   const assessment = useAssessment(app.id, app.status.code !== 'draft');
-  if (assessment.isLoading) return <Skeleton h={240} radius="lg" />;
   const a = assessment.data;
-  if (!a) return null;
+  const waiting = app.allowed_actions.includes('decide') && app.submitted_at;
   return (
     <Stack gap="lg">
-      {a.can_decide && <DecisionForm key={app.status.code} app={app} a={a} />}
-      <AssessmentCard a={a} />
-      <TraceCard app={app} a={a} />
+      <div>
+        {back}
+        <Group mt="sm" gap="sm" align="center">
+          <Title order={1}>{app.company.name}</Title>
+          <StatusChip app={app} />
+          {waiting && <Chip tone="neutral" dot={false}>В очереди {duration(Date.now() - new Date(app.submitted_at!).getTime())}</Chip>}
+        </Group>
+        <Text c="dimmed" mt={4} fz="sm">
+          Заявка {nb(app.number)}, {nb(app.product.name)}, ИНН{NBSP}{app.company.inn}
+        </Text>
+      </div>
+      <div className="potok-analyst">
+        <Stack gap="lg">
+          <section className="potok-panel">
+            {/* Действие аналитика — панель решения рядом (на телефоне — кнопка-якорь внизу), здесь без кнопки. */}
+            <StatusBlock app={app} action={false} />
+          </section>
+          <Facts app={app} a={a} />
+          {assessment.isLoading ? (
+            <Skeleton h={240} radius="lg" />
+          ) : (
+            a && (
+              <>
+                <AssessmentPanel a={a} />
+                {a.scored && (
+                  <section className="potok-panel">
+                    <Title order={3}>Условия</Title>
+                    <TermsTable a={a} />
+                    <Text fz="sm" c="dimmed" mt="sm">
+                      Ставка для грейда — от {a.min_rate !== null ? rate(a.min_rate) : '—'}, полномочия аналитика — до {money(a.authority_limit)}.
+                    </Text>
+                  </section>
+                )}
+                <TracePanel app={app} a={a} />
+              </>
+            )
+          )}
+          <SourcesPanel app={app} />
+        </Stack>
+        <Stack gap="lg" className="potok-analyst-side">
+          {a?.can_decide ? <DecisionForm key={app.status.code} app={app} a={a} /> : <DecidedPanel app={app} />}
+          <section className="potok-panel">
+            <Title order={3}>История</Title>
+            {events && <History events={events} bank />}
+          </section>
+        </Stack>
+      </div>
+      {a?.can_decide && (
+        <div className="potok-bottombar potok-phone-only">
+          <Button component="a" href="#decision" size="lg" fullWidth>
+            Принять решение
+          </Button>
+        </div>
+      )}
     </Stack>
   );
 }

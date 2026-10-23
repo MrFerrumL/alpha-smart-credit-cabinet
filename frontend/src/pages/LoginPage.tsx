@@ -1,68 +1,113 @@
-import {
-  Avatar,
-  Box,
-  Button,
-  Collapse,
-  Divider,
-  Group,
-  Loader,
-  PasswordInput,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-  Text,
-  TextInput,
-  ThemeIcon,
-  Title,
-  UnstyledButton,
-} from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconArrowRight, IconBolt, IconListDetails, IconShieldCheck, IconSparkles } from '@tabler/icons-react';
-import { useState, type FormEvent } from 'react';
+import { Button, Combobox, PasswordInput, Text, TextInput, Title, useCombobox } from '@mantine/core';
+import { useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../api/client';
 import { notifyError, useDemoAccounts } from '../api/hooks';
-import type { DemoAccount, TokenResponse } from '../api/types';
+import type { DemoAccount, Tone, TokenResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { Logo, toneColor } from '../components/ui';
-import { initials } from '../lib/format';
+import { Chip } from '../components/Status';
+import { Logo } from '../components/ui';
+import { typo } from '../lib/format';
 
-const FEATURES = [
-  { icon: IconSparkles, text: 'Подберём продукт под задачу бизнеса и покажем платёж до подачи заявки' },
-  { icon: IconListDetails, text: 'Данные компании подтянутся из ЕГРЮЛ — заполнять почти ничего не нужно' },
-  { icon: IconBolt, text: 'Статус заявки обновляется в реальном времени: видно, что происходит и что делать' },
-  { icon: IconShieldCheck, text: 'Решение, подписание и выдача — в одном кабинете, без визита в банк' },
-];
+// Пароль всех тестовых учёток — он же написан в README; реальных учёток в демо нет.
+const DEMO_PASSWORD = 'demo1234';
 
-function AccountButton({ account, pending, onClick }: { account: DemoAccount; pending: boolean; onClick: () => void }) {
+/** Короткая метка исхода у профиля — та же лексика, что у чипов статуса. */
+const OUTCOME: Record<string, string> = {
+  'bakery@demo.local': 'Одобрение',
+  'sklad@demo.local': 'Другие условия',
+  'clean@demo.local': 'Другой продукт',
+  'smirnova@demo.local': 'Нужна выписка',
+  'vector@demo.local': 'Специалист',
+  'start@demo.local': 'Отказ',
+  'zakat@demo.local': 'Стоп-фактор',
+  'buh@demo.local': 'Подпись у директора',
+  'new@demo.local': 'Новый клиент',
+  'analyst@demo.local': 'Аналитик',
+};
+
+function outcome(a: DemoAccount): string {
+  return OUTCOME[a.email] ?? (a.role === 'analyst' ? 'Аналитик' : 'Демо');
+}
+
+function matches(a: DemoAccount, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [a.full_name, a.company_name ?? '', a.email, a.position, outcome(a)].some((s) => s.toLowerCase().includes(q));
+}
+
+/** Поле почты с выпадающим списком демо-профилей: фокус открывает список, ввод фильтрует, выбор подставляет почту. */
+function EmailField({
+  value,
+  onChange,
+  accounts,
+  onPick,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  accounts: DemoAccount[];
+  onPick: (a: DemoAccount) => void;
+}) {
+  const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
+  const picked = accounts.find((a) => a.email === value);
+  // Пока почта совпадает с выбранным профилем, список показывает всех — иначе после выбора он сузился бы до одного.
+  const shown = picked ? accounts : accounts.filter((a) => matches(a, value));
   return (
-    <UnstyledButton onClick={onClick} disabled={pending}>
-      <Box
-        className="clickable"
-        p="md"
-        style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-line)' }}
-      >
-        <Group wrap="nowrap" gap="md">
-          <Avatar color={toneColor(account.scenario_tone)} radius="xl" size={44}>
-            {initials(account.full_name)}
-          </Avatar>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Text fw={700} truncate>
-              {account.full_name}
-            </Text>
-            <Text fz="xs" c="dimmed" truncate>
-              {account.position}
-              {account.company_name ? ` · ${account.company_name}` : ''}
-            </Text>
-            <Text fz="sm" mt={4} lh={1.35}>
-              {account.scenario}
-            </Text>
-          </div>
-          {pending ? <Loader size="sm" /> : <IconArrowRight size={18} color="var(--mantine-color-gray-5)" />}
-        </Group>
-      </Box>
-    </UnstyledButton>
+    <Combobox
+      store={combobox}
+      onOptionSubmit={(email) => {
+        const a = accounts.find((x) => x.email === email);
+        if (a) onPick(a);
+        combobox.closeDropdown();
+      }}
+      position="bottom-start"
+      offset={6}
+      withinPortal
+    >
+      <Combobox.Target>
+        <TextInput
+          label="Почта"
+          placeholder="name@company.ru"
+          value={value}
+          onChange={(e) => {
+            onChange(e.currentTarget.value);
+            combobox.openDropdown();
+            combobox.updateSelectedOptionIndex();
+          }}
+          onClick={() => combobox.openDropdown()}
+          onFocus={() => combobox.openDropdown()}
+          onBlur={() => combobox.closeDropdown()}
+          autoComplete="username"
+          spellCheck={false}
+          role="combobox"
+          aria-autocomplete="list"
+          required
+          withAsterisk={false}
+          description="Демо-профили — в списке поля"
+          inputWrapperOrder={['label', 'input', 'description', 'error']}
+        />
+      </Combobox.Target>
+      {accounts.length > 0 && (
+        <Combobox.Dropdown className="potok-personas">
+          <Combobox.Options mah="min(520px, 70dvh)" style={{ overflowY: 'auto' }} aria-label="Демо-профили">
+            {shown.length === 0 ? (
+              <Combobox.Empty>Такого профиля нет</Combobox.Empty>
+            ) : (
+              shown.map((a) => (
+                <Combobox.Option key={a.email} value={a.email} active={a.email === value} className="potok-persona">
+                  <span className="potok-persona-main">
+                    <span className="potok-persona-name">{a.full_name}</span>
+                    <span className="potok-persona-sub">{a.company_name ?? (a.role === 'analyst' ? 'Банк' : 'Компания ещё не подключена')}</span>
+                  </span>
+                  <Chip tone={a.scenario_tone as Tone}>{outcome(a)}</Chip>
+                </Combobox.Option>
+              ))
+            )}
+          </Combobox.Options>
+        </Combobox.Dropdown>
+      )}
+    </Combobox>
   );
 }
 
@@ -70,10 +115,11 @@ export function LoginPage() {
   const { user, signIn } = useAuth();
   const navigate = useNavigate();
   const accounts = useDemoAccounts();
-  const [pending, setPending] = useState<string | null>(null);
-  const [formOpened, { toggle }] = useDisclosure(false);
+  const [pending, setPending] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const demo = accounts.data ?? [];
 
   if (user) return <Navigate to={user.role === 'analyst' ? '/queue' : '/'} replace />;
 
@@ -82,123 +128,67 @@ export function LoginPage() {
     navigate(token.user.role === 'analyst' ? '/queue' : '/', { replace: true });
   };
 
-  const demoLogin = async (account: DemoAccount) => {
-    setPending(account.email);
-    try {
-      finish(await api<TokenResponse>('/auth/demo-login', { method: 'POST', json: { email: account.email } }));
-    } catch (e) {
-      notifyError(e);
-    } finally {
-      setPending(null);
-    }
-  };
-
-  const passwordLogin = async (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setPending('form');
+    setPending(true);
     try {
-      finish(await api<TokenResponse>('/auth/login', { method: 'POST', json: { email, password } }));
+      // Демо-профиль без пароля входит как раньше, в один шаг; с паролем — обычный вход по почте и паролю.
+      const isDemo = demo.some((a) => a.email === email.trim().toLowerCase());
+      finish(
+        isDemo && !password
+          ? await api<TokenResponse>('/auth/demo-login', { method: 'POST', json: { email: email.trim().toLowerCase() } })
+          : await api<TokenResponse>('/auth/login', { method: 'POST', json: { email, password } }),
+      );
     } catch (e) {
       notifyError(e);
     } finally {
-      setPending(null);
+      setPending(false);
     }
   };
 
-  const clients = accounts.data?.filter((a) => a.role === 'client') ?? [];
-  const staff = accounts.data?.filter((a) => a.role === 'analyst') ?? [];
+  const pick = (a: DemoAccount) => {
+    setEmail(a.email);
+    setPassword(DEMO_PASSWORD);
+    // После выбора профиля остаётся одно действие — «Войти».
+    requestAnimationFrame(() => submitRef.current?.focus());
+  };
 
   return (
-    <SimpleGrid cols={{ base: 1, md: 2 }} spacing={0} mih="100vh">
-      <Box className="hero login-hero" p={{ base: 'xl', md: 56 }} style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-        <Logo inverted />
-        <Stack gap="lg" style={{ position: 'relative', zIndex: 1 }} maw={520} my="auto">
-          <Title order={1} fz={{ base: 32, md: 44 }} lh={1.1} c="white">
-            Кредит для бизнеса — от идеи до денег на счёте в одном окне
-          </Title>
-          <Text fz="lg" c="rgba(255,255,255,0.9)">
-            Умный кредитный кабинет для малого и микробизнеса: понятный путь для предпринимателя и управляемый процесс
-            для банка.
-          </Text>
-          <Stack gap="md" mt="md">
-            {FEATURES.map((f) => (
-              <Group key={f.text} wrap="nowrap" align="flex-start" gap="md">
-                <ThemeIcon size={36} radius="md" color="white" variant="white">
-                  <f.icon size={20} color="#ef3124" />
-                </ThemeIcon>
-                <Text c="white" fw={500} lh={1.4}>
-                  {f.text}
-                </Text>
-              </Group>
-            ))}
-          </Stack>
-        </Stack>
-        <Text fz="xs" c="rgba(255,255,255,0.75)" style={{ position: 'relative', zIndex: 1 }}>
-          Прототип для Альфа-Хакатона 2026. Все компании и люди вымышлены, данные синтетические.
+    <main className="potok-login">
+      <section className="potok-login-promo">
+        <Logo size={32} />
+        <Title order={1} className="potok-login-title">
+          {typo('Кредит для бизнеса — от заявки до денег на счёте')}
+        </Title>
+        <Text className="potok-login-lead">
+          {typo('Подбор, решение банка, подписание и выдача — в одном кабинете.')}
+          <span className="potok-desktop-only"> Данные компании подтягиваются из ЕГРЮЛ и налоговой сами.</span>
         </Text>
-      </Box>
-
-      <Box p={{ base: 'md', md: 56 }} style={{ display: 'flex', justifyContent: 'center' }}>
-        <Stack gap="lg" w="100%" maw={520}>
-          <div>
-            <Title order={2}>Вход в кабинет</Title>
-            <Text c="dimmed" mt={6}>
-              Выберите тестовую учётную запись. Каждая показывает свой сценарий кредитного конвейера.
-            </Text>
-          </div>
-
-          <Stack gap="sm">
-            <Text fz="xs" fw={700} tt="uppercase" c="dimmed" lts={0.5}>
-              Предприниматели
-            </Text>
-            {accounts.isLoading && [0, 1, 2].map((i) => <Skeleton key={i} h={92} radius="lg" />)}
-            {clients.map((a) => (
-              <AccountButton key={a.email} account={a} pending={pending === a.email} onClick={() => demoLogin(a)} />
-            ))}
-          </Stack>
-
-          {staff.length > 0 && (
-            <Stack gap="sm">
-              <Text fz="xs" fw={700} tt="uppercase" c="dimmed" lts={0.5}>
-                Сотрудник банка
-              </Text>
-              {staff.map((a) => (
-                <AccountButton key={a.email} account={a} pending={pending === a.email} onClick={() => demoLogin(a)} />
-              ))}
-            </Stack>
-          )}
-
-          <Divider label="или" />
-          <Button variant="default" onClick={toggle}>
-            Войти по почте и паролю
+        <ul className="potok-login-points">
+          <li>Платёж виден ещё до заявки</li>
+          <li>Статус обновляется сам</li>
+          <li>Договор подписывается кодом в кабинете</li>
+        </ul>
+      </section>
+      <section className="potok-panel potok-login-form">
+        <Title order={2} className="potok-login-h">
+          Вход в кабинет
+        </Title>
+        <form onSubmit={submit}>
+          <EmailField value={email} onChange={setEmail} accounts={demo} onPick={pick} />
+          <PasswordInput
+            mt="md"
+            label="Пароль"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+            autoComplete="current-password"
+          />
+          <Button ref={submitRef} type="submit" size="lg" fullWidth mt="lg" loading={pending} disabled={!email.trim()}>
+            Войти
           </Button>
-          <Collapse in={formOpened}>
-            <form onSubmit={passwordLogin}>
-              <Stack gap="sm">
-                <TextInput
-                  label="Почта"
-                  placeholder="bakery@demo.local"
-                  value={email}
-                  onChange={(e) => setEmail(e.currentTarget.value)}
-                  autoComplete="username"
-                  required
-                />
-                <PasswordInput
-                  label="Пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.currentTarget.value)}
-                  autoComplete="current-password"
-                  description="У всех тестовых учёток пароль demo1234"
-                  required
-                />
-                <Button type="submit" loading={pending === 'form'}>
-                  Войти
-                </Button>
-              </Stack>
-            </form>
-          </Collapse>
-        </Stack>
-      </Box>
-    </SimpleGrid>
+        </form>
+      </section>
+      <p className="potok-login-note">Прототип для Альфа-Хакатона 2026. Все компании и люди вымышлены, данные синтетические.</p>
+    </main>
   );
 }

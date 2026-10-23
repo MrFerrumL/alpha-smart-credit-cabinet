@@ -1,47 +1,79 @@
-import { Badge, Card, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
-import { IconNews } from '@tabler/icons-react';
+import { Button, Skeleton, Title } from '@mantine/core';
+import { useState } from 'react';
 
 import { useApplications, useFeed } from '../api/hooks';
-import { date } from '../lib/format';
+import type { FeedItem } from '../api/types';
+import { dayMonth, typo } from '../lib/format';
 
-/** Персональная лента: синтетические новости, подобранные под отрасль, продукты и этап заявки клиента. */
+/**
+ * Короткая метка «почему показано»: отрасль, форма, регион или продукты. Статья — не сообщение о заявке, поэтому
+ * метки «Ваша заявка» нет. Полный список причин — в подсказке.
+ */
+function tag(reasons: string[]): { label: string; app: boolean } | null {
+  const sector = reasons.find((r) => r.startsWith('Для вашей отрасли: '));
+  if (sector) {
+    const name = sector.slice('Для вашей отрасли: '.length);
+    return { label: name.charAt(0).toUpperCase() + name.slice(1), app: false };
+  }
+  if (reasons.includes('Для индивидуальных предпринимателей')) return { label: 'Для ИП', app: false };
+  if (reasons.includes('Для вашего региона')) return { label: 'Ваш регион', app: false };
+  if (reasons.includes('По продуктам, которые вы оформляете')) return { label: 'Ваши продукты', app: false };
+  if (reasons.includes('Полезно всем предпринимателям')) return { label: 'Всем', app: false };
+  return null;
+}
+
+function News({ item }: { item: FeedItem }) {
+  const t = tag(item.reasons);
+  return (
+    <li title={item.reasons.join('; ')}>
+      <div className="potok-news-meta">
+        {t && (
+          <span className="potok-tag" data-tone={t.app ? 'app' : undefined}>
+            {t.label}
+          </span>
+        )}
+        <span>{dayMonth(item.published_at)}</span>
+      </div>
+      <div className="potok-news-title" data-testid="news-title">
+        {typo(item.title.replace(' (синтетическая новость)', ''))}
+      </div>
+      <div className="potok-news-summary">{typo(item.summary)}</div>
+    </li>
+  );
+}
+
+/** Персональная лента: синтетические новости под отрасль, продукты и этап заявки клиента — 3 и «Все новости». */
 export function NewsFeed() {
   // Ключ ленты включает статусы заявок: сменился статус (опрос или поток) — лента пересчитывается.
   const apps = useApplications();
   const feed = useFeed((apps.data ?? []).map((a) => `${a.id}:${a.status.code}`).join(','));
+  const [all, setAll] = useState(false);
+  // Сервер ставит первыми самые подходящие — на главной три из них; и они, и полный список — по дате, новые сверху.
+  const byDate = (list: FeedItem[]) => [...list].sort((x, y) => y.published_at.localeCompare(x.published_at));
+  const items = feed.data ?? [];
+  const shown = all ? byDate(items) : byDate(items.slice(0, 3));
   return (
-    <Card p="lg">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Group gap="xs" wrap="nowrap">
-          <IconNews size={20} />
-          <Title order={4}>Новости для вас</Title>
-        </Group>
-        <Badge variant="light" color="gray" size="sm">
-          Смоделировано
-        </Badge>
-      </Group>
-      <Text fz="xs" c="dimmed" mt={4}>
-        Синтетические новости. Подобраны под отрасль компании, ваши заявки и то, что с ними происходит сейчас.
-      </Text>
+    <section className="potok-panel potok-news" aria-label="Новости для вас">
+      <Title order={3}>Новости для вас</Title>
       {feed.isLoading ? (
-        <Skeleton h={160} mt="md" radius="md" />
+        <Skeleton h={180} mt="md" radius="md" />
       ) : (
-        <Stack gap="md" mt="md">
-          {(feed.data ?? []).map((item) => (
-            <div key={item.id}>
-              <Text fz="sm" fw={700} lh={1.35}>
-                {item.title.replace(' (синтетическая новость)', '')}
-              </Text>
-              <Text fz="sm" mt={2} lh={1.4}>
-                {item.summary}
-              </Text>
-              <Text fz="xs" c="dimmed" mt={2}>
-                {date(item.published_at)} · {item.reasons.join(' · ')}
-              </Text>
-            </div>
+        <ul>
+          {shown.map((item) => (
+            <News key={item.id} item={item} />
           ))}
-        </Stack>
+        </ul>
       )}
-    </Card>
+      <div className="potok-news-foot">
+        {items.length > 3 ? (
+          <Button variant="subtle" px={0} onClick={() => setAll((v) => !v)} aria-expanded={all}>
+            {all ? 'Свернуть' : 'Все новости'}
+          </Button>
+        ) : (
+          <span />
+        )}
+        <span className="potok-news-note">Новости смоделированы для демо</span>
+      </div>
+    </section>
   );
 }

@@ -351,8 +351,8 @@ export function useLoans(enabled = true) {
   return useQuery({ queryKey: ['loans'], queryFn: () => api<Loan[]>('/loans'), enabled });
 }
 
-export function useLoan(id: number) {
-  return useQuery({ queryKey: ['loans', id], queryFn: () => api<LoanDetail>(`/loans/${id}`) });
+export function useLoan(id: number, enabled = true) {
+  return useQuery({ queryKey: ['loans', id], queryFn: () => api<LoanDetail>(`/loans/${id}`), enabled });
 }
 
 export function useNotifications(enabled: boolean) {

@@ -1,4 +1,4 @@
-import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
 
 export const PURPOSE = {
   workingCapital: 'Пополнить оборотные средства',
@@ -15,10 +15,17 @@ export interface ApplicationInput {
   collateral?: { kind: string; value: number };
 }
 
-/** Вход в один клик под демо-учёткой со страницы входа. */
+/** Выбор демо-профиля в выпадающем списке поля «Почта» и вход. */
+export async function pickPersona(page: Page, fullName: string): Promise<void> {
+  await page.getByRole('combobox', { name: 'Почта' }).click();
+  await page.getByRole('option', { name: new RegExp(`^${fullName}`) }).click();
+  await page.getByRole('button', { name: 'Войти', exact: true }).click();
+}
+
+/** Вход под демо-учёткой со страницы входа. */
 export async function login(page: Page, fullName: string): Promise<void> {
   await page.goto('/login');
-  await page.getByText(fullName, { exact: true }).click();
+  await pickPersona(page, fullName);
   await expect(page).not.toHaveURL(/\/login$/);
 }
 
@@ -29,16 +36,9 @@ export async function session(browser: Browser, fullName: string): Promise<Page>
   return page;
 }
 
-/** Как moneyShort во фронтенде: «3 млн ₽», «4,5 млн ₽», «500 тыс. ₽». */
-export function moneyShort(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
-  return `${Math.round(value / 1_000)} тыс. ₽`;
-}
-
-async function setSlider(slider: Locator, from: number, to: number, step: number): Promise<void> {
-  await slider.focus();
-  const key = to >= from ? 'ArrowRight' : 'ArrowLeft';
-  for (let i = 0; i < Math.abs(to - from) / step; i++) await slider.press(key);
+/** Как money во фронтенде: «3 000 000 ₽» (пробелы сравниваются без учёта вида — обычный или неразрывный). */
+export function money(value: number): string {
+  return `${value.toLocaleString('ru-RU').replace(/\s/g, ' ')} ₽`;
 }
 
 /** Остановки по ходу подачи заявки: запись демо ставит на них подписи и паузы, обычные тесты хук не передают. */
@@ -50,13 +50,13 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   // Запись демо открывает подбор через меню сама, остальные тесты приходят сюда с другой страницы.
   if (!/\/match$/.test(page.url())) await page.goto('/match');
   await page.getByText(input.purpose, { exact: true }).click();
-  await page.getByLabel('Сумма').fill(String(input.amount));
-  // Срок на подборе — от 3 месяцев с шагом 3, по умолчанию 12.
-  await setSlider(page.getByRole('slider').nth(1), 12, input.term, 3);
-  const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: input.product, exact: true }) });
-  // Подбор пересчитывается с задержкой — ждём, пока в карточке появятся введённые срок и сумма.
-  await expect(card.getByText('Сумма', { exact: true }).locator('..')).toContainText(moneyShort(input.amount));
-  await expect(card.getByText('Срок', { exact: true }).locator('..')).toContainText(`${input.term} мес`);
+  await page.getByLabel('Сумма', { exact: true }).fill(String(input.amount));
+  // Срок вводится в поле «Срок» (рядом — быстрые значения и слайдер).
+  await page.getByLabel('Срок', { exact: true }).fill(String(input.term));
+  const card = page.getByRole('article', { name: input.product, exact: true });
+  // Подбор пересчитывается с задержкой — ждём, пока в варианте появятся введённые срок и сумма.
+  await expect(card.getByTestId('match-terms')).toContainText(money(input.amount));
+  await expect(card.getByTestId('match-terms')).toContainText(`на ${input.term} мес`);
   await onStep?.('match');
   await card.getByRole('button', { name: 'Оформить заявку' }).click();
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
@@ -67,7 +67,7 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   await onStep?.('company');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
-  await expect(page.getByText(`Срок: ${input.term} мес`)).toBeVisible();
+  await expect(page.getByLabel('Срок', { exact: true })).toHaveValue(String(input.term));
   await onStep?.('loan');
   await next.click();
   await expect(page.getByRole('heading', { name: 'Финансы компании' })).toBeVisible();
@@ -123,12 +123,15 @@ export async function expectIssued(page: Page, amount: string, term: number): Pr
   await expect(page.getByRole('heading', { name: 'Мои кредиты' })).toBeVisible();
 }
 
-/** Заголовки ленты «Новости для вас» на главной. */
-export async function feedTitles(page: Page): Promise<string[]> {
+/** Заголовки ленты «Новости для вас» на главной: все (all) или только три, что видны сразу. */
+export async function feedTitles(page: Page, all = true): Promise<string[]> {
   await page.goto('/');
-  const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Новости для вас' }) });
-  const titles = card.locator('.mantine-Stack-root > div > p:first-child');
+  const feed = page.getByRole('region', { name: 'Новости для вас' });
+  const titles = feed.getByTestId('news-title');
   await expect(titles.first()).toBeVisible();
+  // На главной видны 3 новости — раскрываем все, чтобы сравнивать ленту целиком.
+  const more = feed.getByRole('button', { name: 'Все новости' });
+  if (all && (await more.isVisible())) await more.click();
   return titles.allInnerTexts();
 }
 

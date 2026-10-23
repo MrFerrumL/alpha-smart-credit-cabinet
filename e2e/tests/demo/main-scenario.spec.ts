@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { apply, PURPOSE, sign, type ApplyStep } from '../helpers';
+import { apply, pickPersona, PURPOSE, sign, type ApplyStep } from '../helpers';
 
 // Основной сценарий на видео: тот же путь, что в тесте bakery (personas.spec.ts), но в человеческом темпе и с короткими
 // подписями на экране, плюс кабинет аналитика. Запуск: npm run demo (конфиг playwright.demo.config.ts), в обычный
@@ -104,8 +104,8 @@ test('основной сценарий: заявка пекарни от под
 
   // 1. Вход под демо-учёткой клиента.
   await page.goto('/login');
-  await show(page, 'Демо-вход в один клик. Клиент — директор «Северной пекарни» Ольга Северова', 3000);
-  await page.getByText('Ольга Северова', { exact: true }).click();
+  await show(page, 'Демо-профили — в списке поля «Почта». Клиент — директор «Северной пекарни» Ольга Северова', 3000);
+  await pickPersona(page, 'Ольга Северова');
   await expect(page).not.toHaveURL(/\/login$/);
   await show(page, 'Главная клиента: компания, заявки, кредиты и новости, подобранные под неё', 3000);
 
@@ -121,8 +121,7 @@ test('основной сценарий: заявка пекарни от под
     async (step) => {
       // Подпись лежит внизу экрана — нужный блок прокручиваем в середину, чтобы она его не закрывала.
       if (step === 'match') {
-        const heading = page.getByRole('heading', { name: 'Экспресс-оборот', exact: true });
-        await reveal(page.locator('.mantine-Card-root').filter({ has: heading }));
+        await reveal(page.getByRole('article', { name: 'Экспресс-оборот', exact: true }));
       }
       if (step === 'review') await reveal(page.getByLabel(/Согласен на запрос кредитной истории/));
       await show(page, ...APPLY_CAPTIONS[step]);
@@ -133,7 +132,8 @@ test('основной сценарий: заявка пекарни от под
   await caption(page, 'Заявка в конвейере: проверка компании, оценка, решение — этапы меняются на глазах');
   const decision = page.getByRole('heading', { name: 'Банк готов выдать кредит' });
   await expect(decision).toBeVisible({ timeout: 90_000 });
-  const number = (await page.locator('h2').filter({ hasText: /^Заявка №/ }).innerText()).replace(/^Заявка №\s*/, '').trim();
+  // Номер — в строке под заголовком: «Заявка 2026-000001, отправлена …».
+  const number = (await page.getByText(/^Заявка \d{4}-\d{6},/).first().innerText()).match(/\d{4}-\d{6}/)![0];
 
   // 5. Решение с объяснением.
   await show(page, 'Решение принято автоматически: сумма, срок, ставка и платёж в месяц', 3000);
@@ -141,7 +141,7 @@ test('основной сценарий: заявка пекарни от под
   await show(page, 'Причины одобрения — простыми словами, а не баллами', 3000);
 
   // 6. Принять предложение, посмотреть договор и график.
-  const accept = page.getByRole('button', { name: 'Принять и перейти к договору' });
+  const accept = page.getByRole('button', { name: 'Принять предложение' });
   await reveal(accept);
   await show(page, 'Клиент принимает предложение банка', 1800);
   await accept.click();
@@ -173,22 +173,23 @@ test('основной сценарий: заявка пекарни от под
   await pause(page, 2500);
 
   // 9. Смена роли: выход и вход аналитиком банка.
-  await page.getByRole('button', { name: 'Выйти' }).click();
+  await page.getByRole('button', { name: /^Профиль/ }).click();
+  await page.getByRole('menuitem', { name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await show(page, 'Теперь та же заявка глазами кредитного аналитика банка', 2500);
-  await page.getByText('Мария Кредитова', { exact: true }).click();
+  await pickPersona(page, 'Мария Кредитова');
   await expect(page.getByRole('heading', { name: 'Очередь заявок' })).toBeVisible();
 
   // 10. Очередь и карточка заявки.
   await show(page, 'Очередь заявок: все отправленные клиентами заявки и их статусы', 2500);
   await page.getByText('Все', { exact: true }).click();
-  const row = page.getByRole('row').filter({ hasText: `№ ${number}` });
+  const row = page.getByRole('row').filter({ hasText: number });
   await expect(row).toBeVisible();
   await reveal(row);
   await show(page, `Находим заявку № ${number} пекарни`, 1800);
   await caption(page, 'Открываем карточку заявки');
   await row.click();
-  await expect(page.getByRole('heading', { name: 'Оценка заявки' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Оценка', exact: true })).toBeVisible();
   await show(page, 'Карточка оценки: балл, грейд, факторы, стоп-факторы, нагрузка и покрытие платежа прибылью', 3500);
 
   // 11. Трасса правил и воспроизведение решения.
