@@ -7,7 +7,9 @@ const PHONE = { width: 390, height: 844 };
 
 async function expectFits(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await page.waitForLoadState('networkidle');
+  // Поток статусов держит соединение открытым, поэтому ждём не «тишины в сети», а заголовок страницы и данные.
+  await page.locator('h1, h2').first().waitFor();
+  await page.waitForTimeout(1000);
   const width = await page.evaluate(() => document.documentElement.scrollWidth);
   expect.soft(width, `ширина документа на ${path}`).toBe(PHONE.width);
 }
