@@ -1486,6 +1486,12 @@ a.potok-note-title:hover {
   font-size: 32px !important;
 }
 
+/* График в договоре: на узком экране прокручивается внутри своего блока, страница не шире экрана. */
+.potok-contract-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* --- Вход ----------------------------------------------------------------------------------------- */
 .potok-login {
   display: grid;
@@ -2221,6 +2227,12 @@ a.potok-note-title:hover {
 
   .potok-contract-h {
     font-size: 24px !important;
+  }
+
+  .potok-contract-table .mantine-Table-th,
+  .potok-contract-table .mantine-Table-td {
+    padding-inline: 5px;
+    font-size: 12px;
   }
 
 

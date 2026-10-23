@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router';
 import { useContract } from '../api/hooks';
 import { Chip } from '../components/Status';
 import { LoadError } from '../components/States';
-import { date, dateTime, money, months, rate } from '../lib/format';
+import { date, dateTime, int, money, months, rate } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 /** Печатная форма кредитного договора: «Скачать PDF» — через печать браузера. */
@@ -79,39 +79,42 @@ export function ContractPage() {
             Приложение 1. График платежей
           </Text>
           <Text fz="xs" c="dimmed" mb="sm">
-            {money(c.amount)} · {months(c.term_months)} · {rate(c.rate)} годовых. Даты платежей фиксируются в день выдачи.
+            {money(c.amount)} на {months(c.term_months)} под {rate(c.rate)} годовых. Суммы в рублях, даты платежей фиксируются в день
+            выдачи.
           </Text>
-          <Table fz="sm" withTableBorder withRowBorders verticalSpacing={8}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>№</Table.Th>
-                <Table.Th ta="right">Платёж</Table.Th>
-                <Table.Th ta="right">Основной долг</Table.Th>
-                <Table.Th ta="right">Проценты</Table.Th>
-                <Table.Th ta="right">Остаток</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {c.schedule.map((r) => (
-                <Table.Tr key={r.n}>
-                  <Table.Td>{r.n}</Table.Td>
-                  <Table.Td ta="right">{money(r.payment)}</Table.Td>
-                  <Table.Td ta="right">{money(r.principal)}</Table.Td>
-                  <Table.Td ta="right">{money(r.interest)}</Table.Td>
-                  <Table.Td ta="right">{money(r.balance)}</Table.Td>
+          <div className="potok-contract-table">
+            <Table fz="sm" withTableBorder withRowBorders verticalSpacing={8}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>№</Table.Th>
+                  <Table.Th ta="right">Платёж</Table.Th>
+                  <Table.Th ta="right">Основной долг</Table.Th>
+                  <Table.Th ta="right">Проценты</Table.Th>
+                  <Table.Th ta="right">Остаток</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-            <Table.Tfoot>
-              <Table.Tr>
-                <Table.Th>Итого</Table.Th>
-                <Table.Th ta="right">{money(c.total_payments)}</Table.Th>
-                <Table.Th ta="right">{money(c.amount)}</Table.Th>
-                <Table.Th ta="right">{money(c.total_payments - c.amount)}</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Tfoot>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {c.schedule.map((r) => (
+                  <Table.Tr key={r.n}>
+                    <Table.Td>{r.n}</Table.Td>
+                    <Table.Td ta="right">{int(r.payment)}</Table.Td>
+                    <Table.Td ta="right">{int(r.principal)}</Table.Td>
+                    <Table.Td ta="right">{int(r.interest)}</Table.Td>
+                    <Table.Td ta="right">{int(r.balance)}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+              <Table.Tfoot>
+                <Table.Tr>
+                  <Table.Th>Итого</Table.Th>
+                  <Table.Th ta="right">{int(c.total_payments)}</Table.Th>
+                  <Table.Th ta="right">{int(c.amount)}</Table.Th>
+                  <Table.Th ta="right">{int(c.total_payments - c.amount)}</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Tfoot>
+            </Table>
+          </div>
 
           <Group justify="space-between" mt={40} align="flex-end">
             <div>
