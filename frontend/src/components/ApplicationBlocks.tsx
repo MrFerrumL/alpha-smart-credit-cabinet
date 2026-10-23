@@ -4,13 +4,10 @@ import {
   Card,
   FileButton,
   Group,
-  List,
   Loader,
   NumberInput,
   Paper,
-  SimpleGrid,
   Stack,
-  Table,
   Text,
   Textarea,
   ThemeIcon,
@@ -19,22 +16,15 @@ import {
 import {
   IconAlertTriangle,
   IconCheck,
-  IconCircleCheck,
   IconClockHour4,
   IconFileUpload,
-  IconInfoCircle,
   IconPaperclip,
-  IconSparkles,
-  IconX,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
 
-import { useAnswerTask, useInterestOnly, useProducts, useUploadDocument } from '../api/hooks';
+import { useAnswerTask, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, Product, SourceCheck, UploadedDocument } from '../api/types';
-import { date, money, moneyShort, months, rate } from '../lib/format';
-import { OfferActions } from './Signing';
-import { Stat } from './ui';
+import { money, months, rate } from '../lib/format';
 
 // --- Решение банка -----------------------------------------------------------------------------
 
@@ -56,7 +46,7 @@ export function shownTerms(app: Application, products?: Product[]) {
       term: offer.term_months,
       rate: rate(offer.rate),
       payment: money(offer.monthly_payment),
-      asked: asked ? `${app.product.name} · ${moneyShort(app.amount)} · ${months(app.term_months)}` : null,
+      asked: asked ? `${app.product.name}, ${money(app.amount)} на ${months(app.term_months)}` : null,
     };
   }
   return {
@@ -70,201 +60,6 @@ export function shownTerms(app: Application, products?: Product[]) {
     asked: null,
   };
 }
-
-/** Овердрафт: в месяц платятся только проценты, а сам лимит возвращается в конце срока. */
-function InterestOnlyNote({ amount }: { amount: number }) {
-  return (
-    <Text fz="sm" c="dimmed" mt="sm">
-      Каждый месяц платятся только проценты (при полном использовании лимита), основной долг {money(amount)}{' '}
-      возвращается в конце срока.
-    </Text>
-  );
-}
-
-function OfferGrid({ app }: { app: Application }) {
-  const offer = app.offer!;
-  const interestOnly = useInterestOnly(offer.product_code);
-  return (
-    <>
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg" mt="lg">
-        <Stat label="Сумма" value={moneyShort(offer.amount)} />
-        <Stat label="Срок" value={months(offer.term_months)} />
-        <Stat label="Ставка" value={rate(offer.rate)} />
-        <Stat label={interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'} value={money(offer.monthly_payment)} accent />
-      </SimpleGrid>
-      {interestOnly && <InterestOnlyNote amount={offer.amount} />}
-    </>
-  );
-}
-
-function CompareTable({ app }: { app: Application }) {
-  const offer = app.offer!;
-  const products = useProducts();
-  const otherProduct = offer.product_code !== app.product.code;
-  const offered = products.data?.find((p) => p.code === offer.product_code);
-  const offeredName = offered?.name ?? '…';
-  const interestOnly = offered?.repayment === 'interest_only';
-  const offeredPayment = interestOnly ? `${money(offer.monthly_payment)} — только проценты` : money(offer.monthly_payment);
-  const rows: [string, string, string, boolean][] = [
-    ...(otherProduct ? ([['Продукт', app.product.name, offeredName, true]] as [string, string, string, boolean][]) : []),
-    ['Сумма', moneyShort(app.amount), moneyShort(offer.amount), app.amount !== offer.amount],
-    ['Срок', months(app.term_months), months(offer.term_months), app.term_months !== offer.term_months],
-    ['Ставка', `от ${rate(app.product.rate)}`, rate(offer.rate), app.product.rate !== offer.rate],
-    ['Платёж в месяц', `≈ ${money(app.monthly_payment)}`, offeredPayment, app.monthly_payment !== offer.monthly_payment],
-  ];
-  return (
-    <>
-      <Table mt="lg" verticalSpacing="sm" withRowBorders>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th />
-            <Table.Th>Вы просили</Table.Th>
-            <Table.Th>Банк предлагает</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map(([label, asked, offered, changed]) => (
-            <Table.Tr key={label}>
-              <Table.Td>
-                <Text fz="sm" c="dimmed">
-                  {label}
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <Text fz="sm" td={changed ? 'line-through' : undefined} c={changed ? 'dimmed' : undefined}>
-                  {asked}
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <Text fz="sm" fw={800} c={changed ? 'brand.6' : undefined}>
-                  {offered}
-                </Text>
-              </Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-      {interestOnly && <InterestOnlyNote amount={offer.amount} />}
-    </>
-  );
-}
-
-function ReasonList({ items, tone }: { items: string[]; tone: 'good' | 'bad' | 'info' }) {
-  const icon =
-    tone === 'good' ? (
-      <ThemeIcon color="teal" size={22} radius="xl">
-        <IconCheck size={13} stroke={3} />
-      </ThemeIcon>
-    ) : tone === 'bad' ? (
-      <ThemeIcon color="red" size={22} radius="xl" variant="light">
-        <IconX size={13} stroke={3} />
-      </ThemeIcon>
-    ) : (
-      <ThemeIcon color="orange" size={22} radius="xl" variant="light">
-        <IconInfoCircle size={14} />
-      </ThemeIcon>
-    );
-  return (
-    <List spacing={8} fz="sm" icon={icon} mt="sm">
-      {items.map((item) => (
-        <List.Item key={item}>{item}</List.Item>
-      ))}
-    </List>
-  );
-}
-
-export function DecisionCard({ app }: { app: Application }) {
-  const { decision, offer } = app;
-  if (!decision) return null;
-  const code = app.status.code;
-
-  if (code === 'approved' && offer) {
-    return (
-      <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in" style={{ border: '2px solid var(--mantine-color-teal-5)' }}>
-        <Group gap="sm">
-          <ThemeIcon color="teal" size={40} radius="md">
-            <IconCircleCheck size={24} />
-          </ThemeIcon>
-          <div>
-            <Title order={3}>Банк готов выдать кредит</Title>
-            <Text c="dimmed" fz="sm">
-              {offer.valid_until ? `Предложение действует до ${date(offer.valid_until)}` : 'Условия по вашей заявке'}
-            </Text>
-          </div>
-        </Group>
-        <OfferGrid app={app} />
-        {decision.reasons.length > 0 && (
-          <>
-            <Text fw={700} mt="xl">
-              Почему одобрено
-            </Text>
-            <ReasonList items={decision.reasons} tone="good" />
-          </>
-        )}
-        <OfferActions app={app} />
-      </Card>
-    );
-  }
-
-  if (code === 'counter_offer' && offer) {
-    return (
-      <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in" style={{ border: '2px solid var(--mantine-color-orange-5)' }}>
-        <Group gap="sm">
-          <ThemeIcon color="orange" size={40} radius="md">
-            <IconSparkles size={22} />
-          </ThemeIcon>
-          <div>
-            <Title order={3}>Можем выдать на других условиях</Title>
-            <Text c="dimmed" fz="sm">
-              {offer.valid_until ? `Предложение действует до ${date(offer.valid_until)}` : 'Сравните с тем, что вы просили'}
-            </Text>
-          </div>
-        </Group>
-        <CompareTable app={app} />
-        <Text fw={700} mt="xl">
-          Почему условия другие
-        </Text>
-        <ReasonList items={decision.reasons} tone="info" />
-        <OfferActions app={app} />
-      </Card>
-    );
-  }
-
-  if (code === 'rejected') {
-    return (
-      <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in">
-        <Title order={3}>Почему банк отказал</Title>
-        <ReasonList items={decision.reasons} tone="bad" />
-        {decision.tips.length > 0 && (
-          <Paper bg="gray.0" p="md" mt="lg" radius="md">
-            <Text fw={700}>Что можно сделать</Text>
-            <List spacing={6} fz="sm" mt="xs">
-              {decision.tips.map((tip) => (
-                <List.Item key={tip}>{tip}</List.Item>
-              ))}
-            </List>
-          </Paper>
-        )}
-        <Group mt="lg">
-          <Button component={Link} to="/match" variant="light">
-            Подобрать другой вариант
-          </Button>
-        </Group>
-      </Card>
-    );
-  }
-
-  if (code === 'manual_review') {
-    return (
-      <Card p={{ base: 'lg', sm: 'xl' }} className="fade-in">
-        <Title order={4}>Почему заявку смотрит специалист</Title>
-        <ReasonList items={decision.reasons} tone="info" />
-      </Card>
-    );
-  }
-  return null;
-}
-
 // --- Запросы банка -----------------------------------------------------------------------------
 
 function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask; readOnly: boolean }) {

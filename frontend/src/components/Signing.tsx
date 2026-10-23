@@ -12,7 +12,6 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  Textarea,
   ThemeIcon,
   Title,
 } from '@mantine/core';
@@ -22,11 +21,8 @@ import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
 import {
-  useAcceptOffer,
-  useHandoffOffer,
   useConfirmSigning,
   useContract,
-  useDeclineOffer,
   useInterestOnly,
   useRequestSigningCode,
 } from '../api/hooks';
@@ -34,82 +30,6 @@ import type { Application, SigningCode } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { money, moneyShort, months, rate } from '../lib/format';
 import { Stat } from './ui';
-
-/** Кнопки под предложением банка: принять или отказаться. */
-export function OfferActions({ app }: { app: Application }) {
-  const { user } = useAuth();
-  const accept = useAcceptOffer(app.id);
-  const decline = useDeclineOffer(app.id);
-  const handoff = useHandoffOffer(app.id);
-  const canHandoff = app.allowed_actions.includes('handoff_to_signer');
-  const [declineOpened, setDeclineOpened] = useState(false);
-  const [comment, setComment] = useState('');
-  const canAccept = app.allowed_actions.includes('accept_offer');
-  const canDecline = app.allowed_actions.includes('decline_offer');
-  const waitsForDirector = user?.role === 'client' && !user.can_sign && app.offer?.status === 'active';
-  if (!canAccept && !canDecline && !waitsForDirector) return null;
-
-  return (
-    <>
-      {!canAccept && (
-        <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="md" mt="lg">
-          {/* Пол руководителя по ФИО не знаем — текст без «он/она». */}
-          {app.awaiting_signer
-            ? `Предложение передано руководителю${user?.company?.director ? ` — ${user.company.director}` : ''}: уведомление уже в кабинете руководителя, осталось принять предложение и подписать договор.`
-            : `Принять предложение, отказаться от него и подписать договор может только руководитель компании${
-                user?.company?.director ? ` — ${user.company.director}` : ''
-              }. Передайте предложение руководителю — уведомление придёт в кабинет.`}
-        </Alert>
-      )}
-      {canHandoff && (
-        <Group mt="md">
-          <Button size="md" variant="light" rightSection={<IconArrowRight size={18} />} loading={handoff.isPending} onClick={() => handoff.mutate()}>
-            Передать руководителю на подпись
-          </Button>
-        </Group>
-      )}
-      <Group mt="xl">
-        {canAccept && (
-          <Button size="md" rightSection={<IconArrowRight size={18} />} loading={accept.isPending} onClick={() => accept.mutate()}>
-            Принять и перейти к договору
-          </Button>
-        )}
-        {canDecline && (
-          <Button size="md" variant="default" onClick={() => setDeclineOpened(true)}>
-            Отказаться
-          </Button>
-        )}
-      </Group>
-      <Modal opened={declineOpened} onClose={() => setDeclineOpened(false)} title={<Text fw={800}>Отказаться от предложения?</Text>} centered>
-        <Stack>
-          <Text fz="sm" c="dimmed">
-            Заявка будет закрыта. Подобрать другой вариант можно в любой момент — данные компании сохранятся.
-          </Text>
-          <Textarea
-            label="Что не подошло? (необязательно)"
-            placeholder="Например: нужна большая сумма"
-            value={comment}
-            onChange={(e) => setComment(e.currentTarget.value)}
-            autosize
-            minRows={2}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setDeclineOpened(false)}>
-              Вернуться
-            </Button>
-            <Button
-              color="red"
-              loading={decline.isPending}
-              onClick={() => decline.mutate({ comment: comment || undefined }, { onSuccess: () => setDeclineOpened(false) })}
-            >
-              Отказаться
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-    </>
-  );
-}
 
 function useCountdown(until: string | null): number {
   const [left, setLeft] = useState(0);

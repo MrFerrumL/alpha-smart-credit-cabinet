@@ -1,0 +1,656 @@
+/* Экраны «Потока»: страница заявки с блоком решения, панели второго плана, история, карточка аналитика. */
+
+.potok-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.potok-decision {
+  background: var(--potok-paper);
+  border-radius: var(--r-32);
+  padding: 32px 40px;
+}
+
+.potok-panel {
+  background: var(--potok-paper);
+  border-radius: var(--r-24);
+  padding: 24px;
+}
+
+.potok-say {
+  margin-top: 32px;
+  font-family: var(--font-ui) !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  color: var(--potok-steel);
+}
+
+.potok-figures {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  margin-top: 8px;
+}
+
+.potok-figures > div {
+  padding-right: 48px;
+}
+
+.potok-figures > div + div {
+  padding-left: 48px;
+  border-left: 1px solid var(--potok-line);
+}
+
+.potok-big {
+  font: 700 56px/1.1 var(--font-display);
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-under {
+  margin-top: 6px;
+  color: var(--potok-steel);
+}
+
+.potok-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 20px;
+  color: var(--potok-steel);
+}
+
+.potok-cost b {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--potok-ink);
+}
+
+.potok-compare {
+  margin-top: 32px;
+  background: var(--potok-canvas);
+  border-radius: var(--r-16);
+  overflow: hidden;
+}
+
+.potok-compare th {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: var(--potok-steel) !important;
+}
+
+.potok-compare td,
+.potok-compare th {
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  border-color: var(--potok-line-strong) !important;
+}
+
+.potok-compare-k {
+  width: 160px;
+  color: var(--potok-steel);
+  font-size: 14px;
+}
+
+.potok-compare-was {
+  color: var(--potok-steel);
+}
+
+.potok-compare-now {
+  font-weight: 600;
+}
+
+.potok-compare-delta {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
+.potok-sched {
+  margin-top: 32px;
+}
+
+.potok-sched-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.potok-table-wrap {
+  max-height: 360px;
+  margin-top: 12px;
+  overflow: auto;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+}
+
+.potok-note {
+  color: var(--potok-steel);
+  max-width: 68ch;
+}
+
+.potok-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.potok-inline-note {
+  margin-top: 24px;
+  padding: 14px 18px;
+  border-radius: var(--r-16);
+  background: var(--potok-canvas);
+  max-width: 72ch;
+}
+
+.potok-inline-note[data-tone='ok'] {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+}
+
+.potok-inline-note[data-tone='warn'] {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.potok-asked {
+  margin-top: 8px;
+  font: 600 24px/1.25 var(--font-display);
+  color: var(--potok-steel);
+}
+
+.potok-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 28px;
+}
+
+.potok-lists ul,
+.potok-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.potok-lists li + li,
+.potok-list li + li {
+  margin-top: 8px;
+}
+
+.potok-steps {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.potok-steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+}
+
+.potok-steps li + li {
+  margin-top: 10px;
+}
+
+.potok-steps li::before {
+  content: counter(step);
+  font: 600 15px/24px var(--font-display);
+  color: var(--potok-steel);
+}
+
+.potok-below {
+  display: grid;
+  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
+  justify-content: space-between;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Слева пусто (например, у отказа) — история встаёт в основную колонку, а не висит справа. */
+.potok-below:has(> :first-child:empty) {
+  grid-template-columns: minmax(0, 672px);
+}
+
+.potok-below > :first-child:empty {
+  display: none;
+}
+
+.potok-cta-main {
+  display: contents;
+}
+
+.potok-kv {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+  margin: 16px 0 0;
+}
+
+.potok-kv dt,
+.potok-facts dt {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-kv dd,
+.potok-facts dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.potok-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--potok-muted);
+}
+
+.potok-live[data-live='true'] {
+  background: var(--ok-dot);
+}
+
+/* История: ключевые события, проверки свёрнуты. Пройденное — графит, успех — зелёный, не красный. */
+.potok-timeline {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-timeline > li {
+  position: relative;
+  padding: 0 0 14px 22px;
+}
+
+.potok-timeline > li::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--potok-ink);
+}
+
+.potok-timeline > li::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 19px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--potok-line);
+}
+
+.potok-timeline > li:last-child::after {
+  display: none;
+}
+
+.potok-timeline > li[data-tone='ok']::before {
+  background: var(--ok-dot);
+}
+
+.potok-timeline > li[data-group='true']::before {
+  width: 6px;
+  height: 6px;
+  background: var(--potok-paper);
+  border: 2px solid var(--potok-line-strong);
+}
+
+.potok-timeline-toggle {
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.potok-timeline-nested {
+  margin-top: 8px;
+}
+
+/* --- Карточка аналитика --------------------------------------------------------------------------- */
+.potok-analyst {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 408px;
+  gap: 32px;
+  align-items: start;
+}
+
+.potok-analyst-side {
+  position: sticky;
+  top: 16px;
+}
+
+.potok-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+  margin: 16px 0 0;
+}
+
+.potok-grade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 20px;
+  margin-top: 12px;
+}
+
+.potok-grade-g {
+  font: 700 32px/1.1 var(--font-display);
+}
+
+.potok-factors {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.potok-factor {
+  display: grid;
+  grid-template-columns: 1fr 160px 44px;
+  gap: 12px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.potok-factor span {
+  display: block;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-factor-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--potok-canvas);
+}
+
+.potok-factor-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--potok-line-strong);
+}
+
+.potok-factor-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+
+.potok-factor-bar i[data-sign='plus'] {
+  left: 50%;
+  background: var(--ok-dot);
+}
+
+.potok-factor-bar i[data-sign='minus'] {
+  right: 50%;
+  background: var(--err-dot);
+}
+
+.potok-factor-p {
+  text-align: right;
+  font-weight: 600;
+}
+
+.potok-stops {
+  margin-top: 20px;
+}
+
+.potok-checks {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.potok-checks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.potok-checks li[data-ok='true'] svg {
+  color: var(--ok-text);
+}
+
+.potok-checks li[data-ok='false'] svg {
+  color: var(--err-text);
+}
+
+.potok-trace {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-trace li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.potok-trace li > svg {
+  margin-top: 3px;
+  color: var(--potok-steel);
+}
+
+.potok-trace li[data-result='pass'] > svg {
+  color: var(--ok-text);
+}
+
+.potok-trace li[data-result='fail'] > svg {
+  color: var(--err-text);
+}
+
+.potok-outcomes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.potok-outcome {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: background-color 0.15s ease;
+}
+
+.potok-outcome:hover {
+  background: var(--potok-line);
+}
+
+.potok-outcome[data-checked] {
+  background: var(--potok-ink);
+  color: var(--potok-paper);
+}
+
+/* Сумма — на всю ширину, срок и ставка — под ней: иначе цифры обрезаются. */
+.potok-decide-terms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.potok-decide-terms > :first-child {
+  grid-column: 1 / -1;
+}
+
+.potok-calc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-calc b {
+  color: var(--potok-ink);
+}
+
+.potok-bad {
+  color: var(--err-text);
+  font-weight: 600;
+}
+
+.potok-muted-text {
+  color: var(--potok-steel);
+}
+
+.potok-phone-only {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .potok-decision {
+    border-radius: var(--r-24);
+    padding: 20px 16px;
+  }
+
+  .potok-panel {
+    border-radius: var(--r-16);
+    padding: 16px;
+  }
+
+  .potok-say {
+    margin-top: 24px;
+    font-size: 17px !important;
+  }
+
+  .potok-figures {
+    grid-template-columns: 1fr;
+  }
+
+  .potok-figures > div {
+    padding: 0;
+  }
+
+  .potok-figures > div + div {
+    margin-top: 16px;
+    padding: 16px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--potok-line);
+  }
+
+  .potok-big {
+    font-size: 40px;
+  }
+
+  .potok-cost {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .potok-compare td,
+  .potok-compare th {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 14px;
+  }
+
+  .potok-compare-k {
+    width: 96px;
+    font-size: 13px;
+  }
+
+  .potok-compare-delta {
+    display: block;
+    margin: 2px 0 0;
+  }
+
+  .potok-hide-phone {
+    display: none;
+  }
+
+  /* Закреплена только главная кнопка — над нижними вкладками; отказ и передача остаются в потоке страницы. */
+  .potok-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .potok-cta-main {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 64px;
+    z-index: 90;
+    padding: 12px 16px;
+    background: var(--potok-paper);
+    border-top: 1px solid var(--potok-line);
+  }
+
+  .potok-cta-main .mantine-Button-root {
+    width: 100%;
+  }
+
+  .potok-shell:has(.potok-cta-main) .potok-page,
+  .potok-shell:has(.potok-bottombar) .potok-page {
+    padding-bottom: 168px;
+  }
+
+  .potok-asked {
+    font-size: 20px;
+  }
+
+  /* minmax(0, …): широкая таблица внутри не должна растягивать колонку шире экрана. */
+  .potok-lists,
+  .potok-below,
+  .potok-below:has(> :first-child:empty),
+  .potok-analyst,
+  .potok-kv,
+  .potok-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-analyst-side {
+    position: static;
+  }
+
+  .potok-factor {
+    grid-template-columns: 1fr 72px 40px;
+  }
+
+  .potok-phone-only {
+    display: block;
+  }
+
+  .potok-bottombar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 64px;
+    z-index: 90;
+    padding: 12px 16px;
+    background: var(--potok-paper);
+    border-top: 1px solid var(--potok-line);
+  }
+}
