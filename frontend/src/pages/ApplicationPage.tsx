@@ -90,11 +90,25 @@ function StatusSection({ app, live }: { app: Application; live: boolean }) {
   );
 }
 
-/** Согласованные условия после принятия предложения: подписание и выдача. */
+/** Как подписать договор — три шага рядом с блоком подписания. */
+function SigningSteps() {
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Как подписать</Title>
+      <ol className="potok-steps">
+        <li>Отметьте согласие с условиями договора</li>
+        <li>Нажмите «Подписать кодом»: код придёт в кабинет, SMS не нужна</li>
+        <li>Введите 6 цифр, и деньги придут на счёт через несколько секунд</li>
+      </ol>
+    </section>
+  );
+}
+
+/** Согласованные условия после выдачи (при подписании их показывает сам блок договора). */
 function AgreedTerms({ app }: { app: Application }) {
   const products = useProducts();
   const terms = shownTerms(app, products.data);
-  if (!terms.agreed) return null;
+  if (!terms.agreed || app.status.code === 'signing') return null;
   return (
     <section className="potok-panel">
       <Title order={3}>Условия кредита</Title>
@@ -180,19 +194,22 @@ export function ApplicationPage() {
         </Text>
       </div>
 
-      {decided ? <DecisionBlock app={app} /> : <StatusSection app={app} live={live} />}
+      {/* Главный блок — один на экране: решение, подписание, выдача или статус с проверками. */}
+      {decided ? (
+        <DecisionBlock app={app} />
+      ) : app.status.code === 'signing' ? (
+        <SigningCard app={app} extra={app.allowed_actions.includes('cancel') ? <CancelAction app={app} /> : undefined} />
+      ) : app.status.code === 'issued' ? (
+        <IssuedCard app={app} />
+      ) : (
+        <StatusSection app={app} live={live} />
+      )}
 
       {tasks.data && tasks.data.length > 0 && (
         <div id="tasks">
           <TasksCard app={app} tasks={tasks.data} readOnly={false} />
         </div>
       )}
-      {app.status.code === 'signing' && (
-        <div id="signing">
-          <SigningCard app={app} />
-        </div>
-      )}
-      {app.status.code === 'issued' && <IssuedCard app={app} />}
 
       {/* Одна раскладка для всех статусов: слева «почему» и история, справа «что дальше», документы и компания —
           ни одна колонка не остаётся пустой. */}
@@ -208,6 +225,7 @@ export function ApplicationPage() {
         </Stack>
         <Stack gap="lg">
           <NextSteps app={app} />
+          {app.status.code === 'signing' && app.allowed_actions.includes('sign') && <SigningSteps />}
           {documents.data && documents.data.length > 0 && (
             <section className="potok-panel">
               <Title order={3}>Документы</Title>
