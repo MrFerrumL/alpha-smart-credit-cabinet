@@ -16,6 +16,7 @@ import type {
   Company,
   CompanyLookup,
   Contract,
+  DecisionExplanation,
   DemoAccount,
   Financials,
   Loan,
@@ -44,6 +45,7 @@ export const keys = {
   applications: (status?: string) => ['applications', status ?? 'all'] as const,
   application: (id: number) => ['application', id] as const,
   events: (id: number) => ['application', id, 'events'] as const,
+  explanation: (id: number, decidedAt: string | null) => ['application', id, 'explanation', decidedAt] as const,
 };
 
 export function useMeta() {
@@ -121,6 +123,24 @@ export function useEvents(id: number, app?: Application) {
     queryFn: () => api<ApplicationEvent[]>(`/applications/${id}/events`),
     enabled: !!app,
     placeholderData: sameApplication<ApplicationEvent[]>(id),
+  });
+}
+
+const EXPLAINED_STATUSES = ['approved', 'counter_offer', 'rejected'];
+const EXPLANATION_POLL_MS = 2500;
+
+/**
+ * Пояснение решения простыми словами. Запрос уходит, только если функция включена на сервере (meta.llm_explanation)
+ * и по заявке есть решение: одобрение, контрпредложение или отказ. Пока текст готовится (pending) — опрос.
+ */
+export function useDecisionExplanation(app: Application) {
+  const meta = useMeta();
+  return useQuery({
+    queryKey: keys.explanation(app.id, app.decided_at),
+    queryFn: () => api<DecisionExplanation>(`/applications/${app.id}/explanation`),
+    enabled: meta.data?.llm_explanation === true && EXPLAINED_STATUSES.includes(app.status.code),
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? EXPLANATION_POLL_MS : false),
+    retry: false,
   });
 }
 

@@ -30,7 +30,7 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAnswerTask, useInterestOnly, useProducts, useUploadDocument } from '../api/hooks';
+import { useAnswerTask, useDecisionExplanation, useInterestOnly, useProducts, useUploadDocument } from '../api/hooks';
 import type { Application, ClientTask, Product, SourceCheck, UploadedDocument } from '../api/types';
 import { date, money, moneyShort, months, rate } from '../lib/format';
 import { OfferActions } from './Signing';
@@ -173,6 +173,45 @@ function ReasonList({ items, tone }: { items: string[]; tone: 'good' | 'bad' | '
   );
 }
 
+/**
+ * Пояснение решения простыми словами от языковой модели. Необязательный блок: пока текст готовится — строка
+ * ожидания, когда готов — карточка с пометкой «Сгенерировано автоматически», иначе (функция выключена, ошибка,
+ * пояснения нет) ничего не показываем: условия и причины банка выше остаются единственным источником.
+ */
+function AutoExplanation({ app }: { app: Application }) {
+  const { data } = useDecisionExplanation(app);
+  if (data?.status === 'pending') {
+    return (
+      <Group gap="xs" mt="lg" data-testid="auto-explanation-pending" aria-live="polite">
+        <Loader size="xs" color="gray" />
+        <Text fz="sm" c="dimmed">
+          Готовим пояснение простыми словами…
+        </Text>
+      </Group>
+    );
+  }
+  if (data?.status === 'ready' && data.text) {
+    return (
+      <Paper withBorder p="md" mt="lg" radius="md" data-testid="auto-explanation" aria-live="polite">
+        <Group gap="xs" justify="space-between">
+          <Text fw={700}>Простыми словами</Text>
+          <Badge variant="light" color="gray">
+            Сгенерировано автоматически
+          </Badge>
+        </Group>
+        <Text fz="sm" mt="xs">
+          {data.text}
+        </Text>
+        <Text fz="xs" c="dimmed" mt="xs">
+          Текст составлен языковой моделью по данным этого решения. Если что-то расходится, действуют условия и причины
+          банка выше.
+        </Text>
+      </Paper>
+    );
+  }
+  return null;
+}
+
 export function DecisionCard({ app }: { app: Application }) {
   const { decision, offer } = app;
   if (!decision) return null;
@@ -201,6 +240,7 @@ export function DecisionCard({ app }: { app: Application }) {
             <ReasonList items={decision.reasons} tone="good" />
           </>
         )}
+        <AutoExplanation app={app} />
         <OfferActions app={app} />
       </Card>
     );
@@ -225,6 +265,7 @@ export function DecisionCard({ app }: { app: Application }) {
           Почему условия другие
         </Text>
         <ReasonList items={decision.reasons} tone="info" />
+        <AutoExplanation app={app} />
         <OfferActions app={app} />
       </Card>
     );
@@ -245,6 +286,7 @@ export function DecisionCard({ app }: { app: Application }) {
             </List>
           </Paper>
         )}
+        <AutoExplanation app={app} />
         <Group mt="lg">
           <Button component={Link} to="/match" variant="light">
             Подобрать другой вариант

@@ -32,6 +32,7 @@ export interface Meta {
   stages: string[];
   statuses: StatusInfo[];
   purposes: PurposeInfo[];
+  llm_explanation: boolean;
 }
 
 export interface Company {
@@ -219,6 +220,13 @@ export interface Decision {
   outcome: string;
   reasons: string[];
   tips: string[];
+}
+
+/** Пояснение решения простыми словами, составленное языковой моделью (необязательная функция). */
+export interface DecisionExplanation {
+  status: 'pending' | 'ready' | 'none';
+  text: string | null;
+  generated_at: string | null;
 }
 
 export interface ClientTask {
