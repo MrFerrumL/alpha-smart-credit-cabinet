@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { apply, PURPOSE, sign, type ApplyStep } from '../helpers';
+import { apply, pickPersona, PURPOSE, sign, type ApplyStep } from '../helpers';
 
 // Основной сценарий на видео: тот же путь, что в тесте bakery (personas.spec.ts), но в человеческом темпе и с короткими
 // подписями на экране, плюс кабинет аналитика. Запуск: npm run demo (конфиг playwright.demo.config.ts), в обычный
@@ -104,8 +104,8 @@ test('основной сценарий: заявка пекарни от под
 
   // 1. Вход под демо-учёткой клиента.
   await page.goto('/login');
-  await show(page, 'Демо-вход в один клик. Клиент — директор «Северной пекарни» Ольга Северова', 3000);
-  await page.getByText('Ольга Северова', { exact: true }).click();
+  await show(page, 'Демо-профили — в списке поля «Почта». Клиент — директор «Северной пекарни» Ольга Северова', 3000);
+  await pickPersona(page, 'Ольга Северова');
   await expect(page).not.toHaveURL(/\/login$/);
   await show(page, 'Главная клиента: компания, заявки, кредиты и новости, подобранные под неё', 3000);
 
@@ -176,7 +176,7 @@ test('основной сценарий: заявка пекарни от под
   await page.getByRole('button', { name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await show(page, 'Теперь та же заявка глазами кредитного аналитика банка', 2500);
-  await page.getByText('Мария Кредитова', { exact: true }).click();
+  await pickPersona(page, 'Мария Кредитова');
   await expect(page.getByRole('heading', { name: 'Очередь заявок' })).toBeVisible();
 
   // 10. Очередь и карточка заявки.

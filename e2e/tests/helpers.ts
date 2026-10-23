@@ -15,10 +15,17 @@ export interface ApplicationInput {
   collateral?: { kind: string; value: number };
 }
 
-/** Вход в один клик под демо-учёткой со страницы входа. */
+/** Выбор демо-профиля в выпадающем списке поля «Почта» и вход. */
+export async function pickPersona(page: Page, fullName: string): Promise<void> {
+  await page.getByRole('combobox', { name: 'Почта' }).click();
+  await page.getByRole('option', { name: new RegExp(`^${fullName}`) }).click();
+  await page.getByRole('button', { name: 'Войти', exact: true }).click();
+}
+
+/** Вход под демо-учёткой со страницы входа. */
 export async function login(page: Page, fullName: string): Promise<void> {
   await page.goto('/login');
-  await page.getByText(fullName, { exact: true }).click();
+  await pickPersona(page, fullName);
   await expect(page).not.toHaveURL(/\/login$/);
 }
 
