@@ -35,7 +35,7 @@ docker compose up --build
 | Раздел | Сценарии |
 |---|---|
 | E2E — сквозные сценарии | E2E-01 … E2E-15 |
-| Отказоустойчивость | FAIL-01 … FAIL-05 |
+| Отказоустойчивость | FAIL-01 … FAIL-06 |
 | NEG — негативные и ролевые сценарии | NEG-01 … NEG-59 |
 | Автотесты и CI | запуск и проверки в CI |
 
@@ -494,6 +494,13 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 - **Автотесты:** `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status`,
   `test_hardening.py::test_open_status_stream_does_not_hold_a_database_connection`,
   `test_pipeline.py::test_cancelled_application_is_left_alone_by_pipeline`.
+
+### FAIL-06. Несколько воркеров конвейера
+
+- **Шаги:** `docker compose up --build --scale worker=3`, затем подряд отправить несколько заявок с разных
+  учётных записей.
+- **Ожидается:** каждая заявка доходит до решения ровно один раз, в истории нет повторяющихся шагов.
+- **Автотест:** нет, проверяется вручную.
 
 ---
 
