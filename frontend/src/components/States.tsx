@@ -109,15 +109,15 @@ export function LoadError({ error, what, back }: { error: unknown; what: string;
 export function DecisionSkeleton() {
   return (
     <Stack gap="lg" aria-busy="true" aria-label="Загружаем заявку">
-      <Skeleton h={36} w={320} radius="md" />
+      <Skeleton h={36} w="100%" maw={320} radius="md" />
       <div className="potok-decision">
         <Skeleton h={4} radius="xl" />
-        <Skeleton h={22} w={300} mt={32} radius="md" />
+        <Skeleton h={22} w="100%" maw={300} mt={32} radius="md" />
         <div className="potok-sk-figures">
-          <Skeleton h={58} w={340} radius="md" />
-          <Skeleton h={58} w={260} radius="md" />
+          <Skeleton h={58} w="100%" maw={340} radius="md" />
+          <Skeleton h={58} w="100%" maw={260} radius="md" />
         </div>
-        <Skeleton h={18} w={420} mt={20} radius="md" />
+        <Skeleton h={18} w="100%" maw={420} mt={20} radius="md" />
         <div className="potok-sk-bars">
           {Array.from({ length: 12 }, (_, i) => (
             <Skeleton key={i} h={`${70 + i * 2}%`} radius="sm" />

@@ -835,7 +835,7 @@ export function ApplicationWizardPage() {
   if (query.isLoading || products.isLoading || meta.isLoading) {
     return (
       <Stack>
-        <Skeleton h={40} w={320} />
+        <Skeleton h={40} w="100%" maw={320} />
         <Skeleton h={80} radius="lg" />
         <Skeleton h={360} radius="lg" />
       </Stack>
