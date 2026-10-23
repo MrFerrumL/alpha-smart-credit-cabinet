@@ -16,6 +16,8 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
     locale: 'ru-RU',
     timezoneId: 'Europe/Moscow',
+    // Проверки — без анимаций, чтобы не ждать появления блоков; видео демо пишется своим конфигом, с движением.
+    reducedMotion: 'reduce',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -9,11 +9,11 @@ test('bakery: автоматическое одобрение, подпись к
   const id = await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 3_000_000, term: 12 });
 
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
-  await expect(page.getByText('Ставка', { exact: true }).first().locator('..')).toContainText('22,9%');
+  await expect(page.getByTestId('offer-terms')).toContainText('22,9%');
   for (const stage of ['Заявка отправлена', 'Проверка компании', 'Оценка', 'Решение']) {
     await expect(page.getByText(stage).first()).toBeVisible();
   }
-  await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
+  await page.getByRole('button', { name: 'Принять предложение' }).click();
   await page.getByRole('link', { name: 'Открыть договор и график платежей' }).click();
   await expect(page.getByRole('heading', { name: /Кредитный договор №/ })).toBeVisible();
   await expect(page.getByText('Ждёт подписи')).toBeVisible();
@@ -28,7 +28,7 @@ test('buh: бухгалтер готовит заявку и передаёт е
   await expect(page.getByText('Подписать договор сможет только руководитель компании.')).toBeVisible();
   const id = await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 3_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Принять и перейти к договору' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Принять предложение' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Отказаться' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Передать руководителю на подпись' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Предложение передано руководителю' })).toBeVisible();
@@ -37,7 +37,7 @@ test('buh: бухгалтер готовит заявку и передаёт е
   await director.getByRole('button', { name: 'Уведомления' }).click();
   await expect(director.getByText(/Елена Счётова просит подписать кредит по заявке №/).first()).toBeVisible();
   await director.goto(`/applications/${id}`);
-  await director.getByRole('button', { name: 'Принять и перейти к договору' }).click();
+  await director.getByRole('button', { name: 'Принять предложение' }).click();
   await sign(director);
   await expectIssued(director, '3 000 000 ₽', 12);
 });
@@ -45,10 +45,10 @@ test('buh: бухгалтер готовит заявку и передаёт е
 test('sklad: контрпредложение — сумма ограничена выручкой, срок длиннее', async ({ page }) => {
   await login(page, 'Дмитрий Орлов');
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 10_000_000, term: 12 });
-  await expect(page.getByRole('heading', { name: 'Можем выдать на других условиях' })).toBeVisible();
-  const compare = page.locator('table').filter({ hasText: 'Банк предлагает' });
-  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('10 млн ₽');
-  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('4,5 млн ₽');
+  await expect(page.getByRole('heading', { name: 'Банк готов выдать на других условиях' })).toBeVisible();
+  const compare = page.getByRole('table', { name: 'Сравнение с заявкой' });
+  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('10 000 000 ₽');
+  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('4 500 000 ₽');
   await expect(compare.getByRole('row', { name: /Срок/ })).toContainText('16 месяцев');
   await expect(compare.getByRole('row', { name: /Ставка/ })).toContainText('22,9%');
 });
@@ -56,27 +56,27 @@ test('sklad: контрпредложение — сумма ограничен�
 test('clean: контрпредложение другим продуктом — овердрафт, выдача по нему', async ({ page }) => {
   await login(page, 'Лариса Тихонова');
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 300_000, term: 12 });
-  await expect(page.getByRole('heading', { name: 'Можем выдать на других условиях' })).toBeVisible();
-  const compare = page.locator('table').filter({ hasText: 'Банк предлагает' });
+  await expect(page.getByRole('heading', { name: 'Вместо «Экспресс-оборот» банк предлагает «Овердрафт»' })).toBeVisible();
+  const compare = page.getByRole('table', { name: 'Сравнение с заявкой' });
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Экспресс-оборот');
   await expect(compare.getByRole('row', { name: /Продукт/ })).toContainText('Овердрафт');
-  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('150 тыс. ₽');
+  await expect(compare.getByRole('row', { name: /Сумма/ })).toContainText('150 000 ₽');
   await expect(compare.getByRole('row', { name: /Срок/ })).toContainText('12 месяцев');
   await expect(compare.getByRole('row', { name: /Ставка/ })).toContainText('26,9%');
   // У овердрафта в месяц платятся только проценты, а лимит возвращается в конце срока.
   await expect(compare.getByRole('row', { name: /Платёж в месяц/ })).toContainText('только проценты');
   await expect(page.getByText(/возвращается в конце срока/)).toBeVisible();
   await expect(page.getByText(/подходит «Овердрафт»/)).toBeVisible();
-  await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
+  await page.getByRole('button', { name: 'Принять предложение' }).click();
   await sign(page);
   await expect(page.getByRole('heading', { name: 'Лимит открыт!' })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/Лимит овердрафта .* открыт/)).toBeVisible();
   await expect(page.getByText('Лимит открыт', { exact: true }).first()).toBeVisible();
   // После выдачи заявка показывает условия кредита, а не то, что просили.
-  const terms = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Условия кредита' }) });
+  const terms = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Условия кредита' }) });
   await expect(terms).toContainText('Овердрафт');
-  await expect(terms).toContainText('150 тыс. ₽');
-  await expect(terms).toContainText('Вы просили: Экспресс-оборот · 300 тыс. ₽ · 12 месяцев');
+  await expect(terms).toContainText('150 000 ₽');
+  await expect(terms).toContainText('Вы просили: Экспресс-оборот, 300 000 ₽ на 12 месяцев');
   await page.getByRole('link', { name: 'Кредит и график платежей' }).click();
   await expect(page.getByRole('heading', { name: 'Овердрафт' })).toBeVisible();
   await expect(page.getByText('Сумма кредита').locator('..')).toContainText('150 000 ₽');
@@ -118,8 +118,8 @@ test('smirnova: банк просит выписку, специалист св�
   await analystDecides(analyst, id);
 
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
-  await expect(page.getByText('Сумма', { exact: true }).first().locator('..')).toContainText('500 тыс. ₽');
-  await expect(page.getByText('Ставка', { exact: true }).first().locator('..')).toContainText('22,9%');
+  await expect(page.getByTestId('offer-amount')).toContainText('500 000 ₽');
+  await expect(page.getByTestId('offer-terms')).toContainText('22,9%');
 });
 
 test('vector: ручное рассмотрение, контрпредложение аналитика, условия выдачи', async ({ page, browser }) => {
@@ -137,7 +137,7 @@ test('vector: ручное рассмотрение, контрпредложе�
   await analyst.goto(`/applications/${id}`);
   await expect(analyst.getByText('Грейд C', { exact: true }).first()).toBeVisible();
   const terms = analyst.locator('table').filter({ hasText: 'Конвейер предлагает' });
-  await expect(terms.getByRole('row', { name: /^Сумма/ })).toContainText('19,5 млн ₽');
+  await expect(terms.getByRole('row', { name: /^Сумма/ })).toContainText('19 500 000 ₽');
   await expect(terms.getByRole('row', { name: /^Срок/ })).toContainText('60 месяцев');
   await expect(terms.getByRole('row', { name: /^Ставка/ })).toContainText('23,5%');
   // Трасса правил и воспроизведение решения на сохранённых признаках.
@@ -147,9 +147,9 @@ test('vector: ручное рассмотрение, контрпредложе�
   await analystDecides(analyst, id, 'Контрпредложение');
 
   // Клиент видит контрпредложение сразу, без перезагрузки.
-  await expect(page.getByRole('heading', { name: 'Можем выдать на других условиях' })).toBeVisible();
-  await expect(page.locator('table').filter({ hasText: 'Банк предлагает' })).toContainText('19,5 млн ₽');
-  await page.getByRole('button', { name: 'Принять и перейти к договору' }).click();
+  await expect(page.getByRole('heading', { name: 'Банк готов выдать на других условиях' })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Сравнение с заявкой' })).toContainText('19 500 000 ₽');
+  await page.getByRole('button', { name: 'Принять предложение' }).click();
   await expect(page.getByRole('heading', { name: 'Условия выдачи' })).toBeVisible();
   await sign(page);
   await expect(page.getByText(/Деньги поступят, как только вы закроете условия выдачи/)).toBeVisible();
@@ -169,13 +169,12 @@ test('start: отказ с причинами и подсказками', async 
   await login(page, 'Павел Быстров');
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 2_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Почему банк отказал' })).toBeVisible();
-  const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Почему банк отказал' }) });
-  const reasons = card.locator('ul').first().locator('li');
+  const reasons = page.getByRole('list', { name: 'Причины отказа' }).getByRole('listitem');
   await expect(reasons).toHaveCount(3);
   await expect(reasons.filter({ hasText: 'Были просрочки по кредитам больше двух месяцев' })).toHaveCount(1);
   await expect(reasons.filter({ hasText: 'Сейчас есть просроченный платёж по кредиту' })).toHaveCount(1);
   await expect(reasons.filter({ hasText: 'работает в убыток' })).toHaveCount(1);
-  await expect(card).toContainText('Что можно сделать');
+  await expect(page.getByRole('heading', { name: 'Что можно сделать' })).toBeVisible();
 });
 
 test('zakat: отказ по стоп-фактору — компания ликвидируется', async ({ page }) => {
@@ -192,13 +191,13 @@ test('new: подключение компании по ИНН из ЕГРЮЛ �
   await page.getByRole('button', { name: 'Найти' }).click();
   await expect(page.getByText('ООО «Новые горизонты»')).toBeVisible();
   await page.getByRole('button', { name: 'Да, это моя компания' }).click();
-  await expect(page.getByText(/ООО «Новые горизонты» ·/)).toBeVisible();
+  await expect(page.getByText(/^ООО «Новые горизонты», /)).toBeVisible();
   await apply(page, { purpose: PURPOSE.workingCapital, product: 'Экспресс-оборот', amount: 2_000_000, term: 12 });
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
-  await expect(page.getByText('Сумма', { exact: true }).first().locator('..')).toContainText('2 млн ₽');
-  await expect(page.getByText('Ставка', { exact: true }).first().locator('..')).toContainText('22,9%');
+  await expect(page.getByTestId('offer-amount')).toContainText('2 000 000 ₽');
+  await expect(page.getByTestId('offer-terms')).toContainText('22,9%');
   // Руководитель по ЕГРЮЛ получил право подписи: может принять предложение сам.
-  await expect(page.getByRole('button', { name: 'Принять и перейти к договору' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Принять предложение' })).toBeVisible();
 });
 
 test('лента новостей своя у каждой компании', async ({ browser }) => {
