@@ -35,8 +35,8 @@ function Art({ kind }: { kind: 'folder' | 'list' | 'queue' | 'error' }) {
   }
   return (
     <svg viewBox="0 0 160 112" width="140" fill="none" aria-hidden="true">
-      <rect x="10" y="22" width="140" height="82" rx="12" fill="#f2f3f5" />
-      <path d="M10 34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12" stroke="#212124" strokeWidth="1.5" />
+      <path d="M10 92V34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12v48a12 12 0 0 1-12 12H22a12 12 0 0 1-12-12Z" fill="#e7e8eb" />
+      <path d="M10 50V34a12 12 0 0 1 12-12h34l10 10h72a12 12 0 0 1 12 12v6" stroke="#212124" strokeWidth="1.5" />
       <rect x="40" y="8" width="62" height="74" rx="6" fill="#fff" stroke="#212124" strokeWidth="1.5" />
       <path d="M52 26h38M52 36h38M52 46h24" stroke="#babbc2" strokeWidth="1.5" strokeLinecap="round" />
       <path d="M52 62c4 0 5-7 9-7s5 9 9 9 5-9 9-9 5 7 7 7" stroke="#ef3124" strokeWidth="2.5" strokeLinecap="round" />
