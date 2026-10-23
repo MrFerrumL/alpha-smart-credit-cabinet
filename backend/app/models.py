@@ -280,3 +280,32 @@ class Notification(Base):
     link: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DecisionExplanation(Base):
+    """Пояснение автоматического решения простыми словами (LLM). Своя таблица — она же очередь генерации:
+    строку заявки фоновая генерация не трогает никогда (у заявки оптимистическая блокировка)."""
+
+    __tablename__ = "decision_explanations"
+    __table_args__ = (Index("ix_decision_explanations_status_id", "status", "id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
+    # Ключ актуальности: событие решения, к которому относится пояснение. Новое решение — новое событие.
+    decision_event_id: Mapped[int] = mapped_column(ForeignKey("application_events.id"), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | running | ready | failed | skipped
+    # Аудит: что ушло в модель, версия промпта и модель.
+    facts: Mapped[dict | None] = mapped_column(JsonType)
+    prompt_version: Mapped[str | None] = mapped_column(String(32))
+    model: Mapped[str | None] = mapped_column(String(128))
+    text: Mapped[str | None] = mapped_column(Text)  # только прошедший проверку текст, целиком
+    # timeout | connect | http_503 | invalid:<правило> | moved_on …
+    error: Mapped[str | None] = mapped_column(String(64))
+    # Не прошедший проверку ответ, до 2000 знаков; наружу не отдаётся.
+    raw_response: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    decision_event: Mapped[ApplicationEvent] = relationship()

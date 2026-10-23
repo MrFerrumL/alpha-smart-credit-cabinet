@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,7 +53,18 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     seed_on_start: bool = True
 
+    # Необязательное пояснение решения простыми словами (LLM, OpenAI-совместимый API). По умолчанию выключено.
+    llm_enabled: bool = False
+    llm_base_url: str = "http://localhost:11434/v1"
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model: str = "qwen3:4b-instruct-2507-q4_K_M"
+
     log_level: str = "INFO"
+
+    @property
+    def llm_active(self) -> bool:
+        """Функция работает, только если включена и заданы адрес и модель. Одно свойство для API и воркера."""
+        return self.llm_enabled and bool(self.llm_base_url.strip()) and bool(self.llm_model.strip())
 
 
 @lru_cache
