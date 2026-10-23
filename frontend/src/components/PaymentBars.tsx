@@ -18,22 +18,22 @@ function addMonths(iso: string, months: number): string {
 }
 
 /**
- * График платежей столбиками: основной долг и проценты по месяцам. Подписи — у первого месяца и у каждого января
- * с годом, между ними — каждый третий месяц. Обычные div, без библиотек графиков.
+ * График платежей столбиками: основной долг и проценты по месяцам. Подписи — с постоянным шагом (каждый третий
+ * месяц, у длинных сроков — каждый шестой); год — у первой подписи и у первой подписи нового года (январь, если
+ * он попал на шаг). Обычные div, без библиотек графиков.
  */
 export function PaymentBars({ rows, firstDate, current }: { rows: BarRow[]; firstDate?: string; current?: number }) {
   if (rows.length === 0) return null;
   const dated = rows.map((r, i) => ({ ...r, date: r.date ?? (firstDate ? addMonths(firstDate, i) : undefined) }));
   const max = Math.max(...dated.map((r) => r.principal + r.interest));
   const step = rows.length > 24 ? 6 : 3;
-  // Подпись и её вес: с годом (первый месяц, январь) остаётся и на телефоне, промежуточные там скрыты.
+  const year = (i: number) => (dated[i].date ? new Date(dated[i].date!).getFullYear() : 0);
+  // Подпись и её вес: с годом остаётся и на телефоне, остальные там скрыты.
   const label = (iso: string | undefined, i: number): [string, boolean] => {
-    if (!iso) return [i === 0 || (i + 1) % step === 0 ? `${i + 1}` : '', i === 0];
-    const month = new Date(iso).getMonth();
-    if (i === 0 || month === 0) return [monthLabel(iso, true), true];
-    // Промежуточная подпись не встаёт вплотную к подписи с годом.
-    const nearMajor = [i - 1, i + 1].some((j) => j >= 0 && j < dated.length && dated[j].date && new Date(dated[j].date!).getMonth() === 0);
-    return [i % step === 0 && !nearMajor ? monthLabel(iso, false) : '', false];
+    if (i % step !== 0) return ['', false];
+    if (!iso) return [`${i + 1}`, i === 0];
+    const withYear = i === 0 || year(i) !== year(i - step);
+    return [monthLabel(iso, withYear), withYear];
   };
   return (
     <div className="potok-bars" aria-hidden="true">
