@@ -409,6 +409,7 @@ export function DecisionReasons({ app }: { app: Application }) {
 /** Что дальше по предложению — настоящая последовательность, поэтому с номерами. */
 export function NextSteps({ app }: { app: Application }) {
   const product = useProduct(app.offer?.product_code);
+  const { user } = useAuth();
   if (!['approved', 'counter_offer'].includes(app.status.code)) return null;
   const last =
     product?.repayment === 'interest_only'
@@ -420,8 +421,17 @@ export function NextSteps({ app }: { app: Application }) {
     <section className="potok-panel">
       <Title order={3}>Что дальше</Title>
       <ol className="potok-steps">
-        <li>Руководитель принимает предложение</li>
-        <li>Подписывает договор кодом из уведомления</li>
+        {user?.can_sign ? (
+          <>
+            <li>Вы принимаете предложение</li>
+            <li>Подписываете договор кодом в окне подписания</li>
+          </>
+        ) : (
+          <>
+            <li>Вы передаёте предложение руководителю</li>
+            <li>Руководитель принимает его и подписывает договор кодом в кабинете</li>
+          </>
+        )}
         <li>{last}</li>
       </ol>
     </section>
