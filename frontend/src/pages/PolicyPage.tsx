@@ -1,13 +1,13 @@
-import { Button, Skeleton, Slider, Text, Title } from "@mantine/core";
-import { useState } from "react";
-import { Link } from "react-router";
+import { Button, Skeleton, Slider, Text, Title } from '@mantine/core';
+import { useState } from 'react';
+import { Link } from 'react-router';
 
-import { ApiError } from "../api/client";
-import { usePolicySimulation } from "../api/hooks";
-import type { PolicySummary, Tone } from "../api/types";
-import { Chip } from "../components/Status";
-import { decimal, money, percent } from "../lib/format";
-import { nb } from "../lib/nobreak";
+import { ApiError } from '../api/client';
+import { usePolicySimulation } from '../api/hooks';
+import type { PolicySummary, Tone } from '../api/types';
+import { Chip } from '../components/Status';
+import { money, percent } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
 // Действующие пороги (правила от 22 октября) — с них начинается симулятор, к ним возвращает «Вернуть действующие».
 const CURRENT = { dsr: 50, coverage: 1.2 };
@@ -15,19 +15,20 @@ const DSR = { min: 20, max: 70, step: 5 };
 const COVERAGE = { min: 0.8, max: 2.5, step: 0.1 };
 
 const OUTCOME: Record<string, { title: string; tone: Tone }> = {
-  approved: { title: "Одобрение", tone: "success" },
-  counter_offer: { title: "Другие условия", tone: "warning" },
-  manual_review: { title: "Специалист", tone: "info" },
-  rejected: { title: "Отказ", tone: "danger" },
-  needs_info: { title: "Запрос информации", tone: "warning" },
+  approved: { title: 'Одобрение', tone: 'success' },
+  counter_offer: { title: 'Другие условия', tone: 'warning' },
+  manual_review: { title: 'Специалист', tone: 'info' },
+  rejected: { title: 'Отказ', tone: 'danger' },
+  needs_info: { title: 'Запрос информации', tone: 'warning' },
 };
 
 function Outcome({ code }: { code: string }) {
-  const o = OUTCOME[code] ?? { title: code, tone: "neutral" as Tone };
+  const o = OUTCOME[code] ?? { title: code, tone: 'neutral' as Tone };
   return <Chip tone={o.tone}>{o.title}</Chip>;
 }
 
-const x = (v: number) => `×${decimal(v, 1)}`;
+// Порог покрытия — всегда с одним знаком после запятой: «×1,2», «×2,0».
+const x = (v: number) => `×${v.toFixed(1).replace('.', ',')}`;
 
 /** Порог: что он значит, текущее значение крупно, слайдер с меткой действующего значения и краями шкалы. */
 function Rule({
@@ -69,11 +70,7 @@ function Rule({
           label={null}
           thumbLabel={title}
         />
-        <span
-          className="potok-rule-mark"
-          style={{ left: `${at}%` }}
-          aria-hidden="true"
-        >
+        <span className="potok-rule-mark" style={{ left: `${at}%` }} aria-hidden="true">
           <span>сейчас {currentLabel}</span>
         </span>
       </div>
@@ -90,8 +87,7 @@ function Summary({ title, s }: { title: string; s: PolicySummary }) {
     <div className="potok-sim-col">
       <Text fw={600}>{title}</Text>
       <Text fz="sm" c="dimmed">
-        нагрузка до {percent(s.max_dsr, 0)} выручки, покрытие от{" "}
-        {x(s.min_coverage)}
+        нагрузка до {percent(s.max_dsr, 0)} выручки, покрытие от {x(s.min_coverage)}
       </Text>
       <dl className="potok-pairs">
         <div>
@@ -105,7 +101,7 @@ function Summary({ title, s }: { title: string; s: PolicySummary }) {
       </dl>
       <div className="potok-sim-chips">
         {Object.entries(s.counts).map(([code, n]) => (
-          <Chip key={code} tone={OUTCOME[code]?.tone ?? "neutral"}>
+          <Chip key={code} tone={OUTCOME[code]?.tone ?? 'neutral'}>
             {OUTCOME[code]?.title ?? code}: {n}
           </Chip>
         ))}
@@ -119,18 +115,15 @@ export function PolicyPage() {
   const [maxDsr, setMaxDsr] = useState(CURRENT.dsr);
   const [coverage, setCoverage] = useState(CURRENT.coverage);
   const sim = usePolicySimulation();
-  const run = () =>
-    sim.mutate({ max_dsr: maxDsr / 100, min_coverage: coverage });
-  const changed =
-    maxDsr !== CURRENT.dsr || Math.abs(coverage - CURRENT.coverage) > 1e-9;
+  const run = () => sim.mutate({ max_dsr: maxDsr / 100, min_coverage: coverage });
+  const changed = maxDsr !== CURRENT.dsr || Math.abs(coverage - CURRENT.coverage) > 1e-9;
 
   return (
     <div className="potok-policy-page">
       <div>
         <Title order={1}>Кредитная политика</Title>
         <Text c="dimmed" mt={4}>
-          Измените пороги и посмотрите, как изменились бы решения по уже
-          поданным заявкам.
+          Измените пороги и посмотрите, как изменились бы решения по уже поданным заявкам.
         </Text>
       </div>
 
@@ -159,9 +152,8 @@ export function PolicyPage() {
             onChange={setCoverage}
           />
           <Text fz="sm" c="dimmed" mt="lg">
-            Действующие значения — по правилам от 22 октября. Пересчёт идёт теми
-            же правилами, что и в конвейере; для заявок у специалиста
-            сравнивается рекомендация конвейера.
+            Действующие значения — по правилам от 22 октября. Пересчёт идёт теми же правилами, что и в конвейере; для
+            заявок у специалиста сравнивается рекомендация конвейера.
           </Text>
           <div className="potok-cta" style={{ marginTop: 24 }}>
             <Button size="lg" onClick={run} loading={sim.isPending}>
@@ -183,18 +175,12 @@ export function PolicyPage() {
           </div>
           {sim.error && (
             <div className="potok-inline-note" data-tone="warn" role="alert">
-              {sim.error instanceof ApiError
-                ? sim.error.message
-                : "Не удалось рассчитать — попробуйте ещё раз."}
+              {sim.error instanceof ApiError ? sim.error.message : 'Не удалось рассчитать — попробуйте ещё раз.'}
             </div>
           )}
         </section>
 
-        <section
-          className="potok-panel"
-          aria-label="Что изменится"
-          aria-busy={sim.isPending}
-        >
+        <section className="potok-panel" aria-label="Что изменится" aria-busy={sim.isPending}>
           <Title order={3}>Что изменится</Title>
           {!sim.data ? (
             <>
@@ -215,8 +201,7 @@ export function PolicyPage() {
           ) : (
             <>
               <p className="potok-sim-total">
-                Изменится решение: {sim.data.changed.length} из{" "}
-                {sim.data.applications}
+                Изменится решение: {sim.data.changed.length} из {sim.data.applications}
               </p>
               <div className="potok-sim-cols">
                 <Summary title="По текущей политике" s={sim.data.current} />
@@ -230,17 +215,11 @@ export function PolicyPage() {
                 <ul className="potok-rows potok-sim-rows">
                   {sim.data.changed.map((r) => (
                     <li key={r.id}>
-                      <Link
-                        to={`/applications/${r.id}`}
-                        className="potok-row potok-sim-row"
-                      >
+                      <Link to={`/applications/${r.id}`} className="potok-row potok-sim-row">
                         <span className="potok-row-main">
-                          <span className="potok-row-title">
-                            {nb(r.company)}
-                          </span>
+                          <span className="potok-row-title">{nb(r.company)}</span>
                           <span className="potok-row-sub">
-                            {nb(r.number)}, {nb(r.product)},{" "}
-                            {money(r.requested)}
+                            {nb(r.number)}, {nb(r.product)}, {money(r.requested)}
                           </span>
                         </span>
                         <span className="potok-sim-change">
