@@ -117,6 +117,9 @@ flowchart LR
 | [docs/data-model.md](docs/data-model.md) | ER-диаграмма и пояснения к модели данных |
 | [docs/openapi.json](docs/openapi.json) | Спецификация API (живая версия — `/api/openapi.json`) |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | Сторонние компоненты и смоделированные интеграции |
+| [docs/test-scenarios.md](docs/test-scenarios.md) | Тестовые сценарии: демо-учётки, права, отказоустойчивость |
+| [docs/product/product-analytics.md](docs/product/product-analytics.md) | Рынок, конкуренты, пользователи, интервью, что добавить, метрики, питч |
+| [docs/product/knowledge-base.md](docs/product/knowledge-base.md) | Принципы текстов, база знаний для подсказок и ИИ-ассистента, глоссарий |
 
 ## Структура репозитория
 
@@ -132,7 +135,8 @@ backend/          core API: FastAPI, SQLAlchemy, Alembic
   tests/          автотесты (pytest)
 mocks/            эмулятор ЕГРЮЛ/ЕГРИП, БКИ, ФНС «Прозрачный бизнес» и АБС банка (выдача)
 frontend/         кабинет клиента и аналитика: React, TypeScript, Mantine
-docs/             архитектура, диаграмма состояний, модель данных, OpenAPI
+docs/             архитектура, диаграмма состояний, модель данных, OpenAPI, тестовые сценарии
+  product/        продуктовая аналитика и база знаний
 ```
 
 ## Разработка без Docker
