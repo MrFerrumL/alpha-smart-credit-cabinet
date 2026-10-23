@@ -1,4 +1,4 @@
-import { Badge, Button, Collapse, Group, Loader, Modal, Paper, Stack, Table, Text, Textarea, Title } from '@mantine/core';
+import { Button, Collapse, Group, Loader, Modal, Stack, Table, Text, Textarea, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -407,42 +407,47 @@ export function DecisionReasons({ app }: { app: Application }) {
 }
 
 /**
- * Пояснение решения простыми словами от языковой модели. Необязательный блок: пока текст готовится — строка
- * ожидания, когда готов — карточка с пометкой «Сгенерировано автоматически», иначе (функция выключена, ошибка,
- * пояснения нет) ничего не показываем: условия и причины банка выше остаются единственным источником.
+ * Пояснение решения простыми словами от языковой модели (необязательная функция) — панель второго плана, как у
+ * причин, сразу после них. Пока текст готовится — одна спокойная строка, когда готов — обычные абзацы и тихая
+ * пометка, что текст сформирован автоматически. Функция выключена, ошибка, текст не прошёл проверку — ничего:
+ * условия и причины банка выше остаются единственным источником.
  */
 export function AutoExplanation({ app }: { app: Application }) {
   const { data } = useDecisionExplanation(app);
-  if (data?.status === 'pending') {
-    return (
-      <Group gap="xs" data-testid="auto-explanation-pending" aria-live="polite">
-        <Loader size="xs" color="gray" />
-        <Text fz="sm" c="dimmed">
-          Готовим пояснение простыми словами…
-        </Text>
-      </Group>
-    );
-  }
-  if (data?.status === 'ready' && data.text) {
-    return (
-      <Paper withBorder p="md" radius="md" data-testid="auto-explanation" aria-live="polite">
-        <Group gap="xs" justify="space-between">
-          <Text fw={700}>Простыми словами</Text>
-          <Badge variant="light" color="gray">
-            Сгенерировано автоматически
-          </Badge>
+  const pending = data?.status === 'pending';
+  const text = data?.status === 'ready' ? data.text : null;
+  if (!pending && !text) return null;
+  // Один элемент и для ожидания, и для текста: область aria-live не пересоздаётся, готовый текст зачитывается.
+  return (
+    <section
+      className="potok-panel"
+      aria-live="polite"
+      aria-busy={pending}
+      data-testid={text ? 'auto-explanation' : 'auto-explanation-pending'}
+    >
+      {text ? (
+        <>
+          <Title order={3}>Простыми словами</Title>
+          {text.split(/\n+/).map((p, i) => (
+            <Text key={i} mt={i ? 8 : 10}>
+              {nb(typo(p))}
+            </Text>
+          ))}
+          <Text fz="sm" c="dimmed" mt="md">
+            Сформировано автоматически языковой моделью по данным этого решения. Если что-то расходится, действуют
+            условия и причины банка выше.
+          </Text>
+        </>
+      ) : (
+        <Group gap={8} wrap="nowrap">
+          <Loader size="xs" />
+          <Text fz="sm" c="dimmed">
+            Готовим пояснение простыми словами…
+          </Text>
         </Group>
-        <Text fz="sm" mt="xs">
-          {data.text}
-        </Text>
-        <Text fz="xs" c="dimmed" mt="xs">
-          Текст составлен языковой моделью по данным этого решения. Если что-то расходится, действуют условия и причины
-          банка выше.
-        </Text>
-      </Paper>
-    );
-  }
-  return null;
+      )}
+    </section>
+  );
 }
 
 /** Что дальше по предложению — настоящая последовательность, поэтому с номерами. */
