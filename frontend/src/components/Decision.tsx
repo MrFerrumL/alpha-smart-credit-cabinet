@@ -440,7 +440,7 @@ export function AutoExplanation({ app }: { app: Application }) {
         </>
       ) : (
         <Group gap={8} wrap="nowrap">
-          <Loader size="xs" />
+          <Loader size="xs" color="gray" />
           <Text fz="sm" c="dimmed">
             Готовим пояснение простыми словами…
           </Text>
