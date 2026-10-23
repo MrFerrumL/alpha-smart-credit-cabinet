@@ -208,7 +208,7 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8001/admin/faults -ContentT
 
 | Документ | Что внутри |
 |---|---|
-| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Всё для запуска и проверки в одном документе: версия, запуск, демо-учётки, основной сценарий, ссылки на документы, ограничения |
+| [docs/SUBMISSION.md](docs/SUBMISSION.md) | Всё для запуска и проверки в одном документе: версия, запуск, демо-учётки, основной сценарий, ссылки на документы, ограничения; то же в PDF — [docs/SUBMISSION.pdf](docs/SUBMISSION.pdf) |
 | [docs/product.md](docs/product.md) | Пользователи и их боли, модель кредитного процесса и его границы, почему такой MVP |
 | [docs/architecture.md](docs/architecture.md) | Компоненты, ключевые решения, безопасность, масштабирование |
 | [docs/state-machine.md](docs/state-machine.md) | Диаграмма состояний заявки, статусы и переходы (собрана из кода) |

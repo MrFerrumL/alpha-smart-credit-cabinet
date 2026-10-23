@@ -171,17 +171,19 @@ npm-пакетов — из поля `license` в `frontend/package-lock.json` �
 | actions/setup-node | v4 | MIT | Установка Node.js в CI |
 | actions/upload-artifact | v4 | MIT | Отчёт Playwright при падении сквозных проверок |
 
-## Сквозные проверки (`e2e/`, только проверка, не входят в решение)
+## Сквозные проверки и выгрузка документа в PDF (`e2e/`, не входят в решение)
 
-Запускаются в CI против поднятого `docker compose` (и локально по желанию), в образы не попадают.
+Проверки запускаются в CI против поднятого `docker compose` (и локально по желанию); выгрузка
+`docs/SUBMISSION.md` в PDF запускается вручную. В образы ничего из этого не попадает.
 
 | Компонент | Версия | Лицензия | Назначение |
 |---|---|---|---|
 | `@playwright/test` | 1.64.0 | Apache-2.0 | Сценарии демо-персон в браузере |
 | `newman` | 6.2.3 | Apache-2.0 | Прогон коллекции запросов `docs/postman_collection.json` |
-| Chromium (скачивается Playwright) | сборка 1248 для Playwright 1.64.0 | BSD-3-Clause и лицензии компонентов Chromium | Браузер для сценариев |
+| `marked` | 18.1.0 | MIT | Разметка `docs/SUBMISSION.md` в HTML для выгрузки в PDF (`npm run submission-pdf`); зависимостей нет |
+| Chromium (скачивается Playwright) | сборка 1248 для Playwright 1.64.0 | BSD-3-Clause и лицензии компонентов Chromium | Браузер для сценариев и печати `docs/SUBMISSION.pdf` |
 
-Всего в `e2e/package-lock.json` 151 пакет. По полю `license`: MIT — 104, Apache-2.0 — 22, ISC — 11,
+Всего в `e2e/package-lock.json` 152 пакета. По полю `license`: MIT — 105, Apache-2.0 — 22, ISC — 11,
 BSD-3-Clause — 6, BSD-2-Clause — 2, `(AFL-2.1 OR BSD-3-Clause)` — 1 (json-schema), `(BSD-3-Clause OR GPL-2.0)` —
 1 (node-forge, используется на условиях BSD-3-Clause), WTFPL — 1 (stream-length), Unlicense — 1 (tweetnacl).
 У двух пакетов поле `license` в lock-файле не заполнено, по их файлам LICENSE оба под MIT: httpntlm 1.8.13 и

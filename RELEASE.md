@@ -35,7 +35,7 @@ git checkout v1.0.0
 
 | Требование кейса | Где |
 |---|---|
-| Документ к форме сдачи: версия, запуск, демо-учётки, основной сценарий, документы, ограничения | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
+| Документ к форме сдачи: версия, запуск, демо-учётки, основной сценарий, документы, ограничения | [docs/SUBMISSION.md](docs/SUBMISSION.md), PDF — [docs/SUBMISSION.pdf](docs/SUBMISSION.pdf) |
 | README: назначение, архитектура, окружение, запуск, переменные, компоненты, сценарий проверки | [README.md](README.md) |
 | Исследование, модель процесса, обоснование MVP | [docs/product.md](docs/product.md) |
 | Архитектурная схема | [docs/architecture.md](docs/architecture.md) |
@@ -48,6 +48,18 @@ git checkout v1.0.0
 | Сторонние компоненты и смоделированные интеграции | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 | Модель кредитного решения | [docs/scoring.md](docs/scoring.md) |
 | История изменений | [CHANGELOG.md](CHANGELOG.md) |
+
+## PDF к форме сдачи
+
+`docs/SUBMISSION.pdf` собирается из `docs/SUBMISSION.md` (Node.js 22, Chromium из Playwright). Тег и хеш
+коммита подставляются при сборке, сам документ при этом не меняется:
+
+```bash
+cd e2e
+npm ci
+npx playwright install chromium
+npm run submission-pdf -- --tag v1.0.0 --commit "$(git rev-parse v1.0.0^{commit})"
+```
 
 ## Доступ
 

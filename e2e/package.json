@@ -5,10 +5,12 @@
   "description": "Сквозные проверки поднятого стенда: коллекция запросов (newman) и сценарии демо-персон в браузере (Playwright)",
   "scripts": {
     "api": "newman run ../docs/postman_collection.json --folder \"Сквозной сценарий: от заявки до выдачи\" --reporters cli",
-    "ui": "playwright test"
+    "ui": "playwright test",
+    "submission-pdf": "node scripts/submission-pdf.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
+    "marked": "18.1.0",
     "newman": "6.2.3"
   }
 }
