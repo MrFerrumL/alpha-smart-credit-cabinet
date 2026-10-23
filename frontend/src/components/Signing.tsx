@@ -317,14 +317,16 @@ export function IssuedCard({ app }: { app: Application }) {
           <Title order={3}>Ближайшие платежи</Title>
           <ul className="potok-rows">
             {upcoming.map((r) => (
-              <li key={r.n} className="potok-row">
-                <span className="potok-row-main">
-                  <span className="potok-row-title">{date(r.date)}</span>
-                  <span className="potok-row-sub">
-                    основной долг {money(r.principal)}, проценты {money(r.interest)}
+              <li key={r.n}>
+                <Link to={`/loans/${app.loan_id}`} className="potok-row">
+                  <span className="potok-row-main">
+                    <span className="potok-row-title">{date(r.date)}</span>
+                    <span className="potok-row-sub">
+                      основной долг {money(r.principal)}, проценты {money(r.interest)}
+                    </span>
                   </span>
-                </span>
-                <span className="potok-row-side">{money(r.payment)}</span>
+                  <span className="potok-row-side">{money(r.payment)}</span>
+                </Link>
               </li>
             ))}
           </ul>
