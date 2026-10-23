@@ -1,14 +1,27 @@
-const rub = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+// Числа как в банковском интерфейсе: разряды — узкий неразрывный пробел (U+202F), между числом и единицей —
+// неразрывный пробел (U+00A0), десятичная часть — через запятую. Строка не рвётся внутри суммы или срока.
+export const NBSP = ' ';
+export const THIN = ' ';
+
+const intFmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+
+/** Целое с узкими пробелами между разрядами: 3 000 000. */
+export function int(value: number): string {
+  return intFmt.format(Math.round(value)).replace(/[\s  ]/g, THIN);
+}
+
+/** Десятичное с запятой: 0,82; 22,9. */
+export function decimal(value: number, digits = 1): string {
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: digits }).replace(/[\s  ]/g, THIN);
+}
 
 export function money(value: number): string {
-  return `${rub.format(value)} ₽`;
+  return `${int(value)}${NBSP}₽`;
 }
 
 export function moneyShort(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
-  }
-  if (value >= 1_000) return `${rub.format(Math.round(value / 1_000))} тыс. ₽`;
+  if (value >= 1_000_000) return `${decimal(value / 1_000_000)}${NBSP}млн${NBSP}₽`;
+  if (value >= 1_000) return `${int(value / 1_000)}${NBSP}тыс.${NBSP}₽`;
   return money(value);
 }
 
@@ -21,11 +34,32 @@ export function plural(n: number, forms: [string, string, string]): string {
 }
 
 export function months(n: number): string {
-  return `${n} ${plural(n, ['месяц', 'месяца', 'месяцев'])}`;
+  return `${n}${NBSP}${plural(n, ['месяц', 'месяца', 'месяцев'])}`;
+}
+
+/** Срок коротко: 16 мес. */
+export function monthsShort(n: number): string {
+  return `${n}${NBSP}мес.`;
 }
 
 export function rate(value: number): string {
-  return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%`;
+  return `${decimal(value)}%`;
+}
+
+/** Доля в процентах: 0,239 → 23,9%. */
+export function percent(share: number, digits = 1): string {
+  return `${decimal(share * 100, digits)}%`;
+}
+
+/** Длительность коротко: 1 ч 43 мин, 25 мин, 2 дн 4 ч. */
+export function duration(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days > 0) return `${days}${NBSP}дн${hours ? `${NBSP}${hours}${NBSP}ч` : ''}`;
+  if (hours > 0) return `${hours}${NBSP}ч${mins ? `${NBSP}${mins}${NBSP}мин` : ''}`;
+  return `${mins}${NBSP}мин`;
 }
 
 const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
@@ -36,13 +70,33 @@ const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
 });
 
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonthFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+const shortDateFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const monthFmt = new Intl.DateTimeFormat('ru-RU', { month: 'short' });
 
 export function dateTime(iso: string): string {
-  return dateTimeFmt.format(new Date(iso));
+  return dateTimeFmt.format(new Date(iso)).replace(' в ', `${NBSP}в${NBSP}`);
 }
 
 export function date(iso: string): string {
-  return dateFmt.format(new Date(iso));
+  return dateFmt.format(new Date(iso)).replace(/\s*г\.$/, '');
+}
+
+/** 30 октября — без года, для сроков в пределах ближайших недель. */
+export function dayMonth(iso: string): string {
+  return dayMonthFmt.format(new Date(iso));
+}
+
+/** 23.11.2026 — для таблиц. */
+export function shortDate(iso: string): string {
+  return shortDateFmt.format(new Date(iso));
+}
+
+/** Подпись месяца на оси графика: «ноя», с годом — «ноя 2026». */
+export function monthLabel(iso: string, withYear: boolean): string {
+  const d = new Date(iso);
+  const m = monthFmt.format(d).replace('.', '');
+  return withYear ? `${m}${NBSP}${d.getFullYear()}` : m;
 }
 
 export function yearsSince(iso: string): number {
