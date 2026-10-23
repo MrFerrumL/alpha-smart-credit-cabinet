@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
 import { NewsFeed } from '../components/NewsFeed';
+import { LoadError } from '../components/States';
 import { CompanyCard, RecentNotifications } from '../components/Side';
 import { NBSP, dayMonth, greeting, money } from '../lib/format';
 import { nb } from '../lib/nobreak';
@@ -302,7 +303,15 @@ export function HomePage() {
               Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
             </div>
           )}
-          {apps.isLoading ? <Skeleton h={240} radius={24} /> : main ? <AppStatusCard app={main} /> : <Promo />}
+          {apps.isLoading ? (
+            <Skeleton h={240} radius={24} />
+          ) : apps.isError ? (
+            <LoadError error={apps.error} what="заявки" />
+          ) : main ? (
+            <AppStatusCard app={main} />
+          ) : (
+            <Promo />
+          )}
           {main && <PromoStrip />}
           {!!loans.data?.length && <LoansBrief loans={loans.data} />}
           {others.length > 0 && <OtherApps apps={others} />}

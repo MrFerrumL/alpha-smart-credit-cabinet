@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { useApplications } from '../api/hooks';
 import type { Application } from '../api/types';
-import { Empty } from '../components/States';
+import { Empty, LoadError } from '../components/States';
 import { Chip, StatusChip } from '../components/Status';
 import { duration, money, monthsShort } from '../lib/format';
 import { nb } from '../lib/nobreak';
@@ -100,6 +100,8 @@ export function QueuePage() {
 
       {all.isLoading ? (
         <Skeleton h={280} radius={24} />
+      ) : all.isError ? (
+        <LoadError error={all.error} what="очередь" />
       ) : list.length === 0 ? (
         <section className="potok-panel">
           <Empty

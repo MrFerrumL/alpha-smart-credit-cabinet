@@ -4,12 +4,12 @@ import { IconArrowLeft, IconChevronRight } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 
-import { api } from '../api/client';
+import { ApiError, api } from '../api/client';
 import { useApplications, useInterestOnly, useLoan, useLoans } from '../api/hooks';
 import type { Application, Loan, LoanDetail } from '../api/types';
 import { BarsLegend, PaymentBars } from '../components/PaymentBars';
 import { MyCompany } from '../components/Side';
-import { Empty } from '../components/States';
+import { Empty, LoadError } from '../components/States';
 import { Chip } from '../components/Status';
 import { NBSP, date, dayMonth, money, moneyBig, months, rate, shortDate } from '../lib/format';
 import { nb } from '../lib/nobreak';
@@ -189,6 +189,8 @@ export function LoansPage() {
         <Stack gap="lg">
           {loans.isLoading ? (
             <Skeleton h={200} radius={24} />
+          ) : loans.isError ? (
+            <LoadError error={loans.error} what="кредиты" />
           ) : list.length ? (
             <>
               {list.map((loan) => (
@@ -333,6 +335,19 @@ export function LoanPage() {
   const interestOnly = useInterestOnly(l?.product_code);
 
   if (loan.isLoading) return <Skeleton h={480} radius={24} />;
+  if (loan.isError && !(loan.error instanceof ApiError && loan.error.status === 404)) {
+    return (
+      <LoadError
+        error={loan.error}
+        what="кредит"
+        back={
+          <Button component={Link} to="/loans" size="lg" variant="default">
+            Мои кредиты
+          </Button>
+        }
+      />
+    );
+  }
   if (!l) {
     return (
       <section className="potok-panel">

@@ -23,6 +23,7 @@ import { Stepper } from '../components/Status';
 import { MAX_DEBT_SHARE, monthlyPayment } from '../lib/finance';
 import { NBSP, amountRange, date, money, moneyBig, moneyShort, months, monthsShort, percent, plural, rate } from '../lib/format';
 import { nb } from '../lib/nobreak';
+import { LoadError } from '../components/States';
 
 type StepKey = 'company' | 'params' | 'finance' | 'collateral' | 'documents' | 'review';
 
@@ -838,6 +839,19 @@ export function ApplicationWizardPage() {
         <Skeleton h={80} radius="lg" />
         <Skeleton h={360} radius="lg" />
       </Stack>
+    );
+  }
+  if (query.isError || products.isError || meta.isError) {
+    return (
+      <LoadError
+        error={query.error ?? products.error ?? meta.error}
+        what="анкету"
+        back={
+          <Button component={Link} to="/applications" size="lg" variant="default">
+            К списку заявок
+          </Button>
+        }
+      />
     );
   }
   if (!query.data || !products.data || !meta.data) return <Navigate to="/applications" replace />;

@@ -6,7 +6,7 @@ import { useApplications, useMeta } from '../api/hooks';
 import type { Application } from '../api/types';
 import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
-import { Empty } from '../components/States';
+import { Empty, LoadError } from '../components/States';
 import { money } from '../lib/format';
 
 type Filter = 'all' | 'active' | 'closed';
@@ -101,6 +101,8 @@ export function ApplicationsPage() {
           </div>
           {apps.isLoading ? (
             <Skeleton h={220} radius={24} />
+          ) : apps.isError ? (
+            <LoadError error={apps.error} what="заявки" />
           ) : !list.length ? (
             <section className="potok-panel">
               <Empty

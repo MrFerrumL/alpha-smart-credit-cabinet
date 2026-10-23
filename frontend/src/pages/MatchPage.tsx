@@ -307,6 +307,11 @@ export function MatchPage() {
             />
           ) : match.isLoading ? (
             <Skeleton h={320} radius={16} mt={16} />
+          ) : match.isError ? (
+            <div className="potok-inline-note" data-tone="warn" role="alert">
+              Не получилось подобрать варианты: сервер банка не ответил. Измените сумму или срок, чтобы повторить, или
+              обновите страницу.
+            </div>
           ) : (
             <div className="potok-offers">
               {best && (

@@ -1,9 +1,10 @@
-import { Button, Stack, Text, Title } from '@mantine/core';
+import { Button } from '@mantine/core';
 import { useEffect } from 'react';
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 
 import { useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
+import { Empty } from './components/States';
 import { FullScreenLoader } from './components/ui';
 import { ApplicationPage } from './pages/ApplicationPage';
 import { ApplicationWizardPage } from './pages/ApplicationWizardPage';
@@ -30,17 +31,21 @@ function RequireRole({ role }: { role: 'client' | 'analyst' }) {
   return <Outlet />;
 }
 
+/** Нет такой страницы — своя иллюстрация и путь назад, без крупного красного «404». */
 function NotFoundPage() {
   return (
-    <Stack align="center" py={80} gap="sm" ta="center">
-      <Title order={1} fz={64} c="brand.6">
-        404
-      </Title>
-      <Text c="dimmed">Такой страницы нет</Text>
-      <Button component={Link} to="/" mt="md">
-        На главную
-      </Button>
-    </Stack>
+    <section className="potok-panel">
+      <Empty
+        art="list"
+        title="Такой страницы нет"
+        text="Возможно, ссылка устарела или в ней опечатка."
+        action={
+          <Button component={Link} to="/" size="lg" variant="default">
+            На главную
+          </Button>
+        }
+      />
+    </section>
   );
 }
 
