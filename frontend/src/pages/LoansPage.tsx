@@ -1,6 +1,6 @@
 import { Anchor, Button, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
 import { useQueries } from '@tanstack/react-query';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconChevronRight } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 
@@ -62,12 +62,16 @@ function LoanRow({ loan }: { loan: Loan }) {
         </div>
       </dl>
       <Progress loan={loan} />
+      <span className="potok-loan-open">
+        Открыть кредит и график <IconChevronRight size={16} aria-hidden="true" />
+      </span>
     </Link>
   );
 }
 
 /** Ближайшие платежи по всем действующим кредитам — из графиков тех же кредитов (тот же запрос, что у страницы кредита). */
 function UpcomingPayments({ loans }: { loans: Loan[] }) {
+  const several = loans.length > 1;
   const details = useQueries({
     queries: loans.map((l) => ({ queryKey: ['loans', l.id], queryFn: () => api<LoanDetail>(`/loans/${l.id}`) })),
   });
@@ -91,7 +95,7 @@ function UpcomingPayments({ loans }: { loans: Loan[] }) {
               <span className="potok-row-main">
                 <span className="potok-row-title">{date(r.date)}</span>
                 <span className="potok-row-sub">
-                  {nb(r.loan.product_name)}: основной долг {money(r.principal)}, проценты {money(r.interest)}
+                  {several && <>{nb(r.loan.product_name)}: </>}основной долг {money(r.principal)}, проценты {money(r.interest)}
                 </span>
               </span>
               <span className="potok-row-side">{money(r.payment)}</span>
@@ -199,7 +203,21 @@ export function LoansPage() {
           )}
         </Stack>
         <Stack gap="lg">
-          {active.length > 0 && (
+          {next && (
+            <section className="potok-panel">
+              <Title order={3}>Следующий платёж</Title>
+              <div className="potok-side-amount">{moneyBig(next.next_payment_amount!)}</div>
+              <div className="potok-muted-text">
+                {date(next.next_payment_date!)}
+                {active.length > 1 ? `, ${next.product_name}` : ''}
+              </div>
+              <Text fz="sm" c="dimmed" mt="md">
+                Спишется с расчётного счёта автоматически — следить за датой не нужно.
+              </Text>
+            </section>
+          )}
+          {/* Сводка нужна, только когда кредитов несколько: при одном она повторила бы его карточку. */}
+          {active.length > 1 && (
             <section className="potok-panel">
               <Title order={3}>Сводка</Title>
               <dl className="potok-pairs">
@@ -211,18 +229,25 @@ export function LoansPage() {
                   <dt>Основной долг к погашению</dt>
                   <dd>{money(debt)}</dd>
                 </div>
-                {next && (
-                  <div>
-                    <dt>Ближайший платёж</dt>
-                    <dd>
-                      {money(next.next_payment_amount!)}, {dayMonth(next.next_payment_date!)}
-                    </dd>
-                  </div>
-                )}
               </dl>
-              <Text fz="sm" c="dimmed" mt="md">
-                Платежи списываются с расчётного счёта автоматически.
-              </Text>
+            </section>
+          )}
+          {list.length > 0 && (
+            <section className="potok-panel">
+              <Title order={3}>Документы</Title>
+              <ul className="potok-rows">
+                {list.map((l) => (
+                  <li key={l.id}>
+                    <Link to={`/applications/${l.application_id}/contract`} className="potok-row">
+                      <span className="potok-row-main">
+                        <span className="potok-row-title">Договор {nb(l.contract_number)}</span>
+                        <span className="potok-row-sub">с графиком платежей, подписан {date(l.issued_at)}</span>
+                      </span>
+                      <IconChevronRight size={18} className="potok-row-go" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
           <section className="potok-panel potok-strip-v">
@@ -231,7 +256,7 @@ export function LoansPage() {
               Подобрать кредит
             </Button>
           </section>
-          <MyCompany />
+          {!list.length && <MyCompany />}
         </Stack>
       </div>
     </Stack>
