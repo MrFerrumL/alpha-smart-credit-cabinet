@@ -15,7 +15,7 @@ import { Chip, StatusBlock, StatusChip } from './Status';
 const OUTCOMES: { value: DecisionOutcome; label: string }[] = [
   { value: 'approve', label: 'Одобрить' },
   { value: 'counter_offer', label: 'Контрпредложение' },
-  { value: 'request_info', label: 'Запросить' },
+  { value: 'request_info', label: 'Запросить документы' },
   { value: 'reject', label: 'Отказать' },
   { value: 'retry_checks', label: 'Повторить проверки' },
 ];

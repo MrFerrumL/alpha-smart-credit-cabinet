@@ -100,6 +100,24 @@ function nextAction(app: Application, role: string | undefined, onPage: boolean)
   }
 }
 
+/** Что происходит с заявкой — словами банка: аналитику не нужны клиентские «обычно это занимает 1–2 дня». */
+const BANK_HINT: Record<string, string> = {
+  draft: 'Клиент ещё заполняет анкету',
+  submitted: 'Заявка в очереди конвейера',
+  validation: 'Конвейер проверяет анкету',
+  enrichment: 'Конвейер запрашивает ЕГРЮЛ, ФНС и БКИ',
+  scoring: 'Конвейер считает оценку и условия',
+  needs_info: 'Ждём ответа клиента на запрос банка',
+  manual_review: 'Ждёт решения специалиста: проверьте оценку и условия и сохраните решение',
+  approved: 'Решение принято, ждём ответа клиента на предложение',
+  counter_offer: 'Сделано предложение на других условиях, ждём ответа клиента',
+  rejected: 'Заявка закрыта отказом',
+  signing: 'Клиент подписывает договор',
+  issued: 'Кредит выдан',
+  cancelled: 'Клиент отозвал заявку',
+  expired: 'Предложение истекло без ответа клиента',
+};
+
 /**
  * Компонент статуса заявки — один на главной, в списке, на странице заявки и у аналитика: степпер, «Шаг N из 7:
  * этап», что будет дальше и кнопка следующего шага.
@@ -141,7 +159,11 @@ export function StatusBlock({
             {where}
             {note && <span className="potok-status-note"> — {note}</span>}
           </div>
-          {hint && <div className="potok-status-next">{typo(app.status.hint)}</div>}
+          {hint && (
+            <div className="potok-status-next">
+              {typo(user?.role === 'analyst' ? (BANK_HINT[app.status.code] ?? app.status.title) : app.status.hint)}
+            </div>
+          )}
         </div>
         {next &&
           (next.to.startsWith('#') ? (
