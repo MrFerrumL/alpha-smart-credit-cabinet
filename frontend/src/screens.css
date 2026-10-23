@@ -321,6 +321,249 @@
   margin-top: 8px;
 }
 
+/* --- Главная -------------------------------------------------------------------------------------- */
+.potok-home {
+  display: grid;
+  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
+  justify-content: space-between;
+  gap: 32px;
+  align-items: start;
+}
+
+.potok-home-top,
+.potok-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.potok-home-amount {
+  margin-top: 12px;
+  font: 700 40px/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.potok-home-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 6px 0 20px;
+  color: var(--potok-steel);
+}
+
+.potok-home-terms span {
+  white-space: nowrap;
+}
+
+.potok-home-terms span + span {
+  padding-left: 16px;
+  border-left: 1px solid var(--potok-line-strong);
+}
+
+.potok-promo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 24px;
+  align-items: center;
+  padding: 32px;
+}
+
+.potok-promo-art {
+  width: 100%;
+  height: auto;
+}
+
+.potok-promo-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 28px 0 0;
+}
+
+.potok-promo-facts dt {
+  font: 600 18px/1.3 var(--font-display);
+}
+
+.potok-promo-facts dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+.potok-link {
+  color: var(--potok-ink) !important;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Строки-ссылки: заявки и кредиты списком, разделители вместо карточек. */
+.potok-rows {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-rows > li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 -12px;
+  padding: 14px 12px;
+  border-radius: var(--r-12);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.potok-row:hover {
+  background: var(--potok-hover);
+}
+
+.potok-row-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.potok-row-title {
+  font-weight: 500;
+}
+
+.potok-row-sub {
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-row-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.potok-row-side span {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--potok-steel);
+}
+
+.potok-row-go {
+  flex: 0 0 auto;
+  color: var(--potok-muted);
+}
+
+.potok-pairs {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.potok-pairs div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.potok-pairs dt {
+  color: var(--potok-steel);
+}
+
+.potok-pairs dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Лента: метка и дата строкой, заголовок не длиннее двух строк, пересказ — одна строка. */
+.potok-news ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-news li {
+  padding: 16px 0;
+}
+
+.potok-news li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-news-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--r-6, 6px);
+  background: var(--potok-canvas);
+  color: var(--potok-ink);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.potok-tag[data-tone='app'] {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.potok-news-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 8px;
+  font: 500 16px/1.4 var(--font-ui);
+}
+
+.potok-news-summary {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--potok-steel);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.potok-news-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-news-note {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
 /* --- Карточка аналитика --------------------------------------------------------------------------- */
 .potok-analyst {
   display: grid;
@@ -622,6 +865,33 @@
   }
 
   /* minmax(0, …): широкая таблица внутри не должна растягивать колонку шире экрана. */
+  .potok-home-amount {
+    font-size: 32px;
+  }
+
+  .potok-promo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 20px 16px;
+  }
+
+  /* На телефоне иллюстрация — узкая полоса над текстом, а не квадрат на пол-экрана. */
+  .potok-promo-art {
+    order: -1;
+    max-height: 120px;
+  }
+
+  .potok-promo .mantine-Button-root {
+    width: 100%;
+  }
+
+  .potok-strip {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  .potok-home,
   .potok-lists,
   .potok-below,
   .potok-below:has(> :first-child:empty),

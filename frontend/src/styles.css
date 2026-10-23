@@ -585,6 +585,11 @@ body {
 }
 
 /* --- Кнопки: главная — красная (одна на экране), вторичная — тон, текстовая — подчёркнутая ------- */
+/* Кнопка в строке с текстом не сжимается: подпись не обрезается, переносится текст рядом. */
+.mantine-Button-root {
+  flex-shrink: 0;
+}
+
 .mantine-Button-root[data-variant='default'] {
   background: var(--potok-canvas);
   border: 0;

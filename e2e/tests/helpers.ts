@@ -126,9 +126,12 @@ export async function expectIssued(page: Page, amount: string, term: number): Pr
 /** Заголовки ленты «Новости для вас» на главной. */
 export async function feedTitles(page: Page): Promise<string[]> {
   await page.goto('/');
-  const card = page.locator('.mantine-Card-root').filter({ has: page.getByRole('heading', { name: 'Новости для вас' }) });
-  const titles = card.locator('.mantine-Stack-root > div > p:first-child');
+  const feed = page.getByRole('region', { name: 'Новости для вас' });
+  const titles = feed.getByTestId('news-title');
   await expect(titles.first()).toBeVisible();
+  // На главной видны 3 новости — раскрываем все, чтобы сравнивать ленту целиком.
+  const more = feed.getByRole('button', { name: 'Все новости' });
+  if (await more.isVisible()) await more.click();
   return titles.allInnerTexts();
 }
 
