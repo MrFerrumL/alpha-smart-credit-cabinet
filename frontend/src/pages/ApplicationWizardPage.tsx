@@ -21,7 +21,7 @@ import { ChoiceList, ChoiceMark } from '../components/Choice';
 import { AmountTermFields, MoneyInput } from '../components/Money';
 import { Stepper } from '../components/Status';
 import { MAX_DEBT_SHARE, monthlyPayment } from '../lib/finance';
-import { NBSP, date, money, moneyBig, moneyShort, months, monthsShort, percent, plural, rate } from '../lib/format';
+import { NBSP, amountRange, date, money, moneyBig, moneyShort, months, monthsShort, percent, plural, rate } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 type StepKey = 'company' | 'params' | 'finance' | 'collateral' | 'documents' | 'review';
@@ -138,14 +138,14 @@ function NeededDocuments({ product }: { product: Product }) {
 }
 
 /**
- * Нагрузка: доля всех кредитных платежей в выручке на шкале с меткой лимита. До 35% — успех, 35–50% — внимание,
- * больше 50% — ошибка.
+ * Нагрузка: доля всех кредитных платежей в выручке — графитовая полоса на шкале с меткой лимита. Выше лимита —
+ * вывод цветом ошибки.
  */
 function DebtMeter({ share }: { share: number }) {
-  const tone = share <= 0.35 ? 'ok' : share <= MAX_DEBT_SHARE ? 'warn' : 'err';
+  const over = share > MAX_DEBT_SHARE;
   const pct = Math.min(100, Math.round(share * 100));
   return (
-    <div className="potok-meter" data-tone={tone}>
+    <div className="potok-meter" data-over={over}>
       <div className="potok-meter-track" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Кредитная нагрузка">
         <span className="potok-meter-fill" style={{ width: `${pct}%` }} />
         <span className="potok-meter-limit" style={{ left: `${MAX_DEBT_SHARE * 100}%` }} />
@@ -307,9 +307,10 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
       Назад
     </Button>
   );
+  // Без согласия на запрос в БКИ заявку не отправить — кнопка неактивна, пока согласие не отмечено.
   const next =
     step === 'review' ? (
-      <Button size="lg" onClick={send} loading={busy}>
+      <Button size="lg" onClick={send} loading={busy} disabled={!form.consent_bki}>
         Отправить в банк
       </Button>
     ) : (
@@ -385,8 +386,8 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
 
         <section className="potok-panel potok-wz-form fade-in" key={step}>
           <div className="potok-wz-stepno">
-            Шаг {stepNo + 1} из {steps.length}
-            {mobile ? `: ${STEP_LABELS[step]}` : ''}
+            Анкета: {stepNo + 1} из {steps.length}
+            {mobile ? `, ${STEP_LABELS[step].toLowerCase()}` : ''}
           </div>
 
           {step === 'company' && company && (
@@ -485,7 +486,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                   options={products.map((p) => ({
                     value: p.code,
                     title: p.name,
-                    text: `от ${rate(p.rate)} годовых, ${moneyShort(p.min_amount)}–${moneyShort(p.max_amount)}, решение ${p.decision_time}`,
+                    text: `от ${rate(p.rate)} годовых, ${amountRange(p.min_amount, p.max_amount)}, решение ${p.decision_time}`,
                   }))}
                 />
               </div>
@@ -525,7 +526,7 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 Финансы компании
               </Title>
               <Text className="potok-note">По этим цифрам банк считает, какой платёж бизнесу по силам.</Text>
-              <div className="potok-wz-row2" style={{ marginTop: 24 }}>
+              <div className="potok-wz-row2 potok-wz-group">
                 <MoneyInput
                   label={<SourceLabel text="Выручка в месяц" source={fromFns ? 'ФНС' : undefined} />}
                   value={form.finance.monthly_revenue ?? ''}
@@ -537,16 +538,24 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                   value={form.finance.monthly_expenses ?? ''}
                   onChange={(v) => setFinance('monthly_expenses', v)}
                 />
+                <MoneyInput
+                  unit=""
+                  thousandSeparator={undefined}
+                  label={<SourceLabel text="Сотрудников, включая вас" source={fromFns && financials.data?.employees ? 'ФНС' : undefined} />}
+                  value={form.finance.employees ?? ''}
+                  onChange={(v) => setFinance('employees', v)}
+                  max={100_000}
+                />
               </div>
               <Text fz="sm" c="dimmed" mt={8}>
                 {fromFns
-                  ? `Заполнили выручку и расходы по данным ФНС за ${financials.data?.reporting_year} год — поправьте, если сейчас иначе.`
+                  ? `Заполнили выручку, расходы и число сотрудников по данным ФНС за ${financials.data?.reporting_year} год — поправьте, если сейчас иначе.`
                   : financials.data
                     ? 'В налоговой нет данных о выручке — укажите её сами. Банк может попросить выписку, её можно приложить на шаге «Документы».'
                     : null}
               </Text>
 
-              <Title order={3} mt={32}>
+              <Title order={3} className="potok-wz-group">
                 Платите ли вы сейчас по другим кредитам?
               </Title>
               <Radio.Group
@@ -558,12 +567,13 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
               >
                 <div className="potok-choices potok-choices-row" role="radiogroup" aria-label="Платите ли вы сейчас по другим кредитам">
                   {[
-                    ['yes', 'Да'],
-                    ['no', 'Нет'],
-                  ].map(([value, title]) => (
+                    ['yes', 'Да', 'Платежи по ним учтём в нагрузке'],
+                    ['no', 'Нет', 'Других кредитов у компании нет'],
+                  ].map(([value, title, text]) => (
                     <Radio.Card key={value} value={value} className="potok-choice">
                       <span className="potok-choice-text">
                         <span className="potok-choice-title">{title}</span>
+                        <span className="potok-choice-sub">{text}</span>
                       </span>
                       <ChoiceMark />
                     </Radio.Card>
@@ -579,18 +589,13 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                   onChange={(v) => setFinance('debt_payments', v)}
                 />
               )}
-              {debtShare !== null && <DebtMeter share={debtShare} />}
 
-              <MoneyInput
-                mt={32}
-                maw={328}
-                unit=""
-                thousandSeparator={undefined}
-                label={<SourceLabel text="Сотрудников, включая вас" source={fromFns && financials.data?.employees ? 'ФНС' : undefined} />}
-                value={form.finance.employees ?? ''}
-                onChange={(v) => setFinance('employees', v)}
-                max={100_000}
-              />
+              {debtShare !== null && (
+                <section className="potok-wz-inset potok-wz-group" aria-label="Кредитная нагрузка">
+                  <Title order={3}>Кредитная нагрузка</Title>
+                  <DebtMeter share={debtShare} />
+                </section>
+              )}
             </>
           )}
 
@@ -621,6 +626,23 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                   error={err('collateral_value')}
                 />
               </div>
+              {/* Покрытие — из введённых сумм, без запросов к банку. */}
+              <ul className="potok-wz-inset potok-wz-facts">
+                <li>
+                  <span>Покрытие залогом</span>
+                  <b>
+                    {form.collateral?.value && params.amount > 0
+                      ? `залог ${money(form.collateral.value)} покрывает ${percent(form.collateral.value / params.amount, 0)} суммы кредита`
+                      : 'укажите стоимость залога'}
+                  </b>
+                </li>
+                {product.collateral?.toLowerCase().includes('поручительство') && (
+                  <li>
+                    <span>Поручительство собственника</span>
+                    <b>руководитель подтвердит его в кабинете после решения банка, перед выдачей</b>
+                  </li>
+                )}
+              </ul>
               <Textarea
                 mt="md"
                 label="Описание, необязательно"
@@ -753,7 +775,11 @@ function Wizard({ app, products, purposes }: { app: Application; products: Produ
                 <ReviewSection title="Документы" onEdit={() => goTo(indexOf('documents'))}>
                   <div className="potok-kv-full">
                     <dt>Приложено</dt>
-                    <dd>{documents.data?.length ? `${documents.data.length} ${plural(documents.data.length, ['файл', 'файла', 'файлов'])}` : 'пока ничего'}</dd>
+                    <dd>
+                      {documents.data?.length
+                        ? `${documents.data.length} ${plural(documents.data.length, ['файл', 'файла', 'файлов'])}`
+                        : 'Не приложены, банк запросит, если понадобятся'}
+                    </dd>
                   </div>
                 </ReviewSection>
               </div>

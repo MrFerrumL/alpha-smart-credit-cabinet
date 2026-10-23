@@ -32,6 +32,11 @@ export function moneyShort(value: number): string {
   return money(value);
 }
 
+/** Диапазон сумм словами: «от 300 тыс. до 10 млн ₽» — знак рубля один раз, в конце. */
+export function amountRange(min: number, max: number): string {
+  return `от${NBSP}${moneyShort(min).replace(`${NBSP}₽`, '')} до${NBSP}${moneyShort(max)}`;
+}
+
 export function plural(n: number, forms: [string, string, string]): string {
   const mod10 = n % 10;
   const mod100 = n % 100;

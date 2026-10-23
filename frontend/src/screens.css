@@ -668,7 +668,33 @@
 
 /* Шкала нагрузки: доля платежей от выручки, метка лимита 50%. */
 .potok-meter {
-  margin-top: 24px;
+  margin-top: 16px;
+}
+
+/* Группы вопросов анкеты — с одинаковым шагом. */
+.potok-wz-group {
+  margin-top: 32px !important;
+}
+
+.potok-wz-facts {
+  margin: 16px 0 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.potok-wz-facts li {
+  display: flex;
+  flex-direction: column;
+}
+
+.potok-wz-facts span {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-wz-facts b {
+  font-weight: 500;
 }
 
 .potok-meter-track {
@@ -682,15 +708,15 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 4px;
-  background: var(--ok-dot);
+  background: var(--potok-ink);
 }
 
-.potok-meter[data-tone='warn'] .potok-meter-fill {
-  background: var(--warn-dot);
+.potok-wz-inset .potok-meter-track {
+  background: var(--potok-paper);
 }
 
-.potok-meter[data-tone='err'] .potok-meter-fill {
-  background: var(--err-dot);
+.potok-meter[data-over='true'] .potok-meter-verdict {
+  color: var(--err-text);
 }
 
 .potok-meter-limit {
@@ -1684,6 +1710,15 @@ a.potok-note-title:hover {
   .potok-wz-row2,
   .potok-choices-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Документ на телефоне: название и пояснение во всю ширину, кнопка — под ними. */
+  .potok-doc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-doc .mantine-Button-root {
+    justify-self: start;
   }
 
   .potok-kv .potok-kv-wide {
