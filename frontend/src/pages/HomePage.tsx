@@ -4,15 +4,14 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
-import { useApplications, useCompanyLookup, useLinkCompany, useLoans, useProducts } from '../api/hooks';
+import { useApplications, useCompanyLookup, useLinkCompany, useLoans } from '../api/hooks';
 import type { Application, Loan } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { shownTerms } from '../components/ApplicationBlocks';
 import { AppRow } from '../components/AppRow';
+import { AppStatusCard } from '../components/AppStatusCard';
 import { NewsFeed } from '../components/NewsFeed';
 import { CompanyCard, RecentNotifications } from '../components/Side';
-import { StatusBlock, StatusChip } from '../components/Status';
-import { NBSP, dayMonth, greeting, money, moneyBig, months } from '../lib/format';
+import { NBSP, dayMonth, greeting, money } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 /** Своя иллюстрация промоблока: серые столбики роста, графитовая база и одна красная волна «Потока». */
@@ -79,35 +78,6 @@ function PromoStrip() {
       <Button component={Link} to="/match" size="md" variant="default">
         Подобрать кредит
       </Button>
-    </section>
-  );
-}
-
-/** Главная заявка — первым блоком: сумма, срок и платёж, затем общий компонент статуса с кнопкой следующего шага. */
-function HomeStatus({ app }: { app: Application }) {
-  const products = useProducts();
-  const terms = shownTerms(app, products.data);
-  const offer = ['approved', 'counter_offer'].includes(app.status.code) ? app.offer : null;
-  const offered = offer ? products.data?.find((p) => p.code === offer.product_code) : undefined;
-  const amount = offer?.amount ?? terms.amount;
-  const term = offer?.term_months ?? terms.term;
-  const interestOnly = offer ? offered?.repayment === 'interest_only' : terms.interestOnly;
-  // До решения платёж — оценка, после решения и в договоре — точный.
-  const payment = offer ? money(offer.monthly_payment) : terms.payment;
-  return (
-    <section className="potok-panel potok-home-status" aria-label="Текущая заявка">
-      <div className="potok-home-top">
-        <span className="potok-muted-text">
-          Заявка {nb(app.number)}, {nb(offered?.name ?? terms.product)}
-        </span>
-        <StatusChip app={app} />
-      </div>
-      <div className="potok-home-amount">{moneyBig(amount)}</div>
-      {/* Срок и платёж — одной фразой; «месяцев» целиком, без сокращения «мес.,». */}
-      <p className="potok-home-terms">
-        на {months(term)}, {payment} {interestOnly ? 'процентов в месяц' : 'в месяц'}
-      </p>
-      <StatusBlock app={app} />
     </section>
   );
 }
@@ -332,7 +302,7 @@ export function HomePage() {
               Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
             </div>
           )}
-          {apps.isLoading ? <Skeleton h={240} radius={24} /> : main ? <HomeStatus app={main} /> : <Promo />}
+          {apps.isLoading ? <Skeleton h={240} radius={24} /> : main ? <AppStatusCard app={main} /> : <Promo />}
           {main && <PromoStrip />}
           {!!loans.data?.length && <LoansBrief loans={loans.data} />}
           {others.length > 0 && <OtherApps apps={others} />}

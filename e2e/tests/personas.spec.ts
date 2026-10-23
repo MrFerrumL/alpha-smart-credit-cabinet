@@ -35,7 +35,7 @@ test('buh: бухгалтер готовит заявку и передаёт е
 
   const director = await session(browser, 'Ольга Северова');
   await director.getByRole('button', { name: 'Уведомления' }).click();
-  await expect(director.getByText(/Елена Счётова просит подписать кредит по заявке №/).first()).toBeVisible();
+  await expect(director.getByText(/Елена Счётова просит подписать кредит по заявке/).first()).toBeVisible();
   await director.goto(`/applications/${id}`);
   await director.getByRole('button', { name: 'Принять предложение' }).click();
   await sign(director);
@@ -84,9 +84,9 @@ test('clean: контрпредложение другим продуктом �
   await expect(page.locator('table tbody tr')).toHaveCount(12);
   // Карточка в «Мои заявки» тоже показывает выданные условия.
   await page.goto('/applications');
-  await page.getByText('Завершённые', { exact: true }).click();
-  const card = page.locator('.mantine-Card-root').filter({ hasText: 'Овердрафт' }).first();
-  await expect(card).toContainText('150 тыс. ₽ · 12 месяцев');
+  await page.getByRole('button', { name: /^Закрытые/ }).click();
+  const card = page.getByRole('link').filter({ hasText: 'Овердрафт' }).first();
+  await expect(card).toContainText('150 000 ₽ на 12 мес.');
 });
 
 test('smirnova: банк просит выписку, специалист сверяет и одобряет', async ({ page, browser }) => {
