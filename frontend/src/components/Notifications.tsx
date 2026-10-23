@@ -56,7 +56,7 @@ export function NotificationsBell() {
       onOpen={() => unread > 0 && readAll.mutate()}
     >
       <Popover.Target>
-        <Indicator label={unread} size={18} disabled={unread === 0} offset={4} color="brand">
+        <Indicator label={unread} size={18} disabled={unread === 0} offset={4} color="dark">
           <ActionIcon variant="subtle" color="gray" size="lg" radius="xl" onClick={() => setOpened((o) => !o)} aria-label="Уведомления">
             <IconBell size={22} />
           </ActionIcon>

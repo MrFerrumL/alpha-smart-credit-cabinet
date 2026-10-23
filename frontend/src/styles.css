@@ -249,3 +249,159 @@ body {
     background: #fff;
   }
 }
+
+/* --- Каркас: шапка в две строки и нижняя панель вкладок на телефоне ------------------------------ */
+.potok-wrap {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.potok-header {
+  background: var(--potok-canvas);
+}
+
+.potok-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 64px;
+  /* Линия — по ширине контента, без полей контейнера. */
+  background: linear-gradient(var(--potok-line), var(--potok-line)) center bottom / calc(100% - 48px) 1px no-repeat;
+}
+
+.potok-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.potok-org {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.potok-spacer {
+  flex: 1;
+}
+
+.potok-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 4px;
+  border-radius: var(--r-12);
+  font-size: 14px;
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+.potok-profile:hover {
+  background: var(--potok-hover);
+}
+
+.potok-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--potok-line-strong);
+  font: 600 13px/1 var(--font-ui);
+  color: var(--potok-ink);
+}
+
+.potok-profile-card {
+  padding: 12px 12px 8px;
+}
+
+.potok-tabs {
+  display: flex;
+  gap: 32px;
+  height: 56px;
+}
+
+.potok-tabs a {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  color: var(--potok-steel);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.potok-tabs a:hover {
+  color: var(--potok-ink);
+}
+
+.potok-tabs a[aria-current='page'] {
+  color: var(--potok-ink);
+  font-weight: 500;
+  border-bottom-color: var(--potok-ink);
+}
+
+.potok-page {
+  padding-top: 40px;
+  padding-bottom: 96px;
+}
+
+.potok-tabbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .potok-wrap {
+    padding: 0 16px;
+  }
+
+  .potok-top {
+    height: 56px;
+    gap: 12px;
+    background-size: calc(100% - 32px) 1px;
+  }
+
+  .potok-org,
+  .potok-profile-name,
+  .potok-tabs {
+    display: none;
+  }
+
+  .potok-page {
+    padding-top: 20px;
+  }
+
+  .potok-shell[data-tabbar='true'] .potok-page {
+    padding-bottom: 96px;
+  }
+
+  .potok-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: grid;
+    height: 64px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--potok-paper);
+    border-top: 1px solid var(--potok-line);
+  }
+
+  .potok-tabbar a {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--potok-steel);
+    text-decoration: none;
+  }
+
+  .potok-tabbar a[aria-current='page'] {
+    color: var(--potok-ink);
+    font-weight: 600;
+  }
+}
