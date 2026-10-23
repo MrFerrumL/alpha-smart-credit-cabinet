@@ -89,7 +89,8 @@ function nextAction(app: Application, role: string | undefined, onPage: boolean)
     case 'signing':
       return { label: 'Подписать договор', to: onPage ? '#signing' : page };
     case 'issued':
-      return app.loan_id ? { label: 'Кредит и график платежей', to: `/loans/${app.loan_id}` } : null;
+      // На странице заявки ссылка на кредит — в карточке выдачи; здесь не дублируем.
+      return app.loan_id && !onPage ? { label: 'Кредит и график платежей', to: `/loans/${app.loan_id}` } : null;
     case 'rejected':
     case 'expired':
     case 'cancelled':

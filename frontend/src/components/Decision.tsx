@@ -93,6 +93,8 @@ function Compare({ app, offered }: { app: Application; offered?: Product }) {
       months(offer.term_months),
       diffTerm > 0 ? `на ${monthsShort(diffTerm)} дольше` : diffTerm < 0 ? `на ${monthsShort(-diffTerm)} короче` : 'как просили',
     ],
+    // Ставка у заявки — объявленная ставка продукта «от», в предложении — точная; у другого продукта она другая.
+    ['Ставка', `от${NBSP}${rate(app.product.rate)}`, rate(offer.rate), null],
     ['Платёж в месяц', `≈${NBSP}${money(app.monthly_payment)}`, payment, null],
   ];
   return (
