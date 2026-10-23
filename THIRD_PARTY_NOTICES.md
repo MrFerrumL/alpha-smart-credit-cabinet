@@ -257,7 +257,7 @@ OpenAI-совместимый сервис (`LLM_BASE_URL`, `LLM_MODEL`); его
 
 | Компонент | Версия | Лицензия | Назначение |
 |---|---|---|---|
-| Qwen2.5-7B-Instruct (Alibaba Cloud, команда Qwen), квантование Q4_K_M, тег Ollama `qwen2.5:7b-instruct-q4_K_M` | 7,6 млрд параметров, 4,5 ГБ | Apache-2.0 | Модель пояснения по умолчанию. Карточка: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct, тег: https://ollama.com/library/qwen2.5:7b-instruct-q4_K_M; текст лицензии — в слое `license` модели в реестре Ollama |
+| Qwen2.5-7B-Instruct (Alibaba Cloud, команда Qwen), квантование Q4_K_M, тег Ollama `qwen2.5:7b-instruct-q4_K_M` | 7,6 млрд параметров, 4,7 ГБ | Apache-2.0 | Модель пояснения по умолчанию. Карточка: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct, тег: https://ollama.com/library/qwen2.5:7b-instruct-q4_K_M; текст лицензии — в слое `license` модели в реестре Ollama |
 | Ollama | 0.40.2 | MIT | Сервер модели с OpenAI-совместимым API: на ПК пользователя (архив `ollama-windows-amd64.zip` или установщик с ollama.com) или в профиле `llm` (образ `ollama/ollama:0.40.2`) |
 | llama.cpp / ggml (в составе Ollama) | — | MIT | Вычисления модели на процессоре и видеокарте |
 | NVIDIA CUDA Runtime, cuBLAS, cuBLASLt (в составе сборок Ollama) | 12 и 13 | лицензия NVIDIA CUDA Toolkit (бесплатная, проприетарная, разрешает распространение вместе с приложением) | Вычисления на видеокарте NVIDIA; без такой видеокарты не используются |
