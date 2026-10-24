@@ -16,7 +16,7 @@ export function ContractPage() {
   const c = contract.data;
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <Group justify="space-between" className="no-print">
         <Anchor component={Link} to={`/applications/${applicationId}`} fz="sm" c="dimmed">
           <Group gap={4}>
@@ -137,6 +137,6 @@ export function ContractPage() {
           </Group>
         </section>
       )}
-    </Stack>
+    </div>
   );
 }

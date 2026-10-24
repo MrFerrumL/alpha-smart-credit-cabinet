@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Button, Skeleton, Table, Text, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -66,7 +66,7 @@ export function QueuePage() {
   }, [current]);
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div className="potok-q-head">
         <div>
           <Title order={1}>Очередь заявок</Title>
@@ -178,6 +178,6 @@ export function QueuePage() {
           </ul>
         </section>
       )}
-    </Stack>
+    </div>
   );
 }

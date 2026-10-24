@@ -253,7 +253,7 @@ export function MatchPage() {
   };
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>Подобрать кредит</Title>
         <Text c="dimmed" mt={4}>
@@ -344,6 +344,6 @@ export function MatchPage() {
       </div>
 
       <ScheduleModal match={scheduleFor} onClose={() => setScheduleFor(null)} />
-    </Stack>
+    </div>
   );
 }

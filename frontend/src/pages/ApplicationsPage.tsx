@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Button, Skeleton, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -80,7 +80,7 @@ export function ApplicationsPage() {
   const closed = shown.filter((a) => a.status.terminal);
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>Мои заявки</Title>
         <Text c="dimmed" mt={4}>
@@ -88,7 +88,7 @@ export function ApplicationsPage() {
         </Text>
       </div>
       <div className="potok-below">
-        <Stack gap="md">
+        <div className="potok-col">
           <div className="potok-q-filters" role="group" aria-label="Фильтр заявок">
             {FILTERS.map((f) => (
               <button key={f.value} type="button" className="potok-q-filter" aria-pressed={f.value === filter} onClick={() => setFilter(f.value)}>
@@ -146,12 +146,12 @@ export function ApplicationsPage() {
               )}
             </>
           )}
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           {list.length > 0 && <Summary apps={list} />}
           <HowItGoes />
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

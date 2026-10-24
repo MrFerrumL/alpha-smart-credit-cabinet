@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Button, Skeleton, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 
 import { ApiError } from '../api/client';
@@ -109,7 +109,7 @@ export function LoadError({ error, what, back }: { error: unknown; what: string;
 /** Скелетон страницы заявки: в форме блока решения, а не пустое ожидание. */
 export function DecisionSkeleton() {
   return (
-    <Stack gap="lg" aria-busy="true" aria-label="Загружаем заявку">
+    <div className="potok-col" aria-busy="true" aria-label="Загружаем заявку">
       <Skeleton h={36} w="100%" maw={320} radius="md" />
       <div className="potok-decision">
         <Skeleton h={4} radius="xl" />
@@ -125,6 +125,6 @@ export function DecisionSkeleton() {
           ))}
         </div>
       </div>
-    </Stack>
+    </div>
   );
 }

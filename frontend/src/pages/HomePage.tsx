@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Text, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -266,7 +266,7 @@ export function HomePage() {
 
   if (!user.company) {
     return (
-      <Stack gap="lg">
+      <div className="potok-col">
         <div>
           <Title order={1}>
             {greeting()}, {firstName}
@@ -276,7 +276,7 @@ export function HomePage() {
           </Text>
         </div>
         <CompanyOnboarding />
-      </Stack>
+      </div>
     );
   }
 
@@ -286,7 +286,7 @@ export function HomePage() {
   const others = list.filter((a) => a.id !== main?.id).slice(0, 3);
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>
           {greeting()}, {firstName}
@@ -297,7 +297,7 @@ export function HomePage() {
         </Text>
       </div>
       <div className="potok-home">
-        <Stack gap="lg">
+        <div className="potok-col">
           {!user.can_sign && (
             <div className="potok-inline-note" style={{ marginTop: 0 }}>
               Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
@@ -316,13 +316,13 @@ export function HomePage() {
           {!!loans.data?.length && <LoansBrief loans={loans.data} />}
           {others.length > 0 && <OtherApps apps={others} />}
           <NewsFeed />
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           <RecentNotifications exclude={main ? `/applications/${main.id}` : undefined} />
           <CompanyCard company={user.company} />
           {!main && <HowItWorks />}
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

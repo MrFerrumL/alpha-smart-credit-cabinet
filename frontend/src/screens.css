@@ -225,11 +225,20 @@
   color: var(--potok-steel);
 }
 
-.potok-below {
+/* Колонка панелей и страница целиком — с тем же шагом, что между колонками. */
+.potok-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--potok-gap);
+  min-width: 0;
+}
+
+/* Основная колонка и боковая: 2 : 1, один шаг между ними. */
+.potok-below,
+.potok-home {
   display: grid;
-  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
-  justify-content: space-between;
-  gap: 32px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -328,14 +337,6 @@
 }
 
 /* --- Главная -------------------------------------------------------------------------------------- */
-.potok-home {
-  display: grid;
-  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
-  justify-content: space-between;
-  gap: 32px;
-  align-items: start;
-}
-
 .potok-home-top,
 .potok-panel-head {
   display: flex;
@@ -563,9 +564,8 @@
 .potok-wz-head,
 .potok-wz {
   display: grid;
-  grid-template-columns: 336px minmax(0, 672px);
-  justify-content: space-between;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--potok-gap);
 }
 
 .potok-wz-head {
@@ -574,14 +574,14 @@
 
 .potok-wz {
   align-items: start;
-  margin-top: 24px;
+  margin-top: var(--potok-gap);
 }
 
 .potok-wz-side {
   position: sticky;
   top: 16px;
   display: grid;
-  gap: 16px;
+  gap: var(--potok-gap);
 }
 
 .potok-wz-sum-what {
@@ -856,12 +856,12 @@
 }
 
 /* --- Подбор кредита ------------------------------------------------------------------------------- */
-/* Слева (7/12) три вопроса и варианты, справа (5/12) липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
+/* Слева три вопроса и варианты, справа липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
 .potok-match {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   grid-template-areas: 'q side' 'r side';
-  gap: 24px 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -1263,15 +1263,10 @@ a.potok-note-title:hover {
 }
 
 /* --- Кредитная политика --------------------------------------------------------------------------- */
-.potok-policy-page {
-  display: grid;
-  gap: 24px;
-}
-
 .potok-policy {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -1653,7 +1648,7 @@ a.potok-note-title:hover {
 .potok-analyst {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 408px;
-  gap: 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -2014,11 +2009,6 @@ a.potok-note-title:hover {
   .potok-wz-head,
   .potok-wz {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .potok-wz {
-    margin-top: 16px;
   }
 
   .potok-wz-side,
@@ -2129,7 +2119,6 @@ a.potok-note-title:hover {
   .potok-match {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'q' 'r' 'side';
-    gap: 16px;
   }
 
   .potok-match-side {

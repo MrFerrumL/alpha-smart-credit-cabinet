@@ -182,7 +182,7 @@ export function ApplicationPage() {
   const sent = app.submitted_at ?? app.created_at;
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         {back}
         <Group mt="sm" gap="md" align="center">
@@ -214,7 +214,7 @@ export function ApplicationPage() {
       {/* Одна раскладка для всех статусов: слева «почему» и история, справа «что дальше», документы и компания —
           ни одна колонка не остаётся пустой. */}
       <div className="potok-below">
-        <Stack gap="lg">
+        <div className="potok-col">
           <DecisionReasons app={app} />
           {/* Пояснение дополняет причины банка — сразу после них и вне блока решения, чтобы его появление не сдвигало
               кнопки. */}
@@ -228,8 +228,8 @@ export function ApplicationPage() {
             <Title order={3}>История</Title>
             {events.data && <History events={events.data} />}
           </section>
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           <NextSteps app={app} />
           {app.status.code === 'signing' && app.allowed_actions.includes('sign') && <SigningSteps />}
           {documents.data && documents.data.length > 0 && (
@@ -241,8 +241,8 @@ export function ApplicationPage() {
             </section>
           )}
           <MyCompany />
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

@@ -464,7 +464,7 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
   const a = assessment.data;
   const waiting = app.allowed_actions.includes('decide') && app.submitted_at;
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         {back}
         <Group mt="sm" gap="sm" align="center">
@@ -477,7 +477,7 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
         </Text>
       </div>
       <div className="potok-analyst">
-        <Stack gap="lg">
+        <div className="potok-col">
           <section className="potok-panel">
             {/* Действие аналитика — панель решения рядом (на телефоне — кнопка-якорь внизу), здесь без кнопки. */}
             <StatusBlock app={app} action={false} />
@@ -503,14 +503,14 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
             )
           )}
           <SourcesPanel app={app} />
-        </Stack>
-        <Stack gap="lg" className="potok-analyst-side">
+        </div>
+        <div className="potok-col potok-analyst-side">
           {a?.can_decide ? <DecisionForm key={app.status.code} app={app} a={a} /> : <DecidedPanel app={app} />}
           <section className="potok-panel">
             <Title order={3}>История</Title>
             {events && <History events={events} bank />}
           </section>
-        </Stack>
+        </div>
       </div>
       {a?.can_decide && (
         <div className="potok-bottombar potok-phone-only">
@@ -519,6 +519,6 @@ export function AnalystCard({ app, back, events }: { app: Application; back: Rea
           </Button>
         </div>
       )}
-    </Stack>
+    </div>
   );
 }

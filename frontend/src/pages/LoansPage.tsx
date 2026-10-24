@@ -1,4 +1,4 @@
-import { Anchor, Button, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, Button, Skeleton, Table, Text, Title } from '@mantine/core';
 import { useQueries } from '@tanstack/react-query';
 import { IconArrowLeft, IconChevronRight } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -178,7 +178,7 @@ export function LoansPage() {
     .filter((l) => l.next_payment_date && l.next_payment_amount)
     .sort((a, b) => a.next_payment_date!.localeCompare(b.next_payment_date!))[0];
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>Мои кредиты</Title>
         <Text c="dimmed" mt={4}>
@@ -186,7 +186,7 @@ export function LoansPage() {
         </Text>
       </div>
       <div className="potok-below">
-        <Stack gap="lg">
+        <div className="potok-col">
           {loans.isLoading ? (
             <Skeleton h={200} radius={24} />
           ) : loans.isError ? (
@@ -203,8 +203,8 @@ export function LoansPage() {
               <NoLoans apps={apps.data ?? []} />
             </section>
           )}
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           {next && (
             <section className="potok-panel">
               <Title order={3}>Следующий платёж</Title>
@@ -259,9 +259,9 @@ export function LoansPage() {
             </Button>
           </section>
           {!list.length && <MyCompany />}
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }
 
@@ -369,7 +369,7 @@ export function LoanPage() {
   const current = l.schedule.findIndex((r) => r.date === l.next_payment_date);
   const last = l.schedule[l.schedule.length - 1]?.date;
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Anchor component={Link} to="/loans" fz="sm" c="dimmed" className="potok-back no-print">
           <IconArrowLeft size={16} /> Мои кредиты
@@ -447,6 +447,6 @@ export function LoanPage() {
           <LoanTable rows={l.schedule} current={current >= 0 ? current : undefined} />
         </section>
       </section>
-    </Stack>
+    </div>
   );
 }

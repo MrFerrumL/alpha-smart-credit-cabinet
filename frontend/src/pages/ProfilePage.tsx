@@ -1,4 +1,4 @@
-import { Button, Stack, Text, Title } from '@mantine/core';
+import { Button, Text, Title } from '@mantine/core';
 import { Link } from 'react-router';
 
 import { useAuth } from '../auth/AuthContext';
@@ -14,7 +14,7 @@ export function ProfilePage() {
   if (!user) return null;
   const analyst = user.role === 'analyst';
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>{user.full_name}</Title>
         <Text c="dimmed" mt={4}>
@@ -23,7 +23,7 @@ export function ProfilePage() {
         </Text>
       </div>
       <div className="potok-below">
-        <Stack gap="lg">
+        <div className="potok-col">
           <section className="potok-panel">
             <Title order={3}>Учётная запись</Title>
             <dl className="potok-kv">
@@ -72,12 +72,12 @@ export function ProfilePage() {
               )}
             </div>
           </section>
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           {user.company && <CompanyCard company={user.company} />}
           <RecentNotifications limit={4} />
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

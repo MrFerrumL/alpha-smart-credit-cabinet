@@ -119,7 +119,7 @@ export function PolicyPage() {
   const changed = maxDsr !== CURRENT.dsr || Math.abs(coverage - CURRENT.coverage) > 1e-9;
 
   return (
-    <div className="potok-policy-page">
+    <div className="potok-col">
       <div>
         <Title order={1}>Кредитная политика</Title>
         <Text c="dimmed" mt={4}>
