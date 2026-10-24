@@ -173,6 +173,9 @@ export function TermControl({
   error?: ReactNode;
 }) {
   const presets = [...new Set([...TERM_PRESETS, max])].filter((v) => v >= min && v <= max).sort((a, b) => a - b);
+  // Ровные ряды: четыре — 2 × 2; из пяти второе значение убираем, чтобы не было ряда 3 + 2.
+  if (presets.length === 5) presets.splice(1, 1);
+  const columns = presets.length === 4 ? 2 : Math.min(presets.length, 3);
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   // Текст — как у правила продукта на сервере. Меньше минимума не ругаемся: человек, скорее всего, ещё печатает.
   const rangeError = value > max ? `Срок — от ${min} до ${max} мес.` : undefined;
@@ -190,7 +193,12 @@ export function TermControl({
         onBlur={() => onChange(clamp(value))}
         error={error ?? rangeError}
       />
-      <div className="potok-presets" role="group" aria-label="Быстрый выбор срока">
+      <div
+        className="potok-presets"
+        role="group"
+        aria-label="Быстрый выбор срока"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
         {presets.map((p) => (
           <button key={p} type="button" className="potok-preset" aria-pressed={value === p} onClick={() => onChange(p)}>
             {monthsShort(p)}
