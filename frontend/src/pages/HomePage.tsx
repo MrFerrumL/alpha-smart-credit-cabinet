@@ -12,6 +12,7 @@ import { AppStatusCard } from '../components/AppStatusCard';
 import { NewsFeed } from '../components/NewsFeed';
 import { LoadError } from '../components/States';
 import { CompanyCard, MoreMoney, RecentNotifications } from '../components/Side';
+import { byAction } from '../components/Status';
 import { NBSP, dayMonth, greeting, money } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
@@ -239,10 +240,12 @@ function CompanyOnboarding() {
   );
 }
 
-/** Какую заявку показать первой: та, где ход за клиентом, иначе самая свежая из идущих. */
+/**
+ * Какую заявку показать первой: где клиенту действовать срочнее всего (подписать, ответить на предложение, на запрос,
+ * дозаполнить), иначе самая свежая из идущих.
+ */
 function mainApplication(list: Application[]): Application | undefined {
-  const active = list.filter((a) => !a.status.terminal);
-  return [...active].sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id)[0];
+  return list.filter((a) => !a.status.terminal).sort(byAction)[0];
 }
 
 export function HomePage() {

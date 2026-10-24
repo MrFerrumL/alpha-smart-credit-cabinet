@@ -116,6 +116,16 @@ const BANK_HINT: Record<string, string> = {
   expired: 'Предложение истекло без ответа клиента',
 };
 
+// Что клиенту сделать сначала: подписать договор, ответить на предложение, на запрос банка, дозаполнить черновик.
+const ACTION_RANK: Record<string, number> = { signing: 0, approved: 1, counter_offer: 1, needs_info: 2, draft: 3 };
+
+const actionRank = (app: Application) => (app.status.action_required ? (ACTION_RANK[app.status.code] ?? 4) : 5);
+
+/** Порядок заявок: сначала та, где ход за клиентом и он важнее, затем свежие. */
+export function byAction(a: Application, b: Application): number {
+  return actionRank(a) - actionRank(b) || b.id - a.id;
+}
+
 /**
  * Этап, на котором банк запросил информацию: запрос после оценки не откатывает степпер к «Проверке данных».
  * Берётся из события перехода в needs_info (откуда пришла заявка).
