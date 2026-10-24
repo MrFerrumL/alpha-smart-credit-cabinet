@@ -1,10 +1,10 @@
 import { Button, Combobox, PasswordInput, Text, TextInput, Title, useCombobox } from '@mantine/core';
 import { useRef, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { Navigate, useLocation, useNavigate, type Location } from 'react-router';
 
 import { api } from '../api/client';
 import { notifyError, useDemoAccounts } from '../api/hooks';
-import type { DemoAccount, Tone, TokenResponse } from '../api/types';
+import type { DemoAccount, Tone, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Chip } from '../components/Status';
 import { Logo } from '../components/ui';
@@ -111,9 +111,19 @@ function EmailField({
   );
 }
 
+/**
+ * Куда после входа: на страницу, которую открывали без входа (ссылка из уведомления, закладка), иначе на главную
+ * роли. Чужую для роли страницу дальше развернёт RequireRole.
+ */
+function afterLogin(user: User, from: Location | undefined): string {
+  if (from && from.pathname !== '/login') return `${from.pathname}${from.search}${from.hash}`;
+  return user.role === 'analyst' ? '/queue' : '/';
+}
+
 export function LoginPage() {
   const { user, signIn } = useAuth();
   const navigate = useNavigate();
+  const from = (useLocation().state as { from?: Location } | null)?.from;
   const accounts = useDemoAccounts();
   const [pending, setPending] = useState(false);
   const [email, setEmail] = useState('');
@@ -121,11 +131,11 @@ export function LoginPage() {
   const submitRef = useRef<HTMLButtonElement>(null);
   const demo = accounts.data ?? [];
 
-  if (user) return <Navigate to={user.role === 'analyst' ? '/queue' : '/'} replace />;
+  if (user) return <Navigate to={afterLogin(user, from)} replace />;
 
   const finish = (token: TokenResponse) => {
     signIn(token);
-    navigate(token.user.role === 'analyst' ? '/queue' : '/', { replace: true });
+    navigate(afterLogin(token.user, from), { replace: true });
   };
 
   const submit = async (event: FormEvent) => {

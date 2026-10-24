@@ -7,6 +7,8 @@ import type { TokenResponse, User } from '../api/types';
 interface AuthState {
   user: User | null;
   loading: boolean;
+  /** Человек вышел сам: после нового входа — на главную, а не на страницу, с которой он вышел. */
+  signedOut: boolean;
   signIn: (token: TokenResponse) => void;
   signOut: () => void;
   refresh: () => Promise<void>;
@@ -18,38 +20,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(() => tokenStore.get() !== null);
+  const [signedOut, setSignedOut] = useState(false);
 
-  const signOut = useCallback(() => {
+  // Сессия закончилась (401, токен не принят) — после входа человек вернётся туда, где был.
+  const drop = useCallback(() => {
     tokenStore.clear();
     setUser(null);
     queryClient.clear();
   }, [queryClient]);
 
+  const signOut = useCallback(() => {
+    setSignedOut(true);
+    drop();
+  }, [drop]);
+
   const refresh = useCallback(async () => {
     try {
       setUser(await api<User>('/auth/me'));
     } catch {
-      signOut();
+      drop();
     } finally {
       setLoading(false);
     }
-  }, [signOut]);
+  }, [drop]);
 
   useEffect(() => {
-    setUnauthorizedHandler(signOut);
+    setUnauthorizedHandler(drop);
     if (tokenStore.get()) void refresh();
-  }, [refresh, signOut]);
+  }, [refresh, drop]);
 
   const signIn = useCallback(
     (token: TokenResponse) => {
       queryClient.clear();
       tokenStore.set(token.access_token);
+      setSignedOut(false);
       setUser(token.user);
     },
     [queryClient],
   );
 
-  const value = useMemo(() => ({ user, loading, signIn, signOut, refresh }), [user, loading, signIn, signOut, refresh]);
+  const value = useMemo(
+    () => ({ user, loading, signedOut, signIn, signOut, refresh }),
+    [user, loading, signedOut, signIn, signOut, refresh],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
