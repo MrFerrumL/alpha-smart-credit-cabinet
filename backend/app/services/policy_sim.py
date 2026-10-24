@@ -55,9 +55,12 @@ def simulate(db: Session, data: PolicySimulationIn) -> PolicySimulationOut:
             continue
         score = rules.score(f)
         args = (f, score, product, int(app.amount), app.term_months, purpose)
-        now = decide(*args)
-        with policy_override(max_dsr=data.max_dsr, min_dscr=data.min_coverage):
-            then = decide(*args)
+        try:
+            now = decide(*args)
+            with policy_override(max_dsr=data.max_dsr, min_dscr=data.min_coverage):
+                then = decide(*args)
+        except OverflowError:  # числа в снимке, сохранённом до ограничения сумм, не помещаются в расчёт
+            continue
         rows.append((now, then))
         if now.outcome != then.outcome or _offered(now) != _offered(then):
             changed.append(
