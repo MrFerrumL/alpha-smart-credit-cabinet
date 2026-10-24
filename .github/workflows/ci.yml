@@ -137,31 +137,36 @@ jobs:
         run: |
           docker compose down -v
           docker compose up -d --wait --wait-timeout 300
+      - name: Install ffmpeg for the demo video
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -n 1
       - name: Record the main scenario as a video (Playwright)
         id: demo
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:8080
         run: npm run demo
-      - name: Prepare the demo video (mp4 if ffmpeg is on the runner, webm otherwise)
+      - name: Convert the demo video to mp4 (required)
         if: always() && steps.demo.conclusion != 'skipped'
         run: |
+          set -euo pipefail
           mkdir -p e2e/demo-video
           webm="$(find e2e/demo-results -name video.webm 2>/dev/null | head -n 1 || true)"
           if [ -z "$webm" ]; then
-            echo "No video was recorded"
-            exit 0
+            echo "::error::No video was recorded"
+            exit 1
           fi
-          if command -v ffmpeg > /dev/null 2>&1 && ffmpeg -y -loglevel error -i "$webm" -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart e2e/demo-video/potok-demo.mp4; then
-            echo "Converted to mp4"
-          else
-            rm -f e2e/demo-video/potok-demo.mp4
-            cp "$webm" e2e/demo-video/potok-demo.webm
-            echo "ffmpeg is not available or failed, keeping the webm"
-          fi
+          ffmpeg -y -loglevel error -i "$webm" -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart e2e/demo-video/potok-demo.mp4
+          duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 e2e/demo-video/potok-demo.mp4)"
+          size="$(stat -c %s e2e/demo-video/potok-demo.mp4)"
+          echo "potok-demo.mp4: duration ${duration} s (ffprobe), size ${size} bytes"
           ls -l e2e/demo-video
           {
             echo "## Видео основного сценария"
+            echo
+            echo "\`potok-demo.mp4\`: длительность ${duration} с (ffprobe), размер ${size} байт."
             echo
             echo 'Артефакт `demo-video` в конце страницы прогона (Artifacts).'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -170,8 +175,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: demo-video
-          path: e2e/demo-video
-          if-no-files-found: warn
+          path: e2e/demo-video/potok-demo.mp4
+          if-no-files-found: error
           retention-days: 30
       - name: Playwright report on failure
         if: failure()
