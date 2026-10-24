@@ -26,6 +26,20 @@ def _finish(db: Session, job_id: int, status: str, error: str | None = None) -> 
     db.commit()
 
 
+def exhaust(db: Session, job: Job, error: str) -> None:
+    """Попытки кончились: заявка уходит по запасному пути шага (ON_EXHAUSTED), задача — в failed. Без коммита."""
+    app = db.get(Application, job.application_id)
+    handler = ON_EXHAUSTED.get(job.kind)
+    expected, _ = STEPS[job.kind]
+    if handler and app is not None and app.status == expected.value:
+        handler(db, app, error)
+    elif app is not None:
+        record_event(db, app, "pipeline_failed", Actor.SYSTEM, payload={"step": job.kind, "error": error})
+    job.status = "failed"
+    job.last_error = error
+    log.error("pipeline step failed", extra={"job": job.kind, "application_id": job.application_id, "error": error})
+
+
 def _retry_or_fail(session_factory: SessionFactory, job_id: int, error: str) -> None:
     settings = get_settings()
     with session_factory() as db:
@@ -40,17 +54,8 @@ def _retry_or_fail(session_factory: SessionFactory, job_id: int, error: str) -> 
                 extra={"job": job.kind, "application_id": job.application_id, "error": error},
             )
             return
-        app = db.get(Application, job.application_id)
-        handler = ON_EXHAUSTED.get(job.kind)
-        expected, _ = STEPS[job.kind]
-        if handler and app is not None and app.status == expected.value:
-            handler(db, app, error)
-        elif app is not None:
-            record_event(db, app, "pipeline_failed", Actor.SYSTEM, payload={"step": job.kind, "error": error})
-        job.status = "failed"
-        job.last_error = error
+        exhaust(db, job, error)
         db.commit()
-        log.error("pipeline step failed", extra={"job": job.kind, "application_id": job.application_id, "error": error})
 
 
 def process_next(session_factory: SessionFactory, sources: ExternalSources) -> bool:
