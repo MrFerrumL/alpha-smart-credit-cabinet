@@ -160,22 +160,42 @@ jobs:
           fi
           ffmpeg -y -loglevel error -i "$webm" -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart e2e/demo-video/potok-demo.mp4
           duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 e2e/demo-video/potok-demo.mp4)"
+          # The video should run about 2:30: outside 130–175 s the pace in e2e/tests/demo/director.ts needs tuning.
+          # The job fails after the summary is written, so the duration is visible there and the video is still uploaded.
+          if awk -v d="$duration" 'BEGIN { exit !(d >= 130 && d <= 175) }'; then in_window=yes; else in_window=no; fi
           size="$(stat -c %s e2e/demo-video/potok-demo.mp4)"
-          echo "potok-demo.mp4: duration ${duration} s (ffprobe), size ${size} bytes"
+          echo "potok-demo.mp4: duration ${duration} s (ffprobe), size ${size} bytes, within 130–175 s: ${in_window}"
+          # Beats with captions and mouse presses of the recording, to tune the pace next to the video.
+          for name in timeline.json presses.json; do
+            file="$(find e2e/demo-results -name "$name" 2>/dev/null | head -n 1 || true)"
+            if [ -n "$file" ]; then cp "$file" e2e/demo-video/; fi
+          done
           ls -l e2e/demo-video
           {
             echo "## Видео основного сценария"
             echo
             echo "\`potok-demo.mp4\`: длительность ${duration} с (ffprobe), размер ${size} байт."
+            if [ "$in_window" = yes ]; then
+              echo "Длительность в допустимом окне 130–175 с."
+            else
+              echo "**Длительность вне допустимого окна 130–175 с** — темп записи нужно подправить (PACE в \`e2e/tests/demo/director.ts\`)."
+            fi
             echo
-            echo 'Артефакт `demo-video` в конце страницы прогона (Artifacts).'
+            echo 'Артефакт `demo-video` в конце страницы прогона (Artifacts): видео, timeline.json и presses.json.'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$in_window" != yes ]; then
+            echo "::error::potok-demo.mp4 is ${duration} s long, outside the 130–175 s window: tune PACE in e2e/tests/demo/director.ts"
+            exit 1
+          fi
       - name: Upload demo video
         if: always() && steps.demo.conclusion != 'skipped'
         uses: actions/upload-artifact@v7
         with:
           name: demo-video
-          path: e2e/demo-video/potok-demo.mp4
+          path: |
+            e2e/demo-video/potok-demo.mp4
+            e2e/demo-video/timeline.json
+            e2e/demo-video/presses.json
           if-no-files-found: error
           retention-days: 30
       - name: Playwright report on failure
