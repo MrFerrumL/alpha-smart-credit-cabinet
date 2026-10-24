@@ -1,0 +1,54 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 423 >>
+stream
+BT
+/F1 16 Tf
+72 770 Td
+(Vypiska po schetu \(sinteticheskaya\)) Tj
+/F1 11 Tf
+0 -22 Td
+(Synthetic bank statement for the Potok demo stand.) Tj
+0 -22 Td
+(Account holder: demo client, test data only.) Tj
+0 -22 Td
+(Period: 01.04.2026 - 30.09.2026) Tj
+0 -22 Td
+(Incoming payments: 3 600 000 RUB \(about 600 000 RUB per month\)) Tj
+0 -22 Td
+(Outgoing payments: 3 150 000 RUB) Tj
+0 -22 Td
+(This is not a real bank document.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title <FEFF0412044B043F04380441043A04300020043F043E0020044104470451044204430020002804410438043D0442043504420438044704350441043A0430044F0029> /Producer (Potok demo) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000344 00000 n 
+0000000817 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1003
+%%EOF
