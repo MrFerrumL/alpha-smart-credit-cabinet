@@ -20,11 +20,6 @@ export function MoneyInput({ unit = '₽', ...props }: NumberInputProps & { unit
   );
 }
 
-export interface Tick {
-  value: number;
-  label: string;
-}
-
 // Логарифмическая шкала: 100 делений от минимума до максимума, значение округляется до круглого — 3 000 000
 // оказывается в середине шкалы, а не прижат к левому краю. Шаг округления растёт вместе с суммой.
 const LOG_STEPS = 100;

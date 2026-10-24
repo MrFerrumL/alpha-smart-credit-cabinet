@@ -662,21 +662,6 @@
   margin-top: 12px;
 }
 
-.potok-wz-fixed {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 16px;
-  font-size: 14px;
-  color: var(--potok-steel);
-}
-
-.potok-wz-fixed b {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--potok-ink);
-}
-
 /* Метка источника данных в подписи поля: «Выручка в месяц  ФНС». */
 .potok-src {
   display: inline-block;
@@ -900,15 +885,6 @@
   position: sticky;
   top: 16px;
 }
-
-.potok-match-sliders {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: start;
-  margin-top: 16px;
-}
-
 
 .potok-side-amount {
   margin-top: 12px;
@@ -2209,12 +2185,6 @@ a.potok-note-title:hover {
   /* Свёрнутый расчёт: сумма, срок и платёж; «что понадобится» и «что дальше» — по кнопке. */
   .potok-match-side[data-open='false'] {
     display: none;
-  }
-
-
-  .potok-match-sliders {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
   }
 
   .potok-offer {

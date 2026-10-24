@@ -10,12 +10,8 @@
   --potok-muted: #babbc2; /* neutral-500 */
   --potok-neutral-700: #898991; /* neutral-700 */
   --potok-hover: rgba(38, 55, 88, 0.06); /* neutral-translucent-100 */
-  --potok-press: rgba(30, 43, 68, 0.08); /* neutral-translucent-200 */
 
   --potok-accent: #ef3124; /* accent-primary: активный шаг, фокус, метки */
-  --potok-accent-fill: #e32a17; /* accent-primary-hover: заливка кнопки */
-  --potok-accent-hover: #d72505; /* accent-primary-press */
-  --potok-accent-press: #c41400; /* corp ruby wine */
 
   --ok-dot: #0cc44d; /* status-positive */
   --ok-bg: #d1f1d7; /* status-muted-alt-positive */
@@ -173,49 +169,6 @@ body {
   border-color: var(--potok-line-strong);
 }
 
-.clickable {
-  cursor: pointer;
-  transition: background-color var(--dur-hover) var(--ease);
-}
-
-.clickable:hover {
-  background-color: #fafafb;
-}
-
-.selectable {
-  border: 1px solid var(--potok-line-strong);
-}
-
-.selectable[data-selected='true'] {
-  border-color: var(--potok-ink);
-  box-shadow: inset 0 0 0 1px var(--potok-ink);
-}
-
-.best-offer {
-  box-shadow: inset 0 0 0 2px var(--potok-ink);
-}
-
-.nav-link {
-  border-radius: var(--r-12);
-  font-weight: 500;
-}
-
-.stage-line {
-  flex: 1;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--potok-line);
-  margin-top: 14px;
-}
-
-.stage-line[data-done='true'] {
-  background: var(--potok-ink);
-}
-
-.hero {
-  background: var(--potok-paper);
-}
-
 /* Появление: только у результата действия человека, не у каждой секции. */
 .fade-in {
   animation: fade-in var(--dur-panel) var(--ease-in) both;
@@ -225,11 +178,6 @@ body {
   from {
     opacity: 0;
   }
-}
-
-.pulse,
-.pulse-green {
-  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

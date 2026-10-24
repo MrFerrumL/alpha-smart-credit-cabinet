@@ -127,11 +127,6 @@ export function typo(text: string): string {
     .replace(/№ (?=\d)/g, `№${NBSP}`);
 }
 
-export function yearsSince(iso: string): number {
-  const ms = Date.now() - new Date(iso).getTime();
-  return Math.max(0, Math.floor(ms / (365.25 * 24 * 3600 * 1000)));
-}
-
 export function initials(name: string): string {
   return name
     .split(/\s+/)
