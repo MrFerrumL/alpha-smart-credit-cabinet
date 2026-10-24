@@ -1,4 +1,5 @@
 import { Anchor, Button, Checkbox, Collapse, Loader, Modal, PinInput, Stack, Text, Title } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -53,6 +54,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const left = useCountdown(challenge?.expires_at ?? null);
+  // Шесть полей size="lg" не помещаются в окно на телефоне.
+  const phone = useMediaQuery('(max-width: 45em)');
 
   const send = () => {
     setError(null);
@@ -93,7 +96,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Подписание договора</Text>} centered radius="lg">
+    // Заголовок — в h2 самого окна, оформлен как Title третьего уровня: вложенный Title дал бы h3 внутри h2.
+    <Modal opened={opened} onClose={onClose} title="Подписание договора" classNames={{ title: 'potok-modal-title' }} centered radius="lg">
       <Stack align="center" gap="md" ta="center">
         <Text fz="sm" c="dimmed" maw={340}>
           Введите одноразовый код, чтобы подписать договор простой электронной подписью.
@@ -111,7 +115,9 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
           length={6}
           type="number"
           oneTimeCode
-          size="lg"
+          size={phone ? 'md' : 'lg'}
+          gap={phone ? 8 : 'md'}
+          placeholder=""
           value={code}
           onChange={setCode}
           onComplete={submit}

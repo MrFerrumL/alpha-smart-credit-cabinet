@@ -1392,6 +1392,10 @@ a.potok-note-title:hover {
   color: var(--potok-steel);
 }
 
+.potok-modal-title {
+  font: 600 20px/1.3 var(--font-display);
+}
+
 /* Демо-код в окне подписи — спокойная плашка на «Тумане». */
 .potok-code-box {
   width: 100%;
