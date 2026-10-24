@@ -15,6 +15,7 @@ from app.scoring.features import Features
 from app.scoring.rules import ScoreResult
 
 POLICY_VERSION = "policy-1.1"
+LEGACY_POLICY_VERSION = "policy-1.0"  # версия решений, сохранённых до появления поля policy_version
 MAX_DSR = 0.5  # все кредитные платежи — не больше половины выручки
 MIN_DSCR = 1.2  # прибыль по данным ФНС покрывает платёж по новому кредиту с запасом 20 %
 

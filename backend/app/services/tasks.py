@@ -14,6 +14,7 @@ from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
 from app.models import Application, ClientTask, Document, User, utcnow
 from app.pipeline.queue import enqueue
 from app.services import storage
+from app.services.applications import require_owner
 from app.services.state_machine import apply_transition, record_event
 
 DOCUMENT_KINDS = {
@@ -39,11 +40,6 @@ def _own_task(db: Session, app: Application, task_id: int) -> ClientTask:
     if task.status != "open":
         raise Conflict("На этот запрос уже ответили")
     return task
-
-
-def _require_owner(app: Application, user: User) -> None:
-    if user.role != "client" or user.company_id != app.company_id:
-        raise NotFound("Заявка не найдена")
 
 
 def _set_form_field(app: Application, path: str, value) -> None:
@@ -104,7 +100,7 @@ def _resume_if_complete(db: Session, app: Application, user: User) -> None:
 
 
 def answer_task(db: Session, user: User, app: Application, task_id: int, answer: str) -> ClientTask:
-    _require_owner(app, user)
+    require_owner(app, user)
     task = _own_task(db, app, task_id)
     if not _accepts_answers(app, task):
         raise Conflict("Сейчас банк ничего не запрашивает по этой заявке")
@@ -135,7 +131,7 @@ def answer_task(db: Session, user: User, app: Application, task_id: int, answer:
 def upload_document(
     db: Session, user: User, app: Application, upload: UploadFile, kind: str, task_id: int | None
 ) -> Document:
-    _require_owner(app, user)
+    require_owner(app, user)
     if kind not in DOCUMENT_KINDS:
         raise BusinessValidationError(errors=[{"field": "kind", "message": "Неизвестный тип документа"}])
     task = _own_task(db, app, task_id) if task_id is not None else None

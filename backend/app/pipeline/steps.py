@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.domain.products import PRODUCTS, Purpose
-from app.domain.statuses import LIMIT_OPENED, Actor, Status
+from app.domain.statuses import LIMIT_OPENED, OFFER_STATUSES, Actor, Status
 from app.explanation import jobs as explanation_jobs
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
@@ -92,13 +92,14 @@ def validate(db: Session, app: Application, _: ExternalSources) -> None:
     _next(db, app, "pipeline.enrich")
 
 
-def _checks(db: Session, app: Application) -> dict[str, CheckResult]:
+def checks_by_source(db: Session, app: Application) -> dict[str, CheckResult]:
+    """Ответы внешних источников по заявке: источник → сохранённый результат (на источник одна строка)."""
     rows = db.scalars(select(CheckResult).where(CheckResult.application_id == app.id).order_by(CheckResult.id))
     return {row.source: row for row in rows}
 
 
 def enrich(db: Session, app: Application, sources: ExternalSources) -> None:
-    checks = _checks(db, app)
+    checks = checks_by_source(db, app)
     for source in SOURCES:
         existing = checks.get(source)
         if existing and existing.status == "ok":
@@ -131,7 +132,7 @@ def enrich(db: Session, app: Application, sources: ExternalSources) -> None:
 
 def enrich_exhausted(db: Session, app: Application, error: str) -> None:
     """Источник так и не ответил: заявка не теряется, а уходит специалисту с пометкой."""
-    failed = [SOURCE_TITLES[s] for s, c in _checks(db, app).items() if c.status != "ok"]
+    failed = [SOURCE_TITLES[s] for s, c in checks_by_source(db, app).items() if c.status != "ok"]
     reason = f"Не удалось получить данные: {', '.join(failed) or 'внешний источник'}. Заявку проверит специалист."
     apply_transition(db, app, Status.MANUAL_REVIEW, Actor.SYSTEM, comment=reason, payload={"error": error})
     app.decision = {
@@ -201,7 +202,7 @@ def _own_loans(db: Session, app: Application) -> tuple[int, int]:
 
 
 def score(db: Session, app: Application, _: ExternalSources) -> None:
-    checks = _checks(db, app)
+    checks = checks_by_source(db, app)
     product = PRODUCTS[app.product_code]
     has_statement = db.scalar(
         select(Document.id).where(Document.application_id == app.id, Document.kind == "bank_statement").limit(1)
@@ -243,14 +244,12 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
 def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
     """Выдача: перевод через АБС, создание кредита с графиком, статус «Деньги зачислены»."""
     from app.services.loans import first_payment_date  # локальный импорт: loans → schemas → без циклов
+    from app.services.tasks import open_issue_conditions  # локальный импорт: tasks → applications → steps
 
     offer = db.scalar(select(Offer).where(Offer.application_id == app.id, Offer.status == "signed").limit(1))
     if offer is None:
         return
-    open_conditions = db.scalars(
-        select(ClientTask).where(ClientTask.application_id == app.id, ClientTask.status == "open")
-    )
-    if any((t.payload or {}).get("condition") == "before_issue" for t in open_conditions):
+    if open_issue_conditions(db, app):
         return  # условия выдачи не закрыты: выдачу запустит закрытие последнего условия
     try:
         payment = sources.disburse(
@@ -320,8 +319,7 @@ def expire_offers(db: Session) -> int:
         .where(
             Offer.valid_until < now,
             or_(
-                (Offer.status == "active")
-                & Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+                (Offer.status == "active") & Application.status.in_([s.value for s in OFFER_STATUSES]),
                 (Offer.status == "accepted") & (Application.status == Status.SIGNING.value),
             ),
         )
@@ -331,8 +329,9 @@ def expire_offers(db: Session) -> int:
         try:
             offer, app = db.get(Offer, offer_id), db.get(Application, app_id)
             # Между выборкой и загрузкой клиент мог принять или подписать предложение — тогда не трогаем.
-            pending = (offer.status == "active" and app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value)) or (
-                offer.status == "accepted" and app.status == Status.SIGNING.value
+            status = Status(app.status)
+            pending = (offer.status == "active" and status in OFFER_STATUSES) or (
+                offer.status == "accepted" and status == Status.SIGNING
             )
             if not pending:
                 db.rollback()

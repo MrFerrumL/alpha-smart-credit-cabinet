@@ -17,11 +17,12 @@ from app.config import get_settings
 from app.domain.products import PRODUCTS, Product, Purpose, monthly_payment
 from app.domain.statuses import Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden
-from app.models import Application, CheckResult, ClientTask, Offer, ScoringResult, User, utcnow
+from app.models import Application, ClientTask, Offer, ScoringResult, User, utcnow
 from app.pipeline.queue import enqueue
-from app.pipeline.steps import SOURCE_TITLES, SOURCES
+from app.pipeline.steps import SOURCE_TITLES, SOURCES, checks_by_source
 from app.schemas import AnalystDecisionIn, AssessmentOut, FactorOut, ReplayOut, RevenueOut, StopCheckOut, TermsOut
 from app.scoring.decision import (
+    LEGACY_POLICY_VERSION,
     MAX_DSR,
     MIN_DSCR,
     POLICY_VERSION,
@@ -72,8 +73,7 @@ def _features(scoring: ScoringResult | None) -> Features | None:
 
 
 def _failed_sources(db: Session, app: Application) -> list[str]:
-    rows = db.scalars(select(CheckResult).where(CheckResult.application_id == app.id))
-    failed = {row.source for row in rows if row.status == "failed"}
+    failed = {source for source, row in checks_by_source(db, app).items() if row.status == "failed"}
     return [SOURCE_TITLES[s] for s in SOURCES if s in failed]
 
 
@@ -138,7 +138,7 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
         min_rate=float(min_rate) if min_rate is not None else None,
         max_dsr=MAX_DSR,
         min_coverage=MIN_DSCR,
-        policy_version=decision.get("policy_version") or ("policy-1.0" if scoring else POLICY_VERSION),
+        policy_version=decision.get("policy_version") or (LEGACY_POLICY_VERSION if scoring else POLICY_VERSION),
         authority_limit=settings.analyst_authority_limit,
         revenue_limit=revenue_limit(f, product, scoring.grade) if f and scoring else None,
         repayment=product.repayment,

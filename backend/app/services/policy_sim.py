@@ -10,14 +10,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domain.products import PRODUCTS, Purpose
-from app.domain.statuses import Status
+from app.domain.statuses import OFFER_STATUSES
 from app.models import Application, ScoringResult
 from app.schemas import PolicySimulationIn, PolicySimulationOut, SimulatedApplicationOut
 from app.scoring import rules
 from app.scoring.decision import decide, policy, policy_override
 from app.scoring.features import Features
-
-POSITIVE = {Status.APPROVED.value, Status.COUNTER_OFFER.value}
 
 
 def _latest_snapshots(db: Session) -> list[tuple[Application, dict]]:
@@ -80,7 +78,7 @@ def simulate(db: Session, data: PolicySimulationIn) -> PolicySimulationOut:
     def summary(index: int) -> dict:
         outcomes = [pair[index].outcome.value for pair in rows]
         counts = {status: outcomes.count(status) for status in sorted(set(outcomes))}
-        positive = sum(1 for o in outcomes if o in POSITIVE)
+        positive = sum(1 for pair in rows if pair[index].outcome in OFFER_STATUSES)
         return {
             "counts": counts,
             "approval_share": round(positive / len(rows), 3) if rows else 0.0,

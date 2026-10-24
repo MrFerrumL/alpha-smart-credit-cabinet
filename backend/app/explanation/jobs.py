@@ -18,6 +18,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.domain.statuses import Status
 from app.explanation import facts, prompt, validate
 from app.models import Application, ApplicationEvent, DecisionExplanation, utcnow
 from app.schemas import ExplanationOut
@@ -31,7 +32,9 @@ RUNNING_GRACE_S = 15  # к LLM_TIMEOUT_S для начатой строки (о�
 WARMUP_RETRY_S = 60  # прогрев, который не удался, повторяется не чаще раза в минуту и только в простое
 RAW_RESPONSE_CHARS = 2000
 # Статусы, в которые заявка переходит по решению: новое такое событие делает прежнее пояснение неактуальным.
-DECISION_EVENT_STATUSES = {"approved", "counter_offer", "rejected", "needs_info", "manual_review"}
+DECISION_EVENT_STATUSES = {
+    s.value for s in (Status.APPROVED, Status.COUNTER_OFFER, Status.REJECTED, Status.NEEDS_INFO, Status.MANUAL_REVIEW)
+}
 
 SessionFactory = Callable[[], Session]
 
