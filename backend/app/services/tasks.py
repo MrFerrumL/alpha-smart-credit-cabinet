@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.db import get_by_id
 from app.domain.statuses import Actor, Status
-from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
+from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, max_value_message
 from app.models import Application, ClientTask, Document, User, utcnow
 from app.pipeline.queue import enqueue
+from app.schemas import MAX_MONEY
 from app.services import storage
 from app.services.applications import require_owner
 from app.services.state_machine import apply_transition, record_event
@@ -115,9 +116,12 @@ def answer_task(db: Session, user: User, app: Application, task_id: int, answer:
         raise BusinessValidationError("Для этого запроса нужно загрузить документ")
     field = (task.payload or {}).get("field")
     if task.kind == "field" and (task.payload or {}).get("input") == "money":
-        digits = "".join(ch for ch in answer if ch.isdigit())
-        if not digits or int(digits) <= 0:
+        # Только цифры 0–9 (isdigit() пропускает «²», на котором int() падает); длина проверяется до int().
+        digits = "".join(ch for ch in answer if ch in "0123456789").lstrip("0")
+        if not digits:
             raise BusinessValidationError(errors=[{"field": "answer", "message": "Укажите сумму в рублях"}])
+        if len(digits) > len(str(MAX_MONEY)) or int(digits) > MAX_MONEY:
+            raise BusinessValidationError(errors=[{"field": "answer", "message": max_value_message(field, MAX_MONEY)}])
         _set_form_field(app, field, int(digits))
     elif field:
         _set_form_field(app, field, answer.strip())

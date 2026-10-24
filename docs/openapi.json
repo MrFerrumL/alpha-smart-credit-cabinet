@@ -2727,6 +2727,7 @@
             "anyOf": [
               {
                 "type": "integer",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -3515,6 +3516,7 @@
             "anyOf": [
               {
                 "type": "integer",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -3528,6 +3530,7 @@
             "anyOf": [
               {
                 "type": "integer",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -3541,6 +3544,7 @@
             "anyOf": [
               {
                 "type": "integer",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {

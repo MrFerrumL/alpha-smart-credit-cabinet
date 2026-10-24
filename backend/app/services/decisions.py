@@ -7,6 +7,7 @@
 помечается в журнале аудита, обоснование обязательно и клиенту не показывается.
 """
 
+from collections.abc import Callable
 from datetime import timedelta
 from decimal import Decimal
 
@@ -81,14 +82,22 @@ def _dsr(value: float | None) -> float | None:
     return round(value, 4) if value is not None else None
 
 
+def _safe[T](calc: Callable[[], T]) -> T | None:
+    # Суммы, сохранённые до ограничений анкеты, могут не помещаться во float: показатель тогда не показывается.
+    try:
+        return calc()
+    except OverflowError:
+        return None
+
+
 def _terms(product: Product, f: Features | None, amount: int, term: int, rate: Decimal) -> TermsOut:
     return TermsOut(
         amount=amount,
         term_months=term,
         rate=float(rate),
         monthly_payment=int(monthly_payment(amount, rate, term, product.repayment)),
-        dsr=_dsr(debt_service_ratio(f, product, amount, term, rate)) if f else None,
-        coverage=round(c, 2) if f and (c := coverage(f, product, amount, term, rate)) is not None else None,
+        dsr=_dsr(_safe(lambda: debt_service_ratio(f, product, amount, term, rate))) if f else None,
+        coverage=round(c, 2) if f and (c := _safe(lambda: coverage(f, product, amount, term, rate))) is not None else None,
     )
 
 
@@ -108,7 +117,7 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
     if f is not None:
         gap = None
         if f.declared_revenue_monthly and f.revenue_monthly:
-            gap = round((f.declared_revenue_monthly / f.revenue_monthly - 1) * 100, 1)
+            gap = _safe(lambda: round((f.declared_revenue_monthly / f.revenue_monthly - 1) * 100, 1))
         revenue = RevenueOut(
             declared_monthly=f.declared_revenue_monthly,
             confirmed_monthly=f.revenue_monthly,
@@ -132,7 +141,7 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
         revenue=revenue,
         existing_payments=f.existing_payments if f else None,
         declared_debt_payments=f.declared_debt_payments if f else None,
-        monthly_profit=monthly_profit(f) if f else None,
+        monthly_profit=_safe(lambda: monthly_profit(f)) if f else None,
         requested=_terms(product, f, int(app.amount), app.term_months, min_rate or product.rate),
         recommendation=_terms(product, f, rec["amount"], rec["term_months"], Decimal(rec["rate"])) if rec else None,
         min_rate=float(min_rate) if min_rate is not None else None,
@@ -140,7 +149,7 @@ def assessment(db: Session, user: User, app: Application) -> AssessmentOut:
         min_coverage=MIN_DSCR,
         policy_version=decision.get("policy_version") or (LEGACY_POLICY_VERSION if scoring else POLICY_VERSION),
         authority_limit=settings.analyst_authority_limit,
-        revenue_limit=revenue_limit(f, product, scoring.grade) if f and scoring else None,
+        revenue_limit=_safe(lambda: revenue_limit(f, product, scoring.grade)) if f and scoring else None,
         repayment=product.repayment,
         product_limits={
             "min_amount": product.min_amount,

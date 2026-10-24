@@ -176,7 +176,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         amount=int(app.amount),
         term_months=app.term_months,
         monthly_payment=int(monthly_payment(app.amount, product.rate, app.term_months, product.repayment)),
-        form=ApplicationForm.model_validate(app.form or {}),
+        form=ApplicationForm.model_validate(app.form or {}, context={"stored": True}),
         company=CompanyRef(id=app.company.id, inn=app.company.inn, name=app.company.short_name),
         allowed_actions=actions,
         awaiting_signer=awaiting,

@@ -140,6 +140,15 @@ def _schema_message(err: dict) -> str:
     return f"{label} — {text}" if label else text[:1].upper() + text[1:]
 
 
+def max_value_message(field: str, limit: int) -> str:
+    """Сообщение как у поля схемы с верхней границей: «Выручка в месяц — не больше 1 000 000 000 000»."""
+    return _schema_message({"type": "less_than_equal", "loc": tuple(field.split(".")), "ctx": {"le": limit}})
+
+
+# Ответы, которые FastAPI формирует сам, — тоже по-русски. Тело не разбирается, например, с числом длиннее 4300 цифр.
+_HTTP_DETAILS = {"There was an error parsing the body": "Не удалось разобрать запрос: проверьте числа и формат данных"}
+
+
 def _problem(status: int, code: str, title: str, detail: str, errors: list[dict] | None = None) -> JSONResponse:
     body: dict = {"status": status, "code": code, "title": title, "detail": detail}
     if errors:
@@ -166,7 +175,8 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        return _problem(exc.status_code, "http_error", str(exc.detail), str(exc.detail))
+        detail = _HTTP_DETAILS.get(str(exc.detail), str(exc.detail))
+        return _problem(exc.status_code, "http_error", detail, detail)
 
     @app.exception_handler(Exception)
     async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:

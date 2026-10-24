@@ -181,3 +181,39 @@ def test_schema_errors_are_explained_in_russian(client):
     )
     assert errors(decision, "reasons.0") == "Причина отказа — не длиннее 300 символов"
     assert errors(decision, "rate") == "Ставка — меньше 100"
+
+
+def test_huge_money_is_a_readable_validation_error_not_a_server_error(client):
+    owner = auth(client, "bakery@demo.local")
+    body = {"product_code": "express", "purpose": "working_capital", "amount": 1_000_000, "term_months": 12}
+    limit = "не больше 1 000 000 000 000"
+    cases = {
+        "form.finance.monthly_revenue": ({"finance": {"monthly_revenue": 10**15}}, f"Выручка в месяц — {limit}"),
+        "form.finance.monthly_expenses": ({"finance": {"monthly_expenses": 10**400}}, f"Расходы в месяц — {limit}"),
+        "form.finance.debt_payments": ({"finance": {"debt_payments": 10**13}}, f"Платежи по текущим кредитам — {limit}"),
+        "form.collateral.value": ({"collateral": {"value": 10**18}}, f"Стоимость обеспечения — {limit}"),
+    }
+    for field, (form, message) in cases.items():
+        response = client.post("/api/applications", json=body | {"form": form}, headers=owner)
+        assert response.status_code == 422, response.text
+        assert response.json()["errors"] == [{"field": field, "message": message}]
+    edge = client.post("/api/applications", json=body | {"form": {"finance": {"monthly_revenue": 10**12}}}, headers=owner)
+    assert edge.status_code == 201, edge.text
+
+    analyst = auth(client, "analyst@demo.local")
+    decision = client.post(
+        f"/api/applications/{edge.json()['id']}/decision",
+        json={"outcome": "counter_offer", "comment": "Обоснование решения", "amount": 10**15, "term_months": 12},
+        headers=analyst,
+    )
+    assert decision.status_code == 422
+    assert decision.json()["errors"] == [{"field": "amount", "message": "Сумма — не больше 1 000 000 000"}]
+
+    # Число длиннее 4300 цифр JSON-парсер Python не разбирает вовсе: ответ всё равно понятный, а не 500.
+    longest = client.post(
+        "/api/applications",
+        content='{"amount": 1' + "0" * 5000 + "}",
+        headers=owner | {"Content-Type": "application/json"},
+    )
+    assert longest.status_code == 400
+    assert longest.json()["title"].startswith("Не удалось разобрать запрос")
