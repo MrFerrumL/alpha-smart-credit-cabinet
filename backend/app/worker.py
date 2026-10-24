@@ -41,8 +41,12 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     sources = get_sources()
 
-    with SessionLocal() as db:
-        recovered = recover_stale(db)
+    try:
+        with SessionLocal() as db:
+            recovered = recover_stale(db)
+    except Exception:  # noqa: BLE001 — сбой восстановления не мешает старту: цикл повторит его при уборке
+        log.exception("stale job recovery failed, continuing")
+        recovered = 0
     log.info("worker started", extra={"recovered": recovered})
     if settings.llm_active:
         # Пояснение решения: отдельный поток, чтобы медленная модель не задерживала шаги конвейера.
