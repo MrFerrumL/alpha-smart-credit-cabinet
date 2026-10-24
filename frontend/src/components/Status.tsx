@@ -2,7 +2,7 @@ import { Button } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
-import { useMeta } from '../api/hooks';
+import { useEvents, useMeta } from '../api/hooks';
 import type { Application, StatusInfo, Tone } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { typo } from '../lib/format';
@@ -116,6 +116,20 @@ const BANK_HINT: Record<string, string> = {
 };
 
 /**
+ * Этап, на котором банк запросил информацию: запрос после оценки не откатывает степпер к «Проверке данных».
+ * Берётся из события перехода в needs_info (откуда пришла заявка).
+ */
+function useShownStage(app: Application): number {
+  const meta = useMeta();
+  const asks = app.status.code === 'needs_info';
+  const events = useEvents(app.id, app, asks);
+  if (!asks || !events.data) return app.status.stage;
+  const ev = events.data.findLast((e) => e.to_status === 'needs_info');
+  const from = meta.data?.statuses.find((s) => s.code === ev?.from_status);
+  return Math.max(app.status.stage, from?.stage ?? 0);
+}
+
+/**
  * Компонент статуса заявки — один на главной, в списке, на странице заявки и у аналитика: степпер, «Шаг N из 7:
  * этап», что будет дальше и кнопка следующего шага.
  */
@@ -139,17 +153,16 @@ export function StatusBlock({
   const { user } = useAuth();
   const stages = meta.data?.stages ?? [];
   const state = stepperState(app.status);
-  const stage = stages[app.status.stage] ?? '';
+  const current = useShownStage(app);
+  const stage = stages[current] ?? '';
   const next = action ? nextAction(app, user?.role, onPage) : null;
   // Красная кнопка — только когда ход за человеком; иначе спокойная вторичная.
   const variant = app.status.action_required || user?.role === 'analyst' ? 'filled' : 'default';
   const where =
-    state === 'rejected' || state === 'closed'
-      ? 'Заявка закрыта'
-      : `Шаг ${app.status.stage + 1} из ${stages.length || 7}: ${stage}`;
+    state === 'rejected' || state === 'closed' ? 'Заявка закрыта' : `Шаг ${current + 1} из ${stages.length || 7}: ${stage}`;
   return (
     <div className="potok-status">
-      {stages.length > 0 && <Stepper labels={stages} current={app.status.stage} state={state} showLabels={showLabels} />}
+      {stages.length > 0 && <Stepper labels={stages} current={current} state={state} showLabels={showLabels} />}
       <div className="potok-status-row">
         <div>
           <div className="potok-status-where">
