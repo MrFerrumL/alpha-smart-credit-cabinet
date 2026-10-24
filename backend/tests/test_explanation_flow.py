@@ -21,6 +21,7 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.explanation import facts, jobs, prompt
 from app.models import Application, ApplicationEvent, Company, DecisionExplanation, Offer, utcnow
+from app.observability import JsonFormatter
 from app.services.llm import LLM_TIMEOUT_S, ChatClient
 from tests.conftest import auth, run_pipeline
 from tests.test_pipeline import get, submit
@@ -655,9 +656,9 @@ def test_log_has_outcome_and_latency_but_no_texts(client, mocks, chat, caplog):
     generate(chat)
 
     records = [r for r in caplog.records if r.name in ("app.explanation", "app.llm")]
-    assert [getattr(r, "status", None) for r in records if r.name == "app.explanation"] == ["ready", "invalid:outcome"]
+    assert [getattr(r, "outcome", None) for r in records if r.name == "app.explanation"] == ["ready", "invalid:outcome"]
     assert all(isinstance(getattr(r, "duration_ms", 0), int) for r in records)
-    logged = " ".join(r.getMessage() + " " + str(getattr(r, "status", "")) for r in records)
+    logged = " ".join(JsonFormatter().format(r) for r in records)  # строки лога целиком, со всеми полями
     row = only_row(app_id)
     for fragment in (row.text, row.facts["reasons"][0], KEY, "Северная", "К сожалению"):
         assert fragment not in logged, fragment
@@ -820,8 +821,8 @@ def test_worker_starts_the_explanation_thread_only_when_active(quiet_worker, llm
     assert thread["factory"] is SessionLocal and thread["client"] is sentinel
     assert thread["stop"] is worker._stop_event and worker._stop_event.is_set()  # сигнал будит и поток пояснений
     line = next(r for r in caplog.records if r.getMessage() == "explanation thread started")
-    assert line.status == f"model {MODEL}, host llm.internal:11434"
-    logged = " ".join(r.getMessage() + " " + str(getattr(r, "status", "")) for r in caplog.records)
+    assert (line.model, line.host) == (MODEL, "llm.internal:11434")
+    logged = " ".join(JsonFormatter().format(r) for r in caplog.records)  # строки лога целиком, со всеми полями
     assert KEY not in logged and "secret" not in logged and "private" not in logged
 
     started.clear()

@@ -66,10 +66,10 @@ class ChatClient:
         try:
             text, finish_reason = _parse(self._post(body, deadline=started + self._timeout_s))
         except LLMError as exc:
-            log.warning("llm call failed", extra={"status": exc.code, "duration_ms": _elapsed_ms(started)})
+            log.warning("llm call failed", extra={"outcome": exc.code, "duration_ms": _elapsed_ms(started)})
             raise
         latency_ms = _elapsed_ms(started)
-        log.info("llm call", extra={"status": "ok", "duration_ms": latency_ms})
+        log.info("llm call", extra={"outcome": "ok", "duration_ms": latency_ms})
         return Completion(text=text, finish_reason=finish_reason, latency_ms=latency_ms)
 
     def close(self) -> None:

@@ -342,7 +342,7 @@ def expire_offers(db: Session) -> int:
             expired += 1
         except Exception:  # noqa: BLE001 — гонка с действием клиента: заявку пропускаем до следующего прохода
             db.rollback()
-            log.warning("offer expiry skipped", extra={"status": f"application {app_id}"})
+            log.warning("offer expiry skipped", extra={"application_id": app_id})
     return expired
 
 
@@ -372,7 +372,7 @@ def expire_requests(db: Session) -> int:
             expired += 1
         except Exception:  # noqa: BLE001 — гонка с ответом клиента: заявку пропускаем до следующего прохода
             db.rollback()
-            log.warning("request expiry skipped", extra={"status": f"application {app_id}"})
+            log.warning("request expiry skipped", extra={"application_id": app_id})
     return expired
 
 

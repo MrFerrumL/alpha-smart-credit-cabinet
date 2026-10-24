@@ -35,7 +35,10 @@ def _retry_or_fail(session_factory: SessionFactory, job_id: int, error: str) -> 
             job.last_error = error
             job.run_after = utcnow() + timedelta(seconds=settings.pipeline_retry_base_s * 2 ** (job.attempts - 1))
             db.commit()
-            log.warning("pipeline step postponed", extra={"path": job.kind, "status": error})
+            log.warning(
+                "pipeline step postponed",
+                extra={"job": job.kind, "application_id": job.application_id, "error": error},
+            )
             return
         app = db.get(Application, job.application_id)
         handler = ON_EXHAUSTED.get(job.kind)
@@ -47,7 +50,7 @@ def _retry_or_fail(session_factory: SessionFactory, job_id: int, error: str) -> 
         job.status = "failed"
         job.last_error = error
         db.commit()
-        log.error("pipeline step failed", extra={"path": job.kind, "status": error})
+        log.error("pipeline step failed", extra={"job": job.kind, "application_id": job.application_id, "error": error})
 
 
 def process_next(session_factory: SessionFactory, sources: ExternalSources) -> bool:

@@ -52,7 +52,7 @@ class ExternalSources:
                 last_error = "timeout"
             except httpx.TransportError as exc:
                 last_error = f"transport error: {exc.__class__.__name__}"
-            log.warning("integration attempt failed", extra={"path": path, "status": last_error})
+            log.warning("integration attempt failed", extra={"path": path, "error": last_error})
             if attempt < self._retries:
                 time.sleep(self._backoff * 2 ** (attempt - 1))
         raise SourceUnavailable(source, last_error)

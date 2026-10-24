@@ -8,6 +8,9 @@ from contextvars import ContextVar
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
+# Собственные атрибуты записи logging: всё остальное в record.__dict__ попало туда через extra=.
+_RECORD_FIELDS = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -18,12 +21,13 @@ class JsonFormatter(logging.Formatter):
             "msg": record.getMessage(),
             "request_id": request_id_var.get(),
         }
-        for key in ("method", "path", "status", "duration_ms"):
-            if hasattr(record, key):
-                data[key] = getattr(record, key)
+        # Поля из extra= выводятся как есть, в порядке передачи; общие поля записи они не затирают.
+        for key, value in record.__dict__.items():
+            if key not in _RECORD_FIELDS and key not in data:
+                data[key] = value
         if record.exc_info:
             data["exc"] = self.formatException(record.exc_info)
-        return json.dumps(data, ensure_ascii=False)
+        return json.dumps(data, ensure_ascii=False, default=str)
 
 
 def configure_logging(level: str) -> None:
