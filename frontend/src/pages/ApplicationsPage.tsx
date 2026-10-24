@@ -150,7 +150,7 @@ export function ApplicationsPage() {
             </>
           )}
         </div>
-        <div className="potok-col">
+        <div className="potok-col potok-sticky">
           {list.length > 0 && <Summary apps={list} />}
           <HowItGoes />
         </div>

@@ -242,6 +242,12 @@
   align-items: start;
 }
 
+/* Короткая боковая колонка длинного списка остаётся на экране при прокрутке. */
+.potok-sticky {
+  position: sticky;
+  top: 16px;
+}
+
 /* Последняя панель более короткой колонки дотягивается до низа соседней. */
 @media (min-width: 721px) {
   .potok-even {
@@ -2306,7 +2312,8 @@ a.potok-note-title:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .potok-analyst-side {
+  .potok-analyst-side,
+  .potok-sticky {
     position: static;
   }
 
