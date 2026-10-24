@@ -2391,11 +2391,17 @@ a.potok-note-title:hover {
   .potok-home {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
   }
 
   .potok-below > .potok-col,
   .potok-home > .potok-col {
     display: contents;
+  }
+
+  .potok-below > .potok-col > *,
+  .potok-home > .potok-col > * {
+    min-width: 0;
   }
 
   .potok-phone-first {
