@@ -12,11 +12,12 @@ import { nb } from '../lib/nobreak';
 
 // Ждут банк — конвейер или специалист; остальные ждут клиента или уже закрыты.
 const PIPELINE = ['submitted', 'validation', 'enrichment', 'scoring'];
-const waitsForBank = (a: Application) => a.status.code === 'manual_review' || PIPELINE.includes(a.status.code);
+const inReview = (a: Application) => a.status.code === 'manual_review';
+const waitsForBank = (a: Application) => inReview(a) || PIPELINE.includes(a.status.code);
 
 const FILTERS: { value: string; label: string; match: (a: Application) => boolean }[] = [
   { value: 'all', label: 'Все', match: () => true },
-  { value: 'review', label: 'Ждут решения', match: (a) => a.status.code === 'manual_review' },
+  { value: 'review', label: 'Ждут решения', match: inReview },
   { value: 'pipeline', label: 'В конвейере', match: (a) => PIPELINE.includes(a.status.code) },
   { value: 'info', label: 'Нужна информация', match: (a) => a.status.code === 'needs_info' },
   { value: 'offer', label: 'Есть предложение', match: (a) => ['approved', 'counter_offer', 'signing'].includes(a.status.code) },
@@ -50,8 +51,8 @@ export function QueuePage() {
   const apps = all.data ?? [];
   const [filter, setFilter] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  // По умолчанию — «Все»: сверху те, кто дольше ждёт банк, ниже остальные.
-  const current = filter ?? 'all';
+  // По умолчанию — «Ждут решения», если такие есть: это работа аналитика; иначе «Все».
+  const current = filter ?? (apps.some(inReview) ? 'review' : 'all');
   const active = FILTERS.find((f) => f.value === current)!;
   const q = query.trim().toLowerCase();
   const list = apps
