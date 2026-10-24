@@ -181,7 +181,15 @@ function CompanyOnboarding() {
           }}
           error={lookupMessage}
         />
-        <Button size="lg" leftSection={<IconSearch size={18} />} loading={lookup.isPending} disabled={!ready} onClick={() => lookup.mutate(inn)}>
+        {/* Компания найдена — главным становится «Да, это моя компания», поиск остаётся спокойным. */}
+        <Button
+          size="lg"
+          variant={found ? 'default' : 'filled'}
+          leftSection={<IconSearch size={18} />}
+          loading={lookup.isPending}
+          disabled={!ready}
+          onClick={() => lookup.mutate(inn)}
+        >
           Найти
         </Button>
       </Group>

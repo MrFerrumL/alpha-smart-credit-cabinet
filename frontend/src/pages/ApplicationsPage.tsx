@@ -7,6 +7,7 @@ import type { Application } from '../api/types';
 import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
 import { Empty, LoadError } from '../components/States';
+import { byAction } from '../components/Status';
 import { money } from '../lib/format';
 
 type Filter = 'all' | 'active' | 'closed';
@@ -75,9 +76,11 @@ export function ApplicationsPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const match = FILTERS.find((f) => f.value === filter)!.match;
   const shown = list.filter(match);
-  // Идущие — компонентом статуса, свежие сверху; закрытые — строками.
-  const active = shown.filter((a) => !a.status.terminal).sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id);
+  // Идущие — компонентом статуса, сверху та, где ход за клиентом; закрытые — строками.
+  const active = shown.filter((a) => !a.status.terminal).sort(byAction);
   const closed = shown.filter((a) => a.status.terminal);
+  // Красная кнопка — одна на экране: у первой заявки, где ход за клиентом, у остальных — спокойные.
+  const lead = active.find((a) => a.status.action_required);
 
   return (
     <div className="potok-col">
@@ -132,7 +135,7 @@ export function ApplicationsPage() {
           ) : (
             <>
               {active.map((a) => (
-                <AppStatusCard key={a.id} app={a} />
+                <AppStatusCard key={a.id} app={a} primary={a === lead} />
               ))}
               {closed.length > 0 && (
                 <section className="potok-panel">

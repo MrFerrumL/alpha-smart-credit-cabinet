@@ -233,9 +233,10 @@ export function OfferActions({ app }: { app: Application }) {
             </Button>
           </div>
         )}
+        {/* Без права подписи передача руководителю — главное действие экрана, поэтому красная. */}
         {canHandoff && (
           <div className={canAccept ? undefined : 'potok-cta-main'}>
-            <Button size="lg" variant="default" loading={handoff.isPending} onClick={() => handoff.mutate()}>
+            <Button size="lg" variant={canAccept ? 'default' : 'filled'} loading={handoff.isPending} onClick={() => handoff.mutate()}>
               Передать руководителю на подпись
             </Button>
           </div>

@@ -151,6 +151,7 @@ export function StatusBlock({
   note,
   action = true,
   hint = true,
+  primary,
   hintTail,
   aside,
   children,
@@ -162,6 +163,8 @@ export function StatusBlock({
   action?: boolean;
   /** Подсказка статуса; в блоке решения её заменяет фраза исхода. */
   hint?: boolean;
+  /** Красная ли кнопка шага; по умолчанию — когда ход за человеком. В списке заявок красная только у первой. */
+  primary?: boolean;
   /** Продолжение строки подсказки — например, «статус обновляется сам». */
   hintTail?: ReactNode;
   /** Второстепенное действие справа в строке статуса. */
@@ -177,7 +180,7 @@ export function StatusBlock({
   const stage = stages[current] ?? '';
   const next = action ? nextAction(app, user?.role, onPage) : null;
   // Красная кнопка — только когда ход за человеком; иначе спокойная вторичная.
-  const variant = app.status.action_required || user?.role === 'analyst' ? 'filled' : 'default';
+  const variant = (primary ?? (app.status.action_required || user?.role === 'analyst')) ? 'filled' : 'default';
   const where =
     state === 'rejected' || state === 'closed' ? 'Заявка закрыта' : `Шаг ${current + 1} из ${stages.length || 7}: ${stage}`;
   return (
