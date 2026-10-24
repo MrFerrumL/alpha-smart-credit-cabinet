@@ -1,6 +1,6 @@
 """Предложение → договор → подписание кодом → выдача → кредит с графиком."""
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from sqlalchemy import select
 
@@ -605,3 +605,16 @@ def test_zero_code_limit_is_a_clear_refusal_not_a_server_error(client, mocks, mo
     monkeypatch.setattr(get_settings(), "signing_codes_per_hour", 0)
     refused = client.post(f"/api/applications/{app_id}/signing/code", headers=headers)
     assert refused.status_code == 429 and "через 60 мин." in refused.json()["detail"]
+
+
+def test_expiry_compares_moments_not_wall_clock():
+    from app.services.signing import _expired
+
+    moscow = timezone(timedelta(hours=3))
+    hour_ago = utcnow() - timedelta(hours=1)
+    # Момент час назад в поясе +03:00: без пояса его цифры были бы на два часа впереди UTC.
+    assert _expired(hour_ago.astimezone(moscow))
+    assert not _expired((utcnow() + timedelta(minutes=5)).astimezone(moscow))
+    # SQLite отдаёт время без пояса: это UTC.
+    assert _expired(hour_ago.replace(tzinfo=None))
+    assert not _expired((utcnow() + timedelta(minutes=5)).replace(tzinfo=None))

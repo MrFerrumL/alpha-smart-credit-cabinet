@@ -12,7 +12,7 @@ import hmac
 import json
 import math
 import secrets
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -119,8 +119,13 @@ def issue_conditions(product) -> list[dict]:
     ]
 
 
+def _expired(moment: datetime) -> bool:
+    # SQLite отдаёт время без пояса (в БД всё в UTC), PostgreSQL — с поясом сессии: сравниваются моменты, а не цифры.
+    return (moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) < utcnow()
+
+
 def _require_valid(offer: Offer) -> None:
-    if offer.valid_until and offer.valid_until.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
+    if offer.valid_until and _expired(offer.valid_until):
         raise Conflict("Срок предложения истёк — подайте новую заявку")
 
 
@@ -269,7 +274,7 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
         raise NotFound("Запросите код ещё раз")
     if challenge.used_at is not None or challenge.attempts_left <= 0:
         raise Conflict("Этот код больше не действует — запросите новый")
-    if challenge.expires_at.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
+    if _expired(challenge.expires_at):
         raise Conflict("Срок действия кода истёк — запросите новый")
     _require_valid(offer)
     terms = terms_hash(app, offer)
