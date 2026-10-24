@@ -18,10 +18,12 @@ import { PolicyPage } from './pages/PolicyPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { QueuePage } from './pages/QueuePage';
 
+/** Без входа — на страницу входа; запрошенная страница уходит с ней и откроется после входа. */
 function RequireAuth() {
-  const { user, loading } = useAuth();
+  const { user, loading, signedOut } = useAuth();
+  const location = useLocation();
   if (loading) return <FullScreenLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace state={signedOut ? undefined : { from: location }} />;
   return <Outlet />;
 }
 
@@ -31,7 +33,7 @@ function RequireRole({ role }: { role: 'client' | 'analyst' }) {
   return <Outlet />;
 }
 
-/** Нет такой страницы — своя иллюстрация и путь назад, без крупного красного «404». */
+/** Нет такой страницы — иллюстрация и путь назад. */
 function NotFoundPage() {
   return (
     <section className="potok-panel">

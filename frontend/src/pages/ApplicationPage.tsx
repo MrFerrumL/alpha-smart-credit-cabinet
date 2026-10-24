@@ -13,7 +13,7 @@ import {
   useTasks,
 } from '../api/hooks';
 import { useApplicationStream } from '../api/stream';
-import type { Application, ApplicationAction } from '../api/types';
+import type { Application, ClientTask } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { AnalystCard } from '../components/AnalystPanel';
 import { ChecksCard, DocumentList, TasksCard, shownTerms } from '../components/ApplicationBlocks';
@@ -24,7 +24,7 @@ import { MyCompany } from '../components/Side';
 import { DecisionSkeleton, LoadError } from '../components/States';
 import { nb } from '../lib/nobreak';
 import { StatusBlock, StatusChip } from '../components/Status';
-import { dateTime, money, months, rate } from '../lib/format';
+import { dateTime, money, months, typo } from '../lib/format';
 
 function CancelAction({ app }: { app: Application }) {
   const cancel = useCancelApplication();
@@ -66,56 +66,59 @@ function CancelAction({ app }: { app: Application }) {
   );
 }
 
-/** Статус без решения: проверки, запрос информации, подписание, выдача. */
-function StatusSection({ app, live }: { app: Application; live: boolean }) {
-  const can = (action: ApplicationAction) => app.allowed_actions.includes(action);
+/** «По этому продукту…» → «по этому продукту…»; аббревиатуры («БКИ не ответило») остаются как есть. */
+const lowerFirst = (s: string) => (/^.\p{Ll}/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+
+/**
+ * Статус без решения: проверки, ожидание специалиста, запрос информации. Пока заявка ждёт, в одном блоке — где она,
+ * почему, открытый запрос банка с его кнопкой и «Отозвать заявку» в строке статуса.
+ */
+function StatusSection({ app, live, tasks }: { app: Application; live: boolean; tasks: ClientTask[] }) {
   const moving = !app.status.terminal && !app.status.action_required && app.status.code !== 'draft';
+  const canCancel = app.allowed_actions.includes('cancel') && !app.allowed_actions.includes('decline_offer');
+  const why = app.status.code === 'manual_review' ? (app.decision?.reasons ?? []) : [];
   return (
     <section className="potok-decision">
-      <StatusBlock app={app} onPage showLabels />
-      {moving && (
-        <Group gap={8} mt="md">
-          <span className="potok-live" data-live={live} />
-          <Text fz="sm" c="dimmed">
-            {live ? 'Статус обновляется сам' : 'Подключаемся к обновлениям…'}
-          </Text>
-        </Group>
-      )}
-      {can('cancel') && !can('decline_offer') && (
-        <div className="potok-cta">
-          <CancelAction app={app} />
-        </div>
-      )}
+      <StatusBlock
+        app={app}
+        onPage
+        showLabels
+        hintTail={
+          moving && (
+            <span className="potok-live-tail">
+              <span className="potok-live" data-live={live} />
+              {live ? 'Статус обновляется сам' : 'Подключаемся к обновлениям…'}
+            </span>
+          )
+        }
+        aside={canCancel ? <CancelAction app={app} /> : undefined}
+      >
+        {why.length > 0 && (
+          <div className="potok-status-why">
+            <Title order={3} className="potok-status-why-h">
+              Почему заявку смотрит специалист
+            </Title>
+            : {typo(why.map(lowerFirst).join('; '))}
+          </div>
+        )}
+      </StatusBlock>
+      {app.status.code === 'needs_info' && <TasksCard app={app} tasks={tasks} embedded />}
     </section>
   );
 }
 
-/** Как подписать договор — три шага рядом с блоком подписания. */
-function SigningSteps() {
-  return (
-    <section className="potok-panel">
-      <Title order={3}>Как подписать</Title>
-      <ol className="potok-steps">
-        <li>Отметьте согласие с условиями договора</li>
-        <li>Нажмите «Подписать кодом»: код появится в окне подписания, SMS не нужна</li>
-        <li>Введите 6 цифр, и деньги придут на счёт через несколько секунд</li>
-      </ol>
-    </section>
-  );
-}
-
-/** Согласованные условия после выдачи (при подписании их показывает сам блок договора). */
+/** Согласованные условия после выдачи — парами «подпись — значение» в боковой колонке. */
 function AgreedTerms({ app }: { app: Application }) {
   const products = useProducts();
   const terms = shownTerms(app, products.data);
-  if (!terms.agreed || app.status.code === 'signing') return null;
+  if (!terms.agreed || app.status.code !== 'issued') return null;
   return (
     <section className="potok-panel">
       <Title order={3}>Условия кредита</Title>
-      <dl className="potok-kv">
+      <dl className="potok-pairs">
         <div>
           <dt>Продукт</dt>
-          <dd>{terms.product}</dd>
+          <dd>{nb(terms.product)}</dd>
         </div>
         <div>
           <dt>Сумма</dt>
@@ -127,7 +130,7 @@ function AgreedTerms({ app }: { app: Application }) {
         </div>
         <div>
           <dt>Ставка</dt>
-          <dd>{app.offer ? rate(app.offer.rate) : terms.rate}</dd>
+          <dd>{terms.rate}</dd>
         </div>
         <div>
           <dt>{terms.interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'}</dt>
@@ -143,12 +146,15 @@ function AgreedTerms({ app }: { app: Application }) {
   );
 }
 
+const CHECKING = ['submitted', 'validation', 'enrichment', 'scoring', 'manual_review', 'needs_info'];
+
 export function ApplicationPage() {
   const { id } = useParams();
   const applicationId = Number(id);
   const { user } = useAuth();
   const query = useApplication(applicationId);
   const app = query.data;
+  const products = useProducts();
   const live = useApplicationStream(applicationId, !!app && !app.status.terminal && app.status.code !== 'draft');
   const events = useEvents(applicationId, app);
   const tasks = useTasks(applicationId, app);
@@ -178,60 +184,61 @@ export function ApplicationPage() {
   }
   if (bank) return <AnalystCard app={app} back={back} events={events.data} />;
 
-  const decided = ['approved', 'counter_offer', 'rejected'].includes(app.status.code) && !!app.decision;
+  const code = app.status.code;
+  const decided = ['approved', 'counter_offer', 'rejected'].includes(code) && !!app.decision;
   const sent = app.submitted_at ?? app.created_at;
+  const taskList = tasks.data ?? [];
+  // После принятия предложения заголовок — продукт договора; запрошенный продукт остаётся в строке под ним.
+  const terms = shownTerms(app, products.data);
+  const otherProduct = terms.agreed && terms.product !== app.product.name;
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         {back}
         <Group mt="sm" gap="md" align="center">
-          <Title order={1}>{nb(app.product.name)}</Title>
+          <Title order={1}>{nb(terms.agreed ? terms.product : app.product.name)}</Title>
           <StatusChip app={app} />
         </Group>
         <Text c="dimmed" mt={4} fz="sm">
           Заявка {nb(app.number)}, {app.submitted_at ? 'отправлена' : 'создана'} {dateTime(sent)}
+          {otherProduct && <>, вы просили {nb(app.product.name)}</>}
         </Text>
       </div>
 
-      {/* Главный блок — один на экране: решение, подписание, выдача или статус с проверками. */}
+      {/* Главный блок — один на экране: решение, подписание, выдача или статус с запросом банка. */}
       {decided ? (
         <DecisionBlock app={app} />
-      ) : app.status.code === 'signing' ? (
+      ) : code === 'signing' ? (
         <SigningCard app={app} extra={app.allowed_actions.includes('cancel') ? <CancelAction app={app} /> : undefined} />
-      ) : app.status.code === 'issued' ? (
+      ) : code === 'issued' ? (
         <IssuedCard app={app} />
       ) : (
-        <StatusSection app={app} live={live} />
+        <StatusSection app={app} live={live} tasks={taskList} />
       )}
 
-      {tasks.data && tasks.data.length > 0 && (
-        <div id="tasks">
-          <TasksCard app={app} tasks={tasks.data} readOnly={false} />
-        </div>
-      )}
+      {/* Условия выдачи — следующий шаг после подписи, поэтому сразу под договором и во всю ширину. */}
+      {code === 'signing' && <TasksCard app={app} tasks={taskList} />}
 
-      {/* Одна раскладка для всех статусов: слева «почему» и история, справа «что дальше», документы и компания —
-          ни одна колонка не остаётся пустой. */}
-      <div className="potok-below">
-        <Stack gap="lg">
+      {/* Слева — почему, проверки и история; справа — что дальше, условия, документы и компания. Последняя панель
+          более короткой колонки дотягивается до низа соседней. */}
+      <div className="potok-below potok-even">
+        <div className="potok-col">
           <DecisionReasons app={app} />
           {/* Пояснение дополняет причины банка — сразу после них и вне блока решения, чтобы его появление не сдвигало
               кнопки. */}
           {decided && <AutoExplanation app={app} />}
-          <AgreedTerms app={app} />
           {/* Проверки видны, пока банк проверяет заявку; после решения они уже в истории. */}
-          {checks.data && ['submitted', 'validation', 'enrichment', 'scoring', 'manual_review', 'needs_info'].includes(app.status.code) && (
-            <ChecksCard checks={checks.data} active={app.status.code === 'enrichment'} />
-          )}
+          {checks.data && CHECKING.includes(code) && <ChecksCard checks={checks.data} active={code === 'enrichment'} />}
+          {code !== 'needs_info' && code !== 'signing' && <TasksCard app={app} tasks={taskList} />}
           <section className="potok-panel">
             <Title order={3}>История</Title>
             {events.data && <History events={events.data} />}
           </section>
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           <NextSteps app={app} />
-          {app.status.code === 'signing' && app.allowed_actions.includes('sign') && <SigningSteps />}
+          <AgreedTerms app={app} />
           {documents.data && documents.data.length > 0 && (
             <section className="potok-panel">
               <Title order={3}>Документы</Title>
@@ -241,8 +248,8 @@ export function ApplicationPage() {
             </section>
           )}
           <MyCompany />
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

@@ -27,8 +27,8 @@ docker compose up --build
 - Сбои источников включаются командами из раздела «Отказоустойчивость». Перед сценариями, где сбоя быть не
   должно, снимите их: `{"source":"all","mode":"none"}`.
 
-Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск — в конце документа.
-Всего в проекте 144 автотеста на backend и 12 сценариев в браузере (`e2e/`).
+Имена автотестов даны в виде `файл::тест`; файлы лежат в `backend/tests/`. Запуск описан в конце документа.
+Кроме тестов бэкенда есть сценарии в браузере (`e2e/`).
 
 ## Содержание
 
@@ -167,7 +167,7 @@ docker compose up --build
 - **Шаги:**
   1. «Экспресс-оборот», 500 000 ₽, 12 мес.; выручка 600 000 ₽ (в налоговой данных нет); выписку не прикладывать.
   2. Статус «Нужна информация»: запрос «Загрузите выписку». Попытаться загрузить файл `virus.exe`, затем
-     любой PDF.
+     PDF, например [samples/bank-statement.pdf](samples/bank-statement.pdf).
   3. После загрузки проверка продолжается сама. Аналитик открывает очередь → заявка Смирновой.
   4. Аналитик одобряет с обоснованием, например «Обороты по выписке совпадают с заявленной выручкой».
 - **Ожидается:**
@@ -193,7 +193,8 @@ docker compose up --build
   5. Клиент сразу, без перезагрузки, видит предложение. Принимает («Принять предложение»).
   6. В блоке «Условия выдачи» два пункта: документы по залогу и поручительство собственника. Подписать
      договор кодом, не закрывая условий.
-  7. Загрузить PDF с документами по залогу, затем ответить на вопрос о поручителе (`Волков Игорь Сергеевич`).
+  7. Загрузить документы по залогу ([samples/collateral.pdf](samples/collateral.pdf)), затем ответить на вопрос о
+     поручителе (`Волков Игорь Сергеевич`).
 - **Ожидается:**
   - Карточка: причина «По этому продукту решение всегда принимает специалист», грейд C, все стоп-факторы
     пройдены, выручка по ФНС; на 48 мес. прибыль покрывает платёж в 0,82 раза; рекомендация — 19 500 000 ₽ на
@@ -323,7 +324,7 @@ docker compose up --build
 
 ### E2E-13. Профили риска по ИНН из эмулятора
 
-Эмулятор отвечает на любой корректный ИНН с «00» (ИНН реальной организации он не знает — 404, NEG-59); профиль
+Эмулятор отвечает на любой корректный ИНН с «00» (ИНН реальной организации он не знает — 404, NEG-13); профиль
 задаёт девятая цифра. Заявка «Экспресс-оборот», 2 000 000 ₽, 12 мес. Подключить такие ИНН через кабинет нельзя:
 подключает только руководитель или учредитель по ЕГРЮЛ, а единственный демо-клиент без компании — `new@`. Поэтому
 профили проверяются автотестами, а карточку компании по любому такому ИНН можно получить через API
@@ -527,73 +528,73 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 | NEG-10 | Токен без `sub`, с неверным `sub` или без `exp` | `GET /api/auth/me` с таким токеном | 401, `code: unauthorized` | `test_hardening.py::test_token_without_subject_is_rejected_as_unauthorized` |
 | NEG-11 | Неверный пароль | `POST /api/auth/login` с неверным паролем | 401 | `test_api.py::test_password_login` |
 | NEG-12 | ИНН с неверной контрольной цифрой | `GET /api/companies/lookup?inn=0077060067` | 422 | `test_api.py::test_company_lookup_uses_registry` |
-| NEG-59 | ИНН реальной организации | `GET /api/companies/lookup?inn=7707083893` (корректный ИНН без «00») | 404 (`not_found`), «Компания с таким ИНН не найдена в ЕГРЮЛ/ЕГРИП»; эмулятор знает только вымышленные компании и выписку не выдумывает; в кабинете под полем ИНН — та же фраза и подсказка, что ИНН демо-компаний начинаются с «00» (проверяется вручную) | `test_api.py::test_company_lookup_uses_registry` |
-| NEG-13 | ЕГРЮЛ не отвечает | Сбой `egrul` без `count`, `GET /api/companies/lookup?inn=0077010019` | 503, `code: integration_unavailable` | `test_api.py::test_company_lookup_survives_source_outage` |
-| NEG-14 | Недопустимый файл | Загрузить `virus.exe` как выписку | 422 | `test_pipeline.py::test_missing_tax_revenue_requests_statement_and_resumes` |
-| NEG-55 | Значение вне схемы запроса | Вход с почтой `ab`; в черновике 1 000 000 сотрудников, выручка `1e+21`, контактное лицо из 256 символов; причина отказа из 301 символа | 422, поле в `errors[].field`, сообщение по-русски с названием поля: «Сотрудников — не больше 100 000», «Выручка в месяц — слишком большое число» | `test_api.py::test_schema_errors_are_explained_in_russian` |
+| NEG-13 | ИНН реальной организации | `GET /api/companies/lookup?inn=7707083893` (корректный ИНН без «00») | 404 (`not_found`), «Компания с таким ИНН не найдена в ЕГРЮЛ/ЕГРИП»; эмулятор знает только вымышленные компании и выписку не выдумывает; в кабинете под полем ИНН — та же фраза и подсказка, что ИНН демо-компаний начинаются с «00» (проверяется вручную) | `test_api.py::test_company_lookup_uses_registry` |
+| NEG-14 | ЕГРЮЛ не отвечает | Сбой `egrul` без `count`, `GET /api/companies/lookup?inn=0077010019` | 503, `code: integration_unavailable` | `test_api.py::test_company_lookup_survives_source_outage` |
+| NEG-15 | Недопустимый файл | Загрузить `virus.exe` как выписку | 422 | `test_pipeline.py::test_missing_tax_revenue_requests_statement_and_resumes` |
+| NEG-16 | Значение вне схемы запроса | Вход с почтой `ab`; в черновике 1 000 000 сотрудников, выручка `1e+21`, контактное лицо из 256 символов; причина отказа из 301 символа | 422, поле в `errors[].field`, сообщение по-русски с названием поля: «Сотрудников — не больше 100 000», «Выручка в месяц — слишком большое число» | `test_api.py::test_schema_errors_are_explained_in_russian` |
 
 ### Доступ к чужому и роли
 
 | ID | Сценарий | Действие | Ожидается | Автотест |
 |---|---|---|---|---|
-| NEG-15 | Клиент другой компании | `sklad@` читает заявку `bakery@` (`GET /api/applications/{id}`) | 404 (о существовании заявки не сообщается) | `test_api.py::test_application_lifecycle_and_access` |
-| NEG-16 | Чужой клиент: поток, договор, подписание, кредит | `sklad@`: `GET …/stream`, `GET …/contract`, `POST …/signing/code`, `POST …/offer/accept`, `GET /api/loans/{id}` чужой заявки | 404 | `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status`, `test_signing.py::test_strangers_and_analysts_cannot_touch_the_contract`, `test_signing.py::test_full_path_from_offer_to_loan` |
-| NEG-17 | Аналитик смотрит чужой черновик | `analyst@` открывает черновик | 404 (в очереди только отправленные) | `test_api.py::test_application_lifecycle_and_access` |
-| NEG-18 | Клиент на эндпоинтах аналитика | `vector@`: `GET …/assessment`, `POST …/decision`, `POST …/assessment/replay` | 403 | `test_analyst.py::test_analyst_card_explains_why_and_what_the_pipeline_recommends`, `test_trace.py::test_replay_is_for_analysts_and_needs_scoring` |
-| NEG-19 | Клиент запускает симулятор политики | `bakery@`: `POST /api/policy/simulate` | 403 | `test_policy_sim.py::test_simulator_is_for_bank_staff_only_and_validates_thresholds` |
-| NEG-20 | Аналитик на клиентских эндпоинтах | `analyst@`: `POST /api/applications` (создать заявку) | 403 | `test_api.py::test_analyst_cannot_create_applications` |
-| NEG-21 | Аналитик просит ленту | `analyst@`: `GET /api/feed` | 403 | `test_feed.py::test_feed_is_for_clients_only` |
-| NEG-22 | Аналитик на договоре | `analyst@`: `POST …/offer/accept`, `POST …/signing/code` | 403 | `test_signing.py::test_strangers_and_analysts_cannot_touch_the_contract` |
-| NEG-23 | Бухгалтер на этапе предложения | `buh@`: `POST …/offer/accept`, `…/offer/decline`, `…/cancel` | 403 с пояснением, что действие у руководителя; в `allowed_actions` нет `accept_offer`, `decline_offer`, `sign` | `test_signing.py::test_accountant_can_neither_accept_decline_nor_sign` |
-| NEG-24 | Бухгалтер просит код подписи | `buh@`: `POST …/signing/code` после принятия предложения | 403 | `test_signing.py::test_accountant_can_neither_accept_decline_nor_sign` |
-| NEG-25 | Бывший директор | Пользователь с флагом права подписи, но не руководитель по ЕГРЮЛ: принять, отказаться, отозвать | 403, в сообщении имя руководителя по ЕГРЮЛ; передать руководителю — 200 | `test_signing.py::test_signing_right_is_checked_against_the_registry_director` |
-| NEG-26 | Ответ на запрос чужой компании | Ответить на запрос банка в заявке другой компании | 404 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
-| NEG-27 | Пустой ответ на запрос | `POST …/tasks/{task_id}/answer` с `{"answer": "   "}` | 422 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
-| NEG-56 | Номер вне диапазона ключей | `GET /api/applications/99999999999999999999` (и `…/events`, `…/stream`), `GET /api/loans/…`, `POST …/tasks/{task_id}/answer` и загрузка документа с таким `task_id` | 404 `not_found`, не 500 | `test_hardening.py::test_ids_outside_the_key_range_are_not_found` |
-| NEG-57 | Бухгалтер и поручительство | `buh@` в заявке на кредит с залогом после принятия предложения: ответить на вопрос о поручительстве; загрузить документы по залогу | 403 «…только руководитель компании»; в `allowed_actions` нет `confirm_guarantee`, формы ответа нет; загрузка — 201; руководитель отвечает — 200 | `test_signing.py::test_only_the_director_confirms_the_owner_guarantee` |
+| NEG-17 | Клиент другой компании | `sklad@` читает заявку `bakery@` (`GET /api/applications/{id}`) | 404 (о существовании заявки не сообщается) | `test_api.py::test_application_lifecycle_and_access` |
+| NEG-18 | Чужой клиент: поток, договор, подписание, кредит | `sklad@`: `GET …/stream`, `GET …/contract`, `POST …/signing/code`, `POST …/offer/accept`, `GET /api/loans/{id}` чужой заявки | 404 | `test_pipeline.py::test_stream_reports_status_and_closes_on_final_status`, `test_signing.py::test_strangers_and_analysts_cannot_touch_the_contract`, `test_signing.py::test_full_path_from_offer_to_loan` |
+| NEG-19 | Аналитик смотрит чужой черновик | `analyst@` открывает черновик | 404 (в очереди только отправленные) | `test_api.py::test_application_lifecycle_and_access` |
+| NEG-20 | Клиент на эндпоинтах аналитика | `vector@`: `GET …/assessment`, `POST …/decision`, `POST …/assessment/replay` | 403 | `test_analyst.py::test_analyst_card_explains_why_and_what_the_pipeline_recommends`, `test_trace.py::test_replay_is_for_analysts_and_needs_scoring` |
+| NEG-21 | Клиент запускает симулятор политики | `bakery@`: `POST /api/policy/simulate` | 403 | `test_policy_sim.py::test_simulator_is_for_bank_staff_only_and_validates_thresholds` |
+| NEG-22 | Аналитик на клиентских эндпоинтах | `analyst@`: `POST /api/applications` (создать заявку) | 403 | `test_api.py::test_analyst_cannot_create_applications` |
+| NEG-23 | Аналитик просит ленту | `analyst@`: `GET /api/feed` | 403 | `test_feed.py::test_feed_is_for_clients_only` |
+| NEG-24 | Аналитик на договоре | `analyst@`: `POST …/offer/accept`, `POST …/signing/code` | 403 | `test_signing.py::test_strangers_and_analysts_cannot_touch_the_contract` |
+| NEG-25 | Бухгалтер на этапе предложения | `buh@`: `POST …/offer/accept`, `…/offer/decline`, `…/cancel` | 403 с пояснением, что действие у руководителя; в `allowed_actions` нет `accept_offer`, `decline_offer`, `sign` | `test_signing.py::test_accountant_can_neither_accept_decline_nor_sign` |
+| NEG-26 | Бухгалтер просит код подписи | `buh@`: `POST …/signing/code` после принятия предложения | 403 | `test_signing.py::test_accountant_can_neither_accept_decline_nor_sign` |
+| NEG-27 | Бывший директор | Пользователь с флагом права подписи, но не руководитель по ЕГРЮЛ: принять, отказаться, отозвать | 403, в сообщении имя руководителя по ЕГРЮЛ; передать руководителю — 200 | `test_signing.py::test_signing_right_is_checked_against_the_registry_director` |
+| NEG-28 | Ответ на запрос чужой компании | Ответить на запрос банка в заявке другой компании | 404 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
+| NEG-29 | Пустой ответ на запрос | `POST …/tasks/{task_id}/answer` с `{"answer": "   "}` | 422 | `test_signing.py::test_disburse_step_refuses_while_conditions_are_open` |
+| NEG-30 | Номер вне диапазона ключей | `GET /api/applications/99999999999999999999` (и `…/events`, `…/stream`), `GET /api/loans/…`, `POST …/tasks/{task_id}/answer` и загрузка документа с таким `task_id` | 404 `not_found`, не 500 | `test_hardening.py::test_ids_outside_the_key_range_are_not_found` |
+| NEG-31 | Бухгалтер и поручительство | `buh@` в заявке на кредит с залогом после принятия предложения: ответить на вопрос о поручительстве; загрузить документы по залогу | 403 «…только руководитель компании»; в `allowed_actions` нет `confirm_guarantee`, формы ответа нет; загрузка — 201; руководитель отвечает — 200 | `test_signing.py::test_only_the_director_confirms_the_owner_guarantee` |
 
 ### Подписание
 
 | ID | Сценарий | Действие | Ожидается | Автотест |
 |---|---|---|---|---|
-| NEG-28 | Неверный код | `POST …/signing/confirm` с неверным кодом | 422, «Осталось попыток: 2»; заявка в `signing` | `test_signing.py::test_full_path_from_offer_to_loan` |
-| NEG-29 | Попытки исчерпаны | Три неверных кода подряд, затем верный | 409; заявка остаётся в `signing` | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
-| NEG-30 | Новый код заменяет старый | Запросить второй код и ввести первый | 409 | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
-| NEG-31 | Повторное использование кода | Подтвердить уже использованный код | 409 | `test_signing.py::test_full_path_from_offer_to_loan`, `test_signing.py::test_consumed_code_is_rejected_even_if_the_offer_still_waits` |
-| NEG-32 | Код после отзыва или истечения срока | Подтвердить код с истёкшим сроком; подтвердить код после отзыва заявки | 409; после отзыва предложение `declined`, договор — 404, новый код — 409 | `test_signing.py::test_code_cannot_be_used_after_cancel_or_expiry`, `test_signing.py::test_cancel_at_offer_stage_declines_the_offer` |
-| NEG-33 | Код привязан к условиям | Условия договора изменились после выдачи кода | 422, оферта остаётся «принятой» | `test_signing.py::test_code_is_bound_to_the_contract_terms` |
-| NEG-34 | Лимит кодов | Запросить код 6 раз подряд (лимит 5 в час на заявку) | первые пять — 200, шестой — 429 «Новый код можно запросить через 60 мин.»; через час после первых кодов — снова 200 | `test_signing.py::test_signing_codes_are_rate_limited` |
-| NEG-35 | Отзыв после подписи | `POST …/cancel` после подписи | 409 (в `allowed_actions` нет `cancel`) | `test_signing.py::test_full_path_from_offer_to_loan` |
-| NEG-36 | Передача на подпись дважды | Бухгалтер повторно передаёт; директор «передаёт» сам | 409 | `test_signing.py::test_accountant_hands_offer_to_the_director` |
+| NEG-32 | Неверный код | `POST …/signing/confirm` с неверным кодом | 422, «Осталось попыток: 2»; заявка в `signing` | `test_signing.py::test_full_path_from_offer_to_loan` |
+| NEG-33 | Попытки исчерпаны | Три неверных кода подряд, затем верный | 409; заявка остаётся в `signing` | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
+| NEG-34 | Новый код заменяет старый | Запросить второй код и ввести первый | 409 | `test_signing.py::test_code_attempts_run_out_and_new_code_replaces_old` |
+| NEG-35 | Повторное использование кода | Подтвердить уже использованный код | 409 | `test_signing.py::test_full_path_from_offer_to_loan`, `test_signing.py::test_consumed_code_is_rejected_even_if_the_offer_still_waits` |
+| NEG-36 | Код после отзыва или истечения срока | Подтвердить код с истёкшим сроком; подтвердить код после отзыва заявки | 409; после отзыва предложение `declined`, договор — 404, новый код — 409 | `test_signing.py::test_code_cannot_be_used_after_cancel_or_expiry`, `test_signing.py::test_cancel_at_offer_stage_declines_the_offer` |
+| NEG-37 | Код привязан к условиям | Условия договора изменились после выдачи кода | 422, оферта остаётся «принятой» | `test_signing.py::test_code_is_bound_to_the_contract_terms` |
+| NEG-38 | Лимит кодов | Запросить код 6 раз подряд (лимит 5 в час на заявку) | первые пять — 200, шестой — 429 «Новый код можно запросить через 60 мин.»; через час после первых кодов — снова 200 | `test_signing.py::test_signing_codes_are_rate_limited` |
+| NEG-39 | Отзыв после подписи | `POST …/cancel` после подписи | 409 (в `allowed_actions` нет `cancel`) | `test_signing.py::test_full_path_from_offer_to_loan` |
+| NEG-40 | Передача на подпись дважды | Бухгалтер повторно передаёт; директор «передаёт» сам | 409 | `test_signing.py::test_accountant_hands_offer_to_the_director` |
 
 ### Решение аналитика и политика
 
 | ID | Сценарий | Действие | Ожидается | Автотест |
 |---|---|---|---|---|
-| NEG-37 | Обоснование короче 10 символов | `POST …/decision` с `comment: "ок"`; с комментарием из пробелов | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy`, `test_analyst.py::test_blank_justification_is_rejected` |
-| NEG-38 | Ставка ниже ставки грейда | `outcome: approve`, `rate: 20` (для грейда C минимум 23,5 %) | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
-| NEG-39 | Нагрузка не по политике | `counter_offer`, 24 000 000 ₽ на 12 мес., ставка 90 % | 422 с упоминанием выручки | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
-| NEG-40 | Сумма выше лимита по выручке | Заявка 30 млн на 60 мес., выручка 8 млн: одобрить как запрошено; контрпредложение на 31 млн | 422 («лимита по выручке» — 28 800 000 ₽ для грейда C); сумма больше запрошенной — тоже 422; в пределах рекомендации — 200 | `test_analyst.py::test_analyst_cannot_exceed_revenue_limit_or_requested_amount` |
-| NEG-41 | Сумма выше полномочий 30 млн | Заявка 35 млн, `outcome: approve` | 403, в сообщении «комитета» | `test_analyst.py::test_amount_above_analyst_authority_goes_to_credit_committee` |
-| NEG-42 | Отказ без причины | `outcome: reject` без `reasons` | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
-| NEG-43 | Решение по уже решённой заявке и без оценки | Второе решение по той же заявке; `approve` при сбое источника (оценки нет); карточка вне ручного рассмотрения | 409; 409; в карточке `can_decide: false`, причины нет | `test_analyst.py::test_analyst_decision_reaches_client_with_offer_and_private_comment`, `test_analyst.py::test_source_outage_case_needs_checks_before_any_approval`, `test_analyst.py::test_card_has_no_review_reason_outside_manual_review` |
-| NEG-44 | Стоп-фактор нельзя переопределить | Заявка со стоп-фактором (ликвидация, просрочка больше 60 дней и т. п.) | конвейер отказывает сам, до аналитика заявка не доходит; в карточке специалиста все стоп-факторы показаны чек-листом; попытка одобрить заявку со сработавшим стоп-фактором в коде даёт 422 «Не пройден стоп-фактор…». Отдельного теста на попытку обхода нет — проверяется вручную | `test_pipeline.py::test_liquidating_company_hits_stop_factor`, `test_analyst.py::test_analyst_card_explains_why_and_what_the_pipeline_recommends` (все стоп-проверки пройдены), `test_policy.py::test_current_overdue_goes_to_specialist_even_with_a_good_grade` |
-| NEG-45 | Пороги симулятора | `POST /api/policy/simulate` с `max_dsr: 5` | 422 | `test_policy_sim.py::test_simulator_is_for_bank_staff_only_and_validates_thresholds` |
+| NEG-41 | Обоснование короче 10 символов | `POST …/decision` с `comment: "ок"`; с комментарием из пробелов | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy`, `test_analyst.py::test_blank_justification_is_rejected` |
+| NEG-42 | Ставка ниже ставки грейда | `outcome: approve`, `rate: 20` (для грейда C минимум 23,5 %) | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
+| NEG-43 | Нагрузка не по политике | `counter_offer`, 24 000 000 ₽ на 12 мес., ставка 90 % | 422 с упоминанием выручки | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
+| NEG-44 | Сумма выше лимита по выручке | Заявка 30 млн на 60 мес., выручка 8 млн: одобрить как запрошено; контрпредложение на 31 млн | 422 («лимита по выручке» — 28 800 000 ₽ для грейда C); сумма больше запрошенной — тоже 422; в пределах рекомендации — 200 | `test_analyst.py::test_analyst_cannot_exceed_revenue_limit_or_requested_amount` |
+| NEG-45 | Сумма выше полномочий 30 млн | Заявка 35 млн, `outcome: approve` | 403, в сообщении «комитета» | `test_analyst.py::test_amount_above_analyst_authority_goes_to_credit_committee` |
+| NEG-46 | Отказ без причины | `outcome: reject` без `reasons` | 422 | `test_analyst.py::test_analyst_cannot_break_credit_policy` |
+| NEG-47 | Решение по уже решённой заявке и без оценки | Второе решение по той же заявке; `approve` при сбое источника (оценки нет); карточка вне ручного рассмотрения | 409; 409; в карточке `can_decide: false`, причины нет | `test_analyst.py::test_analyst_decision_reaches_client_with_offer_and_private_comment`, `test_analyst.py::test_source_outage_case_needs_checks_before_any_approval`, `test_analyst.py::test_card_has_no_review_reason_outside_manual_review` |
+| NEG-48 | Стоп-фактор нельзя переопределить | Заявка со стоп-фактором (ликвидация, просрочка больше 60 дней и т. п.) | конвейер отказывает сам, до аналитика заявка не доходит; в карточке специалиста все стоп-факторы показаны чек-листом; попытка одобрить заявку со сработавшим стоп-фактором в коде даёт 422 «Не пройден стоп-фактор…». Отдельного теста на попытку обхода нет — проверяется вручную | `test_pipeline.py::test_liquidating_company_hits_stop_factor`, `test_analyst.py::test_analyst_card_explains_why_and_what_the_pipeline_recommends` (все стоп-проверки пройдены), `test_policy.py::test_current_overdue_goes_to_specialist_even_with_a_good_grade` |
+| NEG-49 | Пороги симулятора | `POST /api/policy/simulate` с `max_dsr: 5` | 422 | `test_policy_sim.py::test_simulator_is_for_bank_staff_only_and_validates_thresholds` |
 
 ### Подключение компании, сроки, истечение
 
 | ID | Сценарий | Действие | Ожидается | Автотест |
 |---|---|---|---|---|
-| NEG-46 | Посторонний подключает чужую компанию | Клиент без компании и без полномочий по ЕГРЮЛ: `POST /api/companies/link` с ИНН подключённой компании или любой другой | 403 (`forbidden`); ответ одинаковый для подключённой и неподключённой компании; своя компания не появляется, чужих заявок не видно | `test_hardening.py::test_outsider_learns_nothing_about_a_connected_company`, `test_hardening.py::test_only_head_or_founder_from_registry_can_connect_a_company` |
-| NEG-47 | Учредитель присоединяется к уже подключённой компании | Мария Орлова (учредитель) подключает ИНН ТехноСклада | 409, «уже подключена» | `test_hardening.py::test_founder_cannot_join_a_company_already_in_the_cabinet` |
-| NEG-48 | Повторное подключение того же ИНН | `new@` второй раз с ИНН `0077070071` | 409 | `test_api.py::test_new_client_links_company_by_inn` |
-| NEG-49 | Учредитель подключает свободную компанию | Учредитель по ЕГРЮЛ подключает новую компанию | 200; `can_sign: false` | `test_hardening.py::test_founder_connects_company_but_cannot_sign` |
-| NEG-50 | Сверка ФИО | Имя профиля сопоставляется с ФИО по ЕГРЮЛ: фамилия обязательна, одной фамилии мало, «Алёна/Алена» совпадают | совпадение только при фамилии и имени | `test_hardening.py::test_same_person_matches_profile_name_against_registry_name` |
-| NEG-58 | Заявка без подключённой компании | Клиент без компании: «Подобрать кредит» → «Оформить заявку» (`POST /api/applications`) | 409 `conflict`, в сообщении — ввести ИНН на главной странице | `test_hardening.py::test_client_without_company_is_sent_to_the_home_page_for_the_inn` |
-| NEG-51 | Предложение истекло | Предложение просрочено (7 дней), воркер переводит заявку в «Срок истёк»; `POST …/offer/accept` | заявка `expired`, предложение `expired`, принять — 409 | `test_signing.py::test_expired_offer_cannot_be_accepted` |
-| NEG-52 | Принятое, но не подписанное предложение истекло | Предложение принято, срок вышел; запросить код | 409; затем заявка `expired` | `test_signing.py::test_accepted_but_unsigned_contract_expires_with_the_offer` |
-| NEG-53 | Не отвеченный запрос банка | Банк запросил информацию, клиент молчит 14 дней | до срока ничего не закрывается; через 14 дней заявка `expired`, открытых запросов нет | `test_signing.py::test_unanswered_bank_request_closes_the_application` |
-| NEG-54 | Условия выдачи при истечении договора | Принятое предложение по кредиту с залогом истекло | заявка `expired`, открытых условий нет | `test_signing.py::test_conditions_close_when_the_contract_expires` |
+| NEG-50 | Посторонний подключает чужую компанию | Клиент без компании и без полномочий по ЕГРЮЛ: `POST /api/companies/link` с ИНН подключённой компании или любой другой | 403 (`forbidden`); ответ одинаковый для подключённой и неподключённой компании; своя компания не появляется, чужих заявок не видно | `test_hardening.py::test_outsider_learns_nothing_about_a_connected_company`, `test_hardening.py::test_only_head_or_founder_from_registry_can_connect_a_company` |
+| NEG-51 | Учредитель присоединяется к уже подключённой компании | Мария Орлова (учредитель) подключает ИНН ТехноСклада | 409, «уже подключена» | `test_hardening.py::test_founder_cannot_join_a_company_already_in_the_cabinet` |
+| NEG-52 | Повторное подключение того же ИНН | `new@` второй раз с ИНН `0077070071` | 409 | `test_api.py::test_new_client_links_company_by_inn` |
+| NEG-53 | Учредитель подключает свободную компанию | Учредитель по ЕГРЮЛ подключает новую компанию | 200; `can_sign: false` | `test_hardening.py::test_founder_connects_company_but_cannot_sign` |
+| NEG-54 | Сверка ФИО | Имя профиля сопоставляется с ФИО по ЕГРЮЛ: фамилия обязательна, одной фамилии мало, «Алёна/Алена» совпадают | совпадение только при фамилии и имени | `test_hardening.py::test_same_person_matches_profile_name_against_registry_name` |
+| NEG-55 | Заявка без подключённой компании | Клиент без компании: «Подобрать кредит» → «Оформить заявку» (`POST /api/applications`) | 409 `conflict`, в сообщении — ввести ИНН на главной странице | `test_hardening.py::test_client_without_company_is_sent_to_the_home_page_for_the_inn` |
+| NEG-56 | Предложение истекло | Предложение просрочено (7 дней), воркер переводит заявку в «Срок истёк»; `POST …/offer/accept` | заявка `expired`, предложение `expired`, принять — 409 | `test_signing.py::test_expired_offer_cannot_be_accepted` |
+| NEG-57 | Принятое, но не подписанное предложение истекло | Предложение принято, срок вышел; запросить код | 409; затем заявка `expired` | `test_signing.py::test_accepted_but_unsigned_contract_expires_with_the_offer` |
+| NEG-58 | Не отвеченный запрос банка | Банк запросил информацию, клиент молчит 14 дней | до срока ничего не закрывается; через 14 дней заявка `expired`, открытых запросов нет | `test_signing.py::test_unanswered_bank_request_closes_the_application` |
+| NEG-59 | Условия выдачи при истечении договора | Принятое предложение по кредиту с залогом истекло | заявка `expired`, открытых условий нет | `test_signing.py::test_conditions_close_when_the_contract_expires` |
 
 Сроки считаются в тестах сдвигом дат в БД, в стенде их можно проверить только ожиданием (`OFFER_VALID_DAYS=7`,
 `NEEDS_INFO_TTL_DAYS=14`, воркер проверяет сроки раз в `HOUSEKEEPING_INTERVAL_S=60` с): в интерфейсе — вручную.
@@ -606,7 +607,7 @@ Invoke-RestMethod -Uri http://localhost:8001/admin/faults
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q          # все 144 теста; в Linux/macOS — .venv/bin/python
+.venv/Scripts/python -m pytest -q          # все тесты; в Linux/macOS — .venv/bin/python
 .venv/Scripts/python -m pytest tests/test_signing.py::test_full_path_from_offer_to_loan   # один сценарий
 ```
 
@@ -634,41 +635,13 @@ cd backend
 
 ### Что проверяет CI
 
-Файл `.github/workflows/ci.yml`, запуск на каждый push в `main` и `feat/**` и на pull request. Три задания:
+`.github/workflows/ci.yml` запускается на каждый push в `main` и `feat/**` и на pull request. В нём четыре задания: тесты бэкенда
+на PostgreSQL со сверкой `docs/openapi.json`, диаграммы состояний и коллекции запросов с кодом; сборка фронтенда;
+стенд, поднятый с нуля командой из README, с дымовой проверкой, коллекцией запросов, сценариями в браузере и
+записью основного сценария на видео; тот же стенд с включённым пояснением решения на фейковой модели.
 
-1. **backend** — PostgreSQL 16 как сервис; `alembic upgrade head` и `alembic check` (миграции применяются и
-   совпадают с моделями); `python -m pytest -q` на схеме из миграций; сверка с кодом, каждая из них —
-   `--check`, при расхождении падает:
-   - `python -m scripts.export_openapi --check` — `docs/openapi.json`;
-   - `python -m scripts.export_state_diagram --check` — диаграмма состояний в `docs/state-machine.md`;
-   - `python -m scripts.export_collection --check` — коллекция запросов `docs/postman_collection.json`.
-2. **frontend** — `npm ci` и `npm run build` (сборка и проверка типов).
-3. **compose** — после двух первых, на чистом раннере ровно командой из README:
-   - `docker compose up --build -d --wait` (ждёт healthcheck всех сервисов, включая «пульс» воркера);
-   - дымовой сценарий через nginx `python3 scripts/smoke.py http://localhost:8080 --timeout 180`: проверка
-     готовности `/health/ready`, демо-вход `bakery@`, заявка 3 000 000 ₽ на 12 мес., ожидание «Одобрено»;
-   - коллекция запросов через newman (`e2e`, `npm run api`): папка «Сквозной сценарий: от заявки до выдачи»
-     целиком, от входа до кредита с графиком;
-   - сценарии в браузере (Playwright, `npm run ui`) для каждой демо-учётки из README: решения (одобрение,
-     контрпредложение, в том числе другим продуктом, специалист, отказы), подпись кодом, выдача и график,
-     кабинет аналитика (трасса, воспроизведение, решение, симулятор), лента новостей, сбой БКИ;
-   - ресурсы стенда (`scripts/resource_report.py`): после `docker compose up --wait` фоновый цикл примерно раз в 2–4
-     секунды пишет `docker stats` (сам `docker stats --no-stream` отрабатывает за 1–2 секунды); после полного прогона сценариев, даже если они упали, строится отчёт — пик памяти каждого
-     контейнера (cgroup v2, `memory.peak`; если недоступен — максимум по замерам), максимум по замерам, сумма и
-     наибольшая одновременная сумма, размеры образов (`docker compose images`), `docker system df`. Отчёт
-     выводится в сводку задания (Actions → прогон → Summary) и сохраняется в артефакте `resources` (`resources.md`,
-     `stats.log`, хранится 30 дней). Недостающий замер отчёт заменяет словами «нет данных» и задание не роняет;
-   - запись основного сценария на видео — после всех проверок, поэтому их результаты не меняет: стенд пересоздаётся
-     (`docker compose down -v`, затем `up -d --wait` без пересборки), и тест `e2e/tests/demo/main-scenario.spec.ts`
-     (`npm run demo`, конфиг `playwright.demo.config.ts`, обычный `npm run ui` его не запускает) в одном окне, с паузой
-     около 300 мс после каждого действия и короткими подписями на экране проходит путь клиента «Северной пекарни»:
-     подбор → заявка с подставленными данными ЕГРЮЛ и ФНС → решение с причинами → договор и график → подпись кодом →
-     «Деньги на счёте!» → страница кредита, затем вход аналитиком: очередь → карточка оценки и трасса правил →
-     «Воспроизвести решение» → симулятор политики. Запись в артефакте `demo-video` (хранится 30 дней): `potok-demo.mp4`;
-     ffmpeg ставится на раннер в этом задании, без mp4 задание падает. Если сценарий упал, запись сохраняется всё равно;
-   - при падении — отчёт Playwright и журналы сервисов; в конце `docker compose down -v`.
-
-Команды сверки с кодом можно выполнить локально из папки `backend` (без `--check` файлы пересобираются).
+Сверку можно запустить локально из папки `backend`: `python -m scripts.export_openapi --check`, то же для
+`export_state_diagram` и `export_collection`; без `--check` файлы пересобираются.
 
 ### Что не покрыто автотестами
 
@@ -676,6 +649,6 @@ cd backend
 - Точные значения сроков в реальном времени (7 и 14 дней) и пауза повтора выдачи (60 с) — в тестах сдвигаются
   даты в БД.
 - Профили риска ИНН 5, 6, 8 и подключение произвольных ИНН через кабинет (см. E2E-13).
-- Попытка аналитика одобрить заявку со сработавшим стоп-фактором (NEG-44).
+- Попытка аналитика одобрить заявку со сработавшим стоп-фактором (NEG-48).
 - Повторный прогон `npm run ui` на уже использованном стенде: `new@` подключает ИНН один раз, поэтому
   сценарии в браузере запускаются на чистом стенде (`docker compose down -v`, затем `up`).

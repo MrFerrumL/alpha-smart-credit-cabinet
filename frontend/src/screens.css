@@ -225,12 +225,45 @@
   color: var(--potok-steel);
 }
 
-.potok-below {
+/* Колонка панелей и страница целиком — с тем же шагом, что между колонками. */
+.potok-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--potok-gap);
+  min-width: 0;
+}
+
+/* Основная колонка и боковая: 2 : 1, один шаг между ними. */
+.potok-below,
+.potok-home {
   display: grid;
-  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
-  justify-content: space-between;
-  gap: 32px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--potok-gap);
   align-items: start;
+}
+
+/* Короткая боковая колонка длинного списка остаётся на экране при прокрутке. */
+.potok-sticky {
+  position: sticky;
+  top: 16px;
+}
+
+/* Последняя панель более короткой колонки дотягивается до низа соседней. */
+@media (min-width: 721px) {
+  .potok-even {
+    align-items: stretch;
+  }
+
+  .potok-even > .potok-col > :last-child {
+    flex-grow: 1;
+  }
+}
+
+/* Запрос банка внутри блока статуса — под строкой статуса, через линию. */
+.potok-status-tasks {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--potok-line);
 }
 
 
@@ -255,6 +288,7 @@
 .potok-facts dd {
   margin: 2px 0 0;
   font-weight: 600;
+  overflow-wrap: break-word;
 }
 
 .potok-live {
@@ -328,14 +362,6 @@
 }
 
 /* --- Главная -------------------------------------------------------------------------------------- */
-.potok-home {
-  display: grid;
-  grid-template-columns: minmax(0, 672px) minmax(0, 336px);
-  justify-content: space-between;
-  gap: 32px;
-  align-items: start;
-}
-
 .potok-home-top,
 .potok-panel-head {
   display: flex;
@@ -362,7 +388,6 @@
   grid-template-columns: minmax(0, 1fr) 200px;
   gap: 24px;
   align-items: center;
-  padding: 32px;
 }
 
 .potok-promo-art {
@@ -385,14 +410,6 @@
   margin: 0;
   font-size: 14px;
   color: var(--potok-steel);
-}
-
-.potok-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 24px;
 }
 
 .potok-link {
@@ -534,6 +551,13 @@
   font: 500 16px/1.4 var(--font-ui);
 }
 
+/* Почему новость в ленте — видимой строкой: подсказка при наведении на телефоне недоступна. */
+.potok-news-why {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
 .potok-news-summary {
   margin-top: 4px;
   overflow: hidden;
@@ -559,13 +583,12 @@
 }
 
 /* --- Анкета --------------------------------------------------------------------------------------- */
-/* Сверху справа — степпер, слева 336 — липкая сводка, справа 672 — один шаг на белой панели. */
+/* Слева — липкая сводка заявки, справа — шаг анкеты. */
 .potok-wz-head,
 .potok-wz {
   display: grid;
-  grid-template-columns: 336px minmax(0, 672px);
-  justify-content: space-between;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--potok-gap);
 }
 
 .potok-wz-head {
@@ -574,14 +597,14 @@
 
 .potok-wz {
   align-items: start;
-  margin-top: 24px;
+  margin-top: var(--potok-gap);
 }
 
 .potok-wz-side {
   position: sticky;
   top: 16px;
   display: grid;
-  gap: 16px;
+  gap: var(--potok-gap);
 }
 
 .potok-wz-sum-what {
@@ -638,21 +661,6 @@
   gap: 16px 24px;
   align-items: start;
   margin-top: 12px;
-}
-
-.potok-wz-fixed {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 16px;
-  font-size: 14px;
-  color: var(--potok-steel);
-}
-
-.potok-wz-fixed b {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--potok-ink);
 }
 
 /* Метка источника данных в подписи поля: «Выручка в месяц  ФНС». */
@@ -856,12 +864,12 @@
 }
 
 /* --- Подбор кредита ------------------------------------------------------------------------------- */
-/* Слева (7/12) три вопроса и варианты, справа (5/12) липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
+/* Слева три вопроса и варианты, справа липкий «Ваш расчёт»; на телефоне расчёт — под вопросами. */
 .potok-match {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   grid-template-areas: 'q side' 'r side';
-  gap: 24px 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -878,15 +886,6 @@
   position: sticky;
   top: 16px;
 }
-
-.potok-match-sliders {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: start;
-  margin-top: 16px;
-}
-
 
 .potok-side-amount {
   margin-top: 12px;
@@ -1163,7 +1162,7 @@ a.potok-note-title:hover {
   gap: 16px;
 }
 
-/* Поиск — той же высоты, что лента фильтров (44 px), подсказка внутри поля, лупа слева; белый на «Тумане». */
+/* Поиск — той же высоты, что фильтры. */
 .potok-search .mantine-Input-input {
   min-height: 44px;
   height: 44px;
@@ -1224,7 +1223,7 @@ a.potok-note-title:hover {
   color: var(--potok-paper);
 }
 
-/* Счётчики — серые, нули — бледнее; красного нет. */
+/* Счётчики фильтров; нули — бледнее. */
 .potok-q-count {
   opacity: 0.75;
 }
@@ -1263,15 +1262,10 @@ a.potok-note-title:hover {
 }
 
 /* --- Кредитная политика --------------------------------------------------------------------------- */
-.potok-policy-page {
-  display: grid;
-  gap: 24px;
-}
-
 .potok-policy {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -1349,24 +1343,21 @@ a.potok-note-title:hover {
   font: 600 22px/1.25 var(--font-display);
 }
 
-.potok-sim-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.potok-sim-col {
-  padding: 16px;
-  border-radius: var(--r-16);
-  background: var(--potok-canvas);
-}
-
-.potok-sim-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.potok-sim-wrap {
   margin-top: 12px;
+  overflow-x: auto;
+}
+
+.potok-sim-table tr[data-changed='true'] td {
+  background: var(--potok-canvas);
+  font-weight: 600;
+}
+
+.potok-sim-delta {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--potok-steel);
 }
 
 .potok-sim-rows {
@@ -1379,6 +1370,10 @@ a.potok-note-title:hover {
   align-items: center;
   gap: 6px;
   color: var(--potok-steel);
+}
+
+.potok-modal-title {
+  font: 600 20px/1.3 var(--font-display);
 }
 
 /* Демо-код в окне подписи — спокойная плашка на «Тумане». */
@@ -1483,7 +1478,7 @@ a.potok-note-title:hover {
   color: var(--warn-text);
 }
 
-/* Запрос банка: строка на «Тумане», без цветной рамки вокруг всей карточки — статус говорит чип. */
+/* Запрос банка — строка на сером фоне, статус показывает чип. */
 .potok-task {
   background: var(--potok-canvas) !important;
 }
@@ -1516,7 +1511,14 @@ a.potok-note-title:hover {
 }
 
 /* --- Вход ----------------------------------------------------------------------------------------- */
+/* Линия выходит за сетку входа — края обрезает страница, без горизонтальной прокрутки. */
+.potok-login-page {
+  position: relative;
+  overflow: hidden;
+}
+
 .potok-login {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 456px;
   grid-template-areas: 'promo form' 'note note';
@@ -1528,6 +1530,64 @@ a.potok-note-title:hover {
   min-height: 100dvh;
   margin: 0 auto;
   padding: 48px 24px;
+}
+
+.potok-login > :not(.potok-deco) {
+  position: relative;
+  z-index: 1;
+}
+
+.potok-deco {
+  position: absolute;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.potok-deco path {
+  fill: none;
+  stroke: var(--potok-paper);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Координаты линии — экран 1440 × 900. Линия привязана к первой строке сетки справа, то есть к форме входа:
+   при любой ширине она проходит между текстом и формой на том же расстоянии от формы. */
+.potok-deco-line {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  top: -204px;
+  right: -168px;
+  width: 1440px;
+  height: 900px;
+}
+
+.potok-deco-line path {
+  stroke-width: 72;
+  stroke-dasharray: 1;
+  animation: potok-draw 1.4s var(--ease-in) 0.1s both;
+}
+
+.potok-deco-arc {
+  display: none;
+}
+
+@keyframes potok-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .potok-deco-line path {
+    animation: none;
+  }
+}
+
+@media print {
+  .potok-deco {
+    display: none;
+  }
 }
 
 .potok-login-promo {
@@ -1563,7 +1623,7 @@ a.potok-note-title:hover {
   margin-top: 8px;
 }
 
-/* Маркер — короткая графитовая черта, без иконок в кружках. */
+/* Маркер списка — короткая черта. */
 .potok-login-points li::before {
   content: '';
   position: absolute;
@@ -1653,7 +1713,7 @@ a.potok-note-title:hover {
 .potok-analyst {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 408px;
-  gap: 32px;
+  gap: var(--potok-gap);
   align-items: start;
 }
 
@@ -1991,7 +2051,6 @@ a.potok-note-title:hover {
   .potok-promo {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
-    padding: 20px 16px;
   }
 
   /* На телефоне иллюстрация — узкая полоса над текстом, а не квадрат на пол-экрана. */
@@ -2004,21 +2063,10 @@ a.potok-note-title:hover {
     width: 100%;
   }
 
-  .potok-strip {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 16px;
-  }
-
   /* Анкета на телефоне: степпер без подписей, сводка — шторка 56 px над закреплёнными «Назад/Далее», вместе ≤ 140 px. */
   .potok-wz-head,
   .potok-wz {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .potok-wz {
-    margin-top: 16px;
   }
 
   .potok-wz-side,
@@ -2114,7 +2162,6 @@ a.potok-note-title:hover {
     border-top: 1px solid var(--potok-line);
   }
 
-  /* Кнопки панели — 48 px: панель 73 px, со шторкой 56 px вместе 129 px. */
   .potok-wz-bar .mantine-Button-root {
     height: 48px !important;
   }
@@ -2130,7 +2177,6 @@ a.potok-note-title:hover {
   .potok-match {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'q' 'r' 'side';
-    gap: 16px;
   }
 
   .potok-match-side {
@@ -2140,12 +2186,6 @@ a.potok-note-title:hover {
   /* Свёрнутый расчёт: сумма, срок и платёж; «что понадобится» и «что дальше» — по кнопке. */
   .potok-match-side[data-open='false'] {
     display: none;
-  }
-
-
-  .potok-match-sliders {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
   }
 
   .potok-offer {
@@ -2249,9 +2289,19 @@ a.potok-note-title:hover {
     margin-top: 10px;
   }
 
-  .potok-policy,
-  .potok-sim-cols {
+  .potok-policy {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-sim-table .mantine-Table-th,
+  .potok-sim-table .mantine-Table-td {
+    padding-inline: 6px;
+    font-size: 13px;
+  }
+
+  .potok-sim-delta {
+    display: block;
+    margin: 2px 0 0;
   }
 
   .potok-sim-row {
@@ -2266,6 +2316,26 @@ a.potok-note-title:hover {
     gap: 20px;
     align-content: start;
     padding: 20px 16px;
+  }
+
+  /* На телефоне — одна дуга во всю ширину экрана над формой, без движения. */
+  .potok-deco-line {
+    display: none;
+  }
+
+  .potok-deco-arc {
+    display: block;
+    grid-row: 1;
+    grid-column: 1 / -1;
+    top: -20px;
+    left: -16px;
+    width: calc(100% + 32px);
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
+
+  .potok-deco-arc path {
+    stroke-width: 40;
   }
 
   .potok-login-title {
@@ -2305,16 +2375,72 @@ a.potok-note-title:hover {
   }
 
 
-  .potok-home,
   .potok-lists,
-  .potok-below,
-  .potok-analyst,
-  .potok-kv,
-  .potok-facts {
+  .potok-analyst {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .potok-analyst-side {
+  .potok-kv {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* Обе колонки — одной лентой: «Что дальше» и «Следующий платёж» встают перед историей и списками, лента новостей
+     на главной — в конец. */
+  .potok-below,
+  .potok-home {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .potok-below > .potok-col,
+  .potok-home > .potok-col {
+    display: contents;
+  }
+
+  .potok-below > .potok-col > *,
+  .potok-home > .potok-col > * {
+    min-width: 0;
+  }
+
+  .potok-phone-first {
+    order: -1;
+  }
+
+  .potok-home .potok-news {
+    order: 1;
+  }
+
+  .potok-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* Строка заявки: чип статуса — под названием, а не сжимает его; стрелка — по центру обеих строк. */
+  .potok-app-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'main go' 'chip go';
+    gap: 8px 12px;
+  }
+
+  .potok-app-row .potok-row-main {
+    grid-area: main;
+  }
+
+  .potok-app-row .potok-chip {
+    grid-area: chip;
+    justify-self: start;
+  }
+
+  .potok-app-row .potok-row-go {
+    grid-area: go;
+    align-self: center;
+  }
+
+  .potok-analyst-side,
+  .potok-sticky {
     position: static;
   }
 

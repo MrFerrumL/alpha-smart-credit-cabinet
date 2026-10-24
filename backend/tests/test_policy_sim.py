@@ -17,7 +17,9 @@ def test_tighter_policy_changes_outcomes_without_touching_applications(client, m
     strict = client.post("/api/policy/simulate", json={"max_dsr": 0.1, "min_coverage": 2.5}, headers=analyst).json()
     row = next(r for r in strict["changed"] if r["id"] == app_id)
     assert row["outcome_now"] == "approved" and row["outcome_then"] != "approved"
-    assert strict["simulated"]["offered_total"] < strict["current"]["offered_total"]
+    # При строгих порогах пекарня получает другие условия: одобрений меньше, объём не растёт.
+    assert strict["simulated"]["counts"].get("approved", 0) < strict["current"]["counts"].get("approved", 0)
+    assert strict["simulated"]["offered_total"] <= strict["current"]["offered_total"]
     assert get(client, app_id, headers)["status"]["code"] == "approved"  # заявка не изменилась
 
 
@@ -45,3 +47,21 @@ def test_manual_review_recommendation_changes_are_reported_and_policy_resets(cli
     assert row["offered_then"] < row["offered_now"] == 19_500_000
     assert row["status"] == "manual_review"
     assert (policy().max_dsr, policy().min_dscr) == (MAX_DSR, MIN_DSCR)  # пороги вернулись к действующим
+
+
+def test_simulator_skips_a_snapshot_with_numbers_too_large_for_the_calculation(client, mocks):
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import ScoringResult
+
+    app_id, _ = submit(client, "bakery@demo.local")
+    run_pipeline(mocks)
+    with SessionLocal() as db:
+        scoring = db.scalar(select(ScoringResult).where(ScoringResult.application_id == app_id))
+        scoring.features = scoring.features | {"existing_payments": 10**400}
+        db.commit()
+    analyst = auth(client, "analyst@demo.local")
+    response = client.post("/api/policy/simulate", json={"max_dsr": 0.5, "min_coverage": 1.2}, headers=analyst)
+    assert response.status_code == 200, response.text
+    assert all(row["id"] != app_id for row in response.json()["changed"])

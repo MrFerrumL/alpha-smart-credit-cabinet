@@ -3,7 +3,8 @@
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic_core import PydanticCustomError
 
 from app.domain.products import Purpose
 
@@ -16,6 +17,19 @@ def _as_utc(value: datetime | None) -> datetime | None:
 
 
 UtcDatetime = Annotated[datetime, AfterValidator(_as_utc)]
+
+# Верхняя граница сумм в анкете, ₽: больше — заведомая опечатка, а расчёты по таким числам теряют смысл.
+MAX_MONEY = 1_000_000_000_000
+
+
+def _within_max_money(value: int, info: ValidationInfo) -> int:
+    # Анкету из БД (context stored) не перепроверяем: суммы, сохранённые до границы, не ломают показ заявки.
+    if value > MAX_MONEY and not (info.context or {}).get("stored"):
+        raise PydanticCustomError("less_than_equal", "Input should be less than or equal to {le}", {"le": MAX_MONEY})
+    return value
+
+
+Money = Annotated[int, Field(ge=0, json_schema_extra={"maximum": MAX_MONEY}), AfterValidator(_within_max_money)]
 
 
 class Out(BaseModel):
@@ -183,15 +197,15 @@ class CalcOut(BaseModel):
 
 
 class FinanceForm(BaseModel):
-    monthly_revenue: int | None = Field(default=None, ge=0, description="Среднемесячная выручка, ₽")
-    monthly_expenses: int | None = Field(default=None, ge=0, description="Среднемесячные расходы, ₽")
-    debt_payments: int | None = Field(default=None, ge=0, description="Платежи по текущим кредитам в месяц, ₽")
+    monthly_revenue: Money | None = Field(default=None, description="Среднемесячная выручка, ₽")
+    monthly_expenses: Money | None = Field(default=None, description="Среднемесячные расходы, ₽")
+    debt_payments: Money | None = Field(default=None, description="Платежи по текущим кредитам в месяц, ₽")
     employees: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class CollateralForm(BaseModel):
     kind: str | None = Field(default=None, description="real_estate | vehicle | equipment | guarantee")
-    value: int | None = Field(default=None, ge=0)
+    value: Money | None = None
     description: str | None = Field(default=None, max_length=1000)
 
 
@@ -401,9 +415,9 @@ class SigningCodeOut(BaseModel):
     expires_at: UtcDatetime
     attempts_left: int
     delivery: str = Field(default="in_app", description="Код показывается в окне подписания в кабинете")
-    demo_code: str = Field(
-        description="Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет "
-        "один раз и не хранится в открытом виде"
+    demo_code: str | None = Field(
+        description="Одноразовый код — только в демо-режиме, иначе null. Электронная подпись смоделирована: "
+        "вместо SMS код отдаётся в кабинет один раз и не хранится в открытом виде"
     )
 
 

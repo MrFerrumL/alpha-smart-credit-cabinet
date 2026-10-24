@@ -1,7 +1,6 @@
 import { Button, createTheme, type MantineColorsTuple } from '@mantine/core';
 
-// Красная шкала Альфы (core-components, bluetint): основная заливка — accent-primary-hover #e32a17 (индекс 7),
-// наведение — accent-primary-press #d72505: с белым текстом это AA; чистый #ef3124 — для меток и фокуса.
+// Красная шкала Альфы (core-components, bluetint): кнопки — индекс 7, наведение — 8, #ef3124 — метки и фокус.
 const alfa: MantineColorsTuple = [
   '#ffebeb',
   '#ffdfdf',
@@ -15,7 +14,7 @@ const alfa: MantineColorsTuple = [
   '#c41400',
 ];
 
-// Нейтральная шкала Альфы. Индекс 6 — «dimmed» в Mantine: #5f5f66 держит 6,3:1 на белом.
+// Нейтральная шкала Альфы. Индекс 6 — «dimmed» в Mantine.
 const gray: MantineColorsTuple = [
   '#f7f7f8',
   '#f2f3f5',

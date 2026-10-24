@@ -1,5 +1,9 @@
 """Кабинет аналитика: карточка заявки и ручное решение, видимое клиенту."""
 
+from sqlalchemy import select
+
+from app.db import SessionLocal
+from app.models import Application, ScoringResult
 from tests.conftest import auth, run_pipeline
 from tests.test_pipeline import events, get, submit
 
@@ -264,3 +268,22 @@ def test_replay_reports_a_difference_when_the_policy_changed(client, mocks, monk
     assert replay["matches"] is False
     assert any(d.startswith("исход") for d in replay["differences"])
     assert get(client, app_id, headers)["status"]["code"] == "approved"  # заявка не изменилась
+
+
+def test_card_survives_absurd_numbers_saved_before_the_limits(client, mocks):
+    # До верхних границ анкеты в БД могли попасть числа, которые не помещаются во float.
+    app_id, _ = vector_in_review(client, mocks)
+    with SessionLocal() as db:
+        scoring = db.scalar(select(ScoringResult).where(ScoringResult.application_id == app_id))
+        scoring.features = scoring.features | {"declared_revenue_monthly": 10**400, "existing_payments": 10**400}
+        app = db.get(Application, app_id)
+        app.form = app.form | {"finance": {"monthly_revenue": 10**400}}
+        db.commit()
+    analyst = auth(client, "analyst@demo.local")
+    response = client.get(f"/api/applications/{app_id}/assessment", headers=analyst)
+    assert response.status_code == 200, response.text
+    card = response.json()
+    assert card["revenue"]["declared_monthly"] == 10**400 and card["revenue"]["gap_pct"] is None
+    assert card["requested"]["dsr"] is None and card["requested"]["coverage"] == 0.82
+    shown = client.get(f"/api/applications/{app_id}", headers=analyst)
+    assert shown.status_code == 200 and shown.json()["form"]["finance"]["monthly_revenue"] == 10**400

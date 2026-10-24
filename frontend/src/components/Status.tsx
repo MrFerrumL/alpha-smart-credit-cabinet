@@ -2,7 +2,7 @@ import { Button } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
-import { useMeta } from '../api/hooks';
+import { useEvents, useMeta } from '../api/hooks';
 import type { Application, StatusInfo, Tone } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { typo } from '../lib/format';
@@ -32,10 +32,7 @@ export function StatusChip({ app }: { app: Pick<Application, 'status' | 'offer' 
 
 type Segment = 'done' | 'now' | 'stop' | 'closed' | 'next';
 
-/**
- * Степпер из сегментов — один на 5 шагов анкеты и 7 этапов заявки. Пройденные — графит, текущий — красный
- * (у отказа — тон ошибки), будущие — светлые. У закрытой заявки будущих сегментов нет.
- */
+/** Степпер из сегментов для шагов анкеты и этапов заявки; у закрытой заявки будущих сегментов нет. */
 export function Stepper({
   labels,
   current,
@@ -54,7 +51,7 @@ export function Stepper({
     return state === 'rejected' ? 'stop' : state === 'closed' ? 'closed' : 'now';
   };
   return (
-    <ol className="potok-stepper" data-labels={showLabels} style={{ gridTemplateColumns: `repeat(${labels.length}, 1fr)` }}>
+    <ol className="potok-stepper" data-labels={showLabels} style={{ gridTemplateColumns: `repeat(${shown.length}, 1fr)` }}>
       {shown.map((label, i) => (
         <li key={label} data-seg={segment(i)} aria-current={segment(i) === 'now' ? 'step' : undefined}>
           <span className="potok-stepper-label">{label}</span>
@@ -81,7 +78,8 @@ function nextAction(app: Application, role: string | undefined, onPage: boolean)
     case 'draft':
       return { label: 'Продолжить оформление', to: `${page}/edit` };
     case 'needs_info':
-      return { label: 'Ответить на запрос', to: onPage ? '#tasks' : page };
+      // На странице заявки запрос банка — в том же блоке статуса, со своей кнопкой.
+      return onPage ? null : { label: 'Ответить на запрос', to: page };
     case 'approved':
     case 'counter_offer':
       // На странице заявки главное действие — в блоке решения; здесь кнопку не дублируем.
@@ -118,6 +116,30 @@ const BANK_HINT: Record<string, string> = {
   expired: 'Предложение истекло без ответа клиента',
 };
 
+// Что клиенту сделать сначала: подписать договор, ответить на предложение, на запрос банка, дозаполнить черновик.
+const ACTION_RANK: Record<string, number> = { signing: 0, approved: 1, counter_offer: 1, needs_info: 2, draft: 3 };
+
+const actionRank = (app: Application) => (app.status.action_required ? (ACTION_RANK[app.status.code] ?? 4) : 5);
+
+/** Порядок заявок: сначала та, где ход за клиентом и он важнее, затем свежие. */
+export function byAction(a: Application, b: Application): number {
+  return actionRank(a) - actionRank(b) || b.id - a.id;
+}
+
+/**
+ * Этап, на котором банк запросил информацию: запрос после оценки не откатывает степпер к «Проверке данных».
+ * Берётся из события перехода в needs_info (откуда пришла заявка).
+ */
+function useShownStage(app: Application): number {
+  const meta = useMeta();
+  const asks = app.status.code === 'needs_info';
+  const events = useEvents(app.id, app, asks);
+  if (!asks || !events.data) return app.status.stage;
+  const ev = events.data.findLast((e) => e.to_status === 'needs_info');
+  const from = meta.data?.statuses.find((s) => s.code === ev?.from_status);
+  return Math.max(app.status.stage, from?.stage ?? 0);
+}
+
 /**
  * Компонент статуса заявки — один на главной, в списке, на странице заявки и у аналитика: степпер, «Шаг N из 7:
  * этап», что будет дальше и кнопка следующего шага.
@@ -129,6 +151,10 @@ export function StatusBlock({
   note,
   action = true,
   hint = true,
+  primary,
+  hintTail,
+  aside,
+  children,
 }: {
   app: Application;
   onPage?: boolean;
@@ -137,22 +163,29 @@ export function StatusBlock({
   action?: boolean;
   /** Подсказка статуса; в блоке решения её заменяет фраза исхода. */
   hint?: boolean;
+  /** Красная ли кнопка шага; по умолчанию — когда ход за человеком. В списке заявок красная только у первой. */
+  primary?: boolean;
+  /** Продолжение строки подсказки — например, «статус обновляется сам». */
+  hintTail?: ReactNode;
+  /** Второстепенное действие справа в строке статуса. */
+  aside?: ReactNode;
+  /** Строки под подсказкой. */
+  children?: ReactNode;
 }) {
   const meta = useMeta();
   const { user } = useAuth();
   const stages = meta.data?.stages ?? [];
   const state = stepperState(app.status);
-  const stage = stages[app.status.stage] ?? '';
+  const current = useShownStage(app);
+  const stage = stages[current] ?? '';
   const next = action ? nextAction(app, user?.role, onPage) : null;
   // Красная кнопка — только когда ход за человеком; иначе спокойная вторичная.
-  const variant = app.status.action_required || user?.role === 'analyst' ? 'filled' : 'default';
+  const variant = (primary ?? (app.status.action_required || user?.role === 'analyst')) ? 'filled' : 'default';
   const where =
-    state === 'rejected' || state === 'closed'
-      ? 'Заявка закрыта'
-      : `Шаг ${app.status.stage + 1} из ${stages.length || 7}: ${stage}`;
+    state === 'rejected' || state === 'closed' ? 'Заявка закрыта' : `Шаг ${current + 1} из ${stages.length || 7}: ${stage}`;
   return (
     <div className="potok-status">
-      {stages.length > 0 && <Stepper labels={stages} current={app.status.stage} state={state} showLabels={showLabels} />}
+      {stages.length > 0 && <Stepper labels={stages} current={current} state={state} showLabels={showLabels} />}
       <div className="potok-status-row">
         <div>
           <div className="potok-status-where">
@@ -162,19 +195,26 @@ export function StatusBlock({
           {hint && (
             <div className="potok-status-next">
               {typo(user?.role === 'analyst' ? (BANK_HINT[app.status.code] ?? app.status.title) : app.status.hint)}
+              {hintTail}
             </div>
           )}
+          {children}
         </div>
-        {next &&
-          (next.to.startsWith('#') ? (
-            <Button component="a" href={next.to} size="md" variant={variant} className="potok-status-action">
-              {next.label}
-            </Button>
-          ) : (
-            <Button component={Link} to={next.to} size="md" variant={variant} className="potok-status-action">
-              {next.label}
-            </Button>
-          ))}
+        {(next || aside) && (
+          <div className="potok-status-actions">
+            {next &&
+              (next.to.startsWith('#') ? (
+                <Button component="a" href={next.to} size="md" variant={variant} className="potok-status-action">
+                  {next.label}
+                </Button>
+              ) : (
+                <Button component={Link} to={next.to} size="md" variant={variant} className="potok-status-action">
+                  {next.label}
+                </Button>
+              ))}
+            {aside}
+          </div>
+        )}
       </div>
     </div>
   );

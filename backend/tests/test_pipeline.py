@@ -168,6 +168,28 @@ def test_incomplete_form_asks_for_revenue_and_continues(client, mocks):
     assert get(client, app_id, headers)["status"]["code"] == "approved"
 
 
+def test_revenue_answer_is_bounded_and_parsed_safely(client, mocks):
+    app_id, headers = submit(client, "bakery@demo.local", form={"consent_bki": True})
+    run_pipeline(mocks)
+    task = client.get(f"/api/applications/{app_id}/tasks", headers=headers).json()[0]
+    url = f"/api/applications/{app_id}/tasks/{task['id']}/answer"
+    for answer, message in (
+        ("9" * 2000, "Выручка в месяц — не больше 1 000 000 000 000"),
+        ("1 000 000 000 001 ₽", "Выручка в месяц — не больше 1 000 000 000 000"),
+        ("²", "Укажите сумму в рублях"),  # isdigit() считает «²» цифрой, а int() её не разбирает
+        ("0", "Укажите сумму в рублях"),
+    ):
+        response = client.post(url, json={"answer": answer}, headers=headers)
+        assert response.status_code == 422, (answer, response.text)
+        assert response.json()["errors"] == [{"field": "answer", "message": message}]
+    assert get(client, app_id, headers)["status"]["code"] == "needs_info"
+    answered = client.post(url, json={"answer": "000 1 000 000 000 000"}, headers=headers)
+    assert answered.status_code == 200, answered.text
+    assert get(client, app_id, headers)["form"]["finance"]["monthly_revenue"] == 1_000_000_000_000
+    run_pipeline(mocks)
+    assert get(client, app_id, headers)["status"]["code"] == "approved"  # выручку берут из ФНС, заявленная — справочно
+
+
 def test_short_outage_is_retried_transparently(client, mocks):
     mocks.post("/admin/faults", json={"source": "bki", "mode": "error", "count": 1})
     app_id, headers = submit(client, "bakery@demo.local")

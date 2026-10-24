@@ -117,11 +117,11 @@ function sameApplication<T>(id: number) {
     query?.queryKey[1] === id ? previous : undefined;
 }
 
-export function useEvents(id: number, app?: Application) {
+export function useEvents(id: number, app?: Application, enabled = true) {
   return useQuery({
     queryKey: [...keys.events(id), app?.status.code],
     queryFn: () => api<ApplicationEvent[]>(`/applications/${id}/events`),
-    enabled: !!app,
+    enabled: !!app && enabled,
     placeholderData: sameApplication<ApplicationEvent[]>(id),
   });
 }

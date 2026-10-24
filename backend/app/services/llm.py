@@ -1,4 +1,5 @@
-"""Клиент OpenAI-совместимого chat API (Ollama, vLLM, llama.cpp, облачные провайдеры) для пояснения решения.
+"""Клиент chat API для пояснения решения: любой OpenAI-совместимый сервер с моделью с открытыми весами
+(Ollama, vLLM, llama.cpp).
 
 Только то, что понимают все такие серверы: один запрос `POST {base_url}/chat/completions` без потоковой выдачи
 и без специальных полей. Повторов нет: пояснение необязательно, лучше быстро сдаться, чем держать очередь.
@@ -17,7 +18,7 @@ from app.config import get_settings
 
 log = logging.getLogger("app.llm")
 
-LLM_TIMEOUT_S = 60.0  # общий срок одного вызова; константа, не переменная окружения
+LLM_TIMEOUT_S = 60.0  # общий срок одного вызова
 CONNECT_TIMEOUT_S = 3.0  # недоступный сервер выясняется быстро, а не за весь срок
 
 
@@ -66,10 +67,10 @@ class ChatClient:
         try:
             text, finish_reason = _parse(self._post(body, deadline=started + self._timeout_s))
         except LLMError as exc:
-            log.warning("llm call failed", extra={"status": exc.code, "duration_ms": _elapsed_ms(started)})
+            log.warning("llm call failed", extra={"outcome": exc.code, "duration_ms": _elapsed_ms(started)})
             raise
         latency_ms = _elapsed_ms(started)
-        log.info("llm call", extra={"status": "ok", "duration_ms": latency_ms})
+        log.info("llm call", extra={"outcome": "ok", "duration_ms": latency_ms})
         return Completion(text=text, finish_reason=finish_reason, latency_ms=latency_ms)
 
     def close(self) -> None:

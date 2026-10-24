@@ -5,15 +5,17 @@
 """
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_by_id
 from app.domain.statuses import Actor, Status
-from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
+from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, max_value_message
 from app.models import Application, ClientTask, Document, User, utcnow
 from app.pipeline.queue import enqueue
+from app.schemas import MAX_MONEY
 from app.services import storage
+from app.services.applications import require_owner
 from app.services.state_machine import apply_transition, record_event
 
 DOCUMENT_KINDS = {
@@ -22,6 +24,7 @@ DOCUMENT_KINDS = {
     "collateral": "Документы по залогу",
     "other": "Другой документ",
 }
+MAX_DOCUMENTS = 20  # на одну заявку
 
 
 def list_tasks(db: Session, app: Application) -> list[ClientTask]:
@@ -39,11 +42,6 @@ def _own_task(db: Session, app: Application, task_id: int) -> ClientTask:
     if task.status != "open":
         raise Conflict("На этот запрос уже ответили")
     return task
-
-
-def _require_owner(app: Application, user: User) -> None:
-    if user.role != "client" or user.company_id != app.company_id:
-        raise NotFound("Заявка не найдена")
 
 
 def _set_form_field(app: Application, path: str, value) -> None:
@@ -104,7 +102,7 @@ def _resume_if_complete(db: Session, app: Application, user: User) -> None:
 
 
 def answer_task(db: Session, user: User, app: Application, task_id: int, answer: str) -> ClientTask:
-    _require_owner(app, user)
+    require_owner(app, user)
     task = _own_task(db, app, task_id)
     if not _accepts_answers(app, task):
         raise Conflict("Сейчас банк ничего не запрашивает по этой заявке")
@@ -119,9 +117,12 @@ def answer_task(db: Session, user: User, app: Application, task_id: int, answer:
         raise BusinessValidationError("Для этого запроса нужно загрузить документ")
     field = (task.payload or {}).get("field")
     if task.kind == "field" and (task.payload or {}).get("input") == "money":
-        digits = "".join(ch for ch in answer if ch.isdigit())
-        if not digits or int(digits) <= 0:
+        # Только цифры 0–9 (isdigit() пропускает «²», на котором int() падает); длина проверяется до int().
+        digits = "".join(ch for ch in answer if ch in "0123456789").lstrip("0")
+        if not digits:
             raise BusinessValidationError(errors=[{"field": "answer", "message": "Укажите сумму в рублях"}])
+        if len(digits) > len(str(MAX_MONEY)) or int(digits) > MAX_MONEY:
+            raise BusinessValidationError(errors=[{"field": "answer", "message": max_value_message(field, MAX_MONEY)}])
         _set_form_field(app, field, int(digits))
     elif field:
         _set_form_field(app, field, answer.strip())
@@ -135,28 +136,35 @@ def answer_task(db: Session, user: User, app: Application, task_id: int, answer:
 def upload_document(
     db: Session, user: User, app: Application, upload: UploadFile, kind: str, task_id: int | None
 ) -> Document:
-    _require_owner(app, user)
+    require_owner(app, user)
     if kind not in DOCUMENT_KINDS:
         raise BusinessValidationError(errors=[{"field": "kind", "message": "Неизвестный тип документа"}])
     task = _own_task(db, app, task_id) if task_id is not None else None
     if app.status != Status.DRAFT.value and not _accepts_answers(app, task):
         raise Conflict("Документы можно приложить к черновику, по запросу банка или к условиям выдачи")
+    db.refresh(app, with_for_update=True)  # параллельные загрузки не обойдут лимит документов
+    if db.scalar(select(func.count(Document.id)).where(Document.application_id == app.id)) >= MAX_DOCUMENTS:
+        raise Conflict(f"К заявке можно приложить не больше {MAX_DOCUMENTS} документов")
     key, size = storage.save(upload, app.company_id)
-    doc = Document(
-        company_id=app.company_id,
-        application_id=app.id,
-        kind=kind,
-        filename=(upload.filename or "document")[:255],
-        content_type=(upload.content_type or "application/octet-stream")[:128],
-        size_bytes=size,
-        storage_key=key,
-        uploaded_by_id=user.id,
-    )
-    db.add(doc)
-    record_event(db, app, "document_uploaded", Actor.CLIENT, actor_id=user.id, payload={"filename": doc.filename})
-    if task is not None:
-        _resolve(db, app, task, user, doc.filename)
-    db.flush()
-    _resume_if_complete(db, app, user)
-    db.commit()
+    try:
+        doc = Document(
+            company_id=app.company_id,
+            application_id=app.id,
+            kind=kind,
+            filename=(upload.filename or "document")[:255],
+            content_type=(upload.content_type or "application/octet-stream")[:128],
+            size_bytes=size,
+            storage_key=key,
+            uploaded_by_id=user.id,
+        )
+        db.add(doc)
+        record_event(db, app, "document_uploaded", Actor.CLIENT, actor_id=user.id, payload={"filename": doc.filename})
+        if task is not None:
+            _resolve(db, app, task, user, doc.filename)
+        db.flush()
+        _resume_if_complete(db, app, user)
+        db.commit()
+    except Exception:
+        storage.delete(key)  # записи о документе в БД нет — файл без неё никому не нужен
+        raise
     return doc

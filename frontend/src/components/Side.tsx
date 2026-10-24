@@ -1,4 +1,4 @@
-import { Text, Title } from '@mantine/core';
+import { Button, Text, Title } from '@mantine/core';
 import { Link } from 'react-router';
 
 import { useNotifications } from '../api/hooks';
@@ -46,6 +46,18 @@ export function CompanyCard({ company }: { company: Company }) {
 export function MyCompany() {
   const { user } = useAuth();
   return user?.company ? <CompanyCard company={user.company} /> : null;
+}
+
+/** Ещё один кредит — компактно, в боковой колонке: заявка или кредит уже есть, подбор не главное. */
+export function MoreMoney() {
+  return (
+    <section className="potok-panel potok-strip-v">
+      <Text>Нужны ещё деньги на бизнес? Подберём кредит под задачу.</Text>
+      <Button component={Link} to="/match" variant="default" size="md">
+        Подобрать кредит
+      </Button>
+    </section>
+  );
 }
 
 /** «Заявка № 2026-000003» → «Заявка 2026-000003»: номер и так узнаётся по формату. */

@@ -1,4 +1,25 @@
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+
+/**
+ * Как сценарий нажимает, отмечает и вводит. Обычные тесты идут быстрым способом (fast) — как всегда; запись демо
+ * передаёт свой: курсор плавно подводится к элементу, текст набирается по знакам.
+ */
+export interface Actor {
+  click(target: Locator): Promise<void>;
+  check(target: Locator): Promise<void>;
+  fill(target: Locator, value: string): Promise<void>;
+  /** Ввод с клавиатуры в поле, где уже стоит фокус. */
+  type(page: Page, text: string): Promise<void>;
+  /** Навести указатель на вариант перед выбором (список демо-профилей); быстрому способу не нужно. */
+  hover?(target: Locator): Promise<void>;
+}
+
+export const fast: Actor = {
+  click: (target) => target.click(),
+  check: (target) => target.check(),
+  fill: (target, value) => target.fill(value),
+  type: (page, text) => page.keyboard.type(text),
+};
 
 export const PURPOSE = {
   workingCapital: 'Пополнить оборотные средства',
@@ -16,10 +37,12 @@ export interface ApplicationInput {
 }
 
 /** Выбор демо-профиля в выпадающем списке поля «Почта» и вход. */
-export async function pickPersona(page: Page, fullName: string): Promise<void> {
-  await page.getByRole('combobox', { name: 'Почта' }).click();
-  await page.getByRole('option', { name: new RegExp(`^${fullName}`) }).click();
-  await page.getByRole('button', { name: 'Войти', exact: true }).click();
+export async function pickPersona(page: Page, fullName: string, actor: Actor = fast): Promise<void> {
+  await actor.click(page.getByRole('combobox', { name: 'Почта' }));
+  const option = page.getByRole('option', { name: new RegExp(`^${fullName}`) });
+  await actor.hover?.(option);
+  await actor.click(option);
+  await actor.click(page.getByRole('button', { name: 'Войти', exact: true }));
 }
 
 /** Вход под демо-учёткой со страницы входа. */
@@ -46,53 +69,53 @@ export type ApplyStep = 'match' | 'company' | 'loan' | 'finance' | 'documents' |
 export type ApplyHook = (step: ApplyStep) => Promise<void>;
 
 /** Подбор → анкета → «Отправить в банк». Возвращает номер заявки в URL. */
-export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyHook): Promise<string> {
+export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyHook, actor: Actor = fast): Promise<string> {
   // Запись демо открывает подбор через меню сама, остальные тесты приходят сюда с другой страницы.
   if (!/\/match$/.test(page.url())) await page.goto('/match');
-  await page.getByText(input.purpose, { exact: true }).click();
-  await page.getByLabel('Сумма', { exact: true }).fill(String(input.amount));
+  await actor.click(page.getByText(input.purpose, { exact: true }));
+  await actor.fill(page.getByLabel('Сумма', { exact: true }), String(input.amount));
   // Срок вводится в поле «Срок» (рядом — быстрые значения и слайдер).
-  await page.getByLabel('Срок', { exact: true }).fill(String(input.term));
+  await actor.fill(page.getByLabel('Срок', { exact: true }), String(input.term));
   const card = page.getByRole('article', { name: input.product, exact: true });
   // Подбор пересчитывается с задержкой — ждём, пока в варианте появятся введённые срок и сумма.
   await expect(card.getByTestId('match-terms')).toContainText(money(input.amount));
   await expect(card.getByTestId('match-terms')).toContainText(`на ${input.term} мес`);
   await onStep?.('match');
-  await card.getByRole('button', { name: 'Оформить заявку' }).click();
+  await actor.click(card.getByRole('button', { name: 'Оформить заявку' }));
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
   const id = page.url().match(/applications\/(\d+)/)![1];
 
   const next = page.getByRole('button', { name: 'Далее' });
   await expect(page.getByRole('heading', { name: 'Проверьте данные компании' })).toBeVisible();
   await onStep?.('company');
-  await next.click();
+  await actor.click(next);
   await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
   await expect(page.getByLabel('Срок', { exact: true })).toHaveValue(String(input.term));
   await onStep?.('loan');
-  await next.click();
+  await actor.click(next);
   await expect(page.getByRole('heading', { name: 'Финансы компании' })).toBeVisible();
   if (input.revenue !== undefined) {
-    await page.getByLabel('Выручка в месяц').fill(String(input.revenue));
+    await actor.fill(page.getByLabel('Выручка в месяц'), String(input.revenue));
   } else {
     await expect(page.getByText(/Заполнили выручку и расходы по данным ФНС/)).toBeVisible();
   }
   await onStep?.('finance');
-  await next.click();
+  await actor.click(next);
   if (input.collateral) {
     await expect(page.getByRole('heading', { name: 'Обеспечение' })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Что предлагаете в залог' }).click();
-    await page.getByRole('option', { name: input.collateral.kind }).click();
-    await page.getByLabel('Примерная стоимость').fill(String(input.collateral.value));
-    await next.click();
+    await actor.click(page.getByRole('textbox', { name: 'Что предлагаете в залог' }));
+    await actor.click(page.getByRole('option', { name: input.collateral.kind }));
+    await actor.fill(page.getByLabel('Примерная стоимость'), String(input.collateral.value));
+    await actor.click(next);
   }
   await expect(page.getByRole('heading', { name: 'Документы' })).toBeVisible();
   await onStep?.('documents');
-  await next.click();
+  await actor.click(next);
   await expect(page.getByRole('heading', { name: 'Всё верно?' })).toBeVisible();
   await onStep?.('review');
-  await page.getByLabel(/Согласен на запрос кредитной истории/).check();
+  await actor.check(page.getByLabel(/Согласен на запрос кредитной истории/));
   await onStep?.('consent');
-  await page.getByRole('button', { name: 'Отправить в банк' }).click();
+  await actor.click(page.getByRole('button', { name: 'Отправить в банк' }));
   await expect(page).toHaveURL(new RegExp(`/applications/${id}$`));
   return id;
 }
@@ -100,16 +123,16 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
 export const status = (page: Page) => page.locator('h3').first();
 
 /** Подпись договора кодом из окна подписания. Хук вызывается, когда код уже показан, а ввод ещё не начат. */
-export async function sign(page: Page, onCodeShown?: () => Promise<void>): Promise<void> {
+export async function sign(page: Page, onCodeShown?: () => Promise<void>, actor: Actor = fast): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Договор готов к подписанию' })).toBeVisible();
-  await page.getByLabel(/Я ознакомился с договором/).check();
-  await page.getByRole('button', { name: 'Подписать кодом' }).click();
+  await actor.check(page.getByLabel(/Я ознакомился с договором/));
+  await actor.click(page.getByRole('button', { name: 'Подписать кодом' }));
   const dialog = page.getByRole('dialog', { name: 'Подписание договора' });
   const code = dialog.locator('.mantine-Text-root').filter({ hasText: /^\d{6}$/ });
   await expect(code).toBeVisible();
   await onCodeShown?.();
-  await dialog.locator('input').first().click();
-  await page.keyboard.type((await code.innerText()).trim());
+  await actor.click(dialog.locator('input').first());
+  await actor.type(page, (await code.innerText()).trim());
 }
 
 /** Выдача: «Деньги на счёте!», кредит с графиком на нужное число платежей. */

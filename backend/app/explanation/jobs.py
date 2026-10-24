@@ -18,6 +18,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.domain.statuses import Status
 from app.explanation import facts, prompt, validate
 from app.models import Application, ApplicationEvent, DecisionExplanation, utcnow
 from app.schemas import ExplanationOut
@@ -31,7 +32,9 @@ RUNNING_GRACE_S = 15  # к LLM_TIMEOUT_S для начатой строки (о�
 WARMUP_RETRY_S = 60  # прогрев, который не удался, повторяется не чаще раза в минуту и только в простое
 RAW_RESPONSE_CHARS = 2000
 # Статусы, в которые заявка переходит по решению: новое такое событие делает прежнее пояснение неактуальным.
-DECISION_EVENT_STATUSES = {"approved", "counter_offer", "rejected", "needs_info", "manual_review"}
+DECISION_EVENT_STATUSES = {
+    s.value for s in (Status.APPROVED, Status.COUNTER_OFFER, Status.REJECTED, Status.NEEDS_INFO, Status.MANUAL_REVIEW)
+}
 
 SessionFactory = Callable[[], Session]
 
@@ -71,7 +74,7 @@ def _current(db: Session, application_id: int) -> DecisionExplanation | None:
 
 def _skip(row: DecisionExplanation, reason: str) -> None:
     row.status, row.error, row.finished_at = "skipped", reason, utcnow()
-    log.info("explanation skipped", extra={"status": reason})
+    log.info("explanation skipped", extra={"outcome": reason})
 
 
 def _claim(db: Session) -> _Claim | None:
@@ -131,7 +134,7 @@ def process_next(session_factory: SessionFactory, client: ChatClient) -> bool:
     try:
         result = _ask(client, claim.data)
     except Exception as exc:  # noqa: BLE001 — сбой не должен оставлять строку «начатой» навсегда
-        log.warning("explanation crashed", extra={"status": type(exc).__name__})
+        log.warning("explanation crashed", extra={"error": type(exc).__name__})
         result = {"status": "failed", "error": "internal"}
     latency_ms = int((time.monotonic() - started) * 1000)
     with session_factory() as db:
@@ -140,7 +143,7 @@ def process_next(session_factory: SessionFactory, client: ChatClient) -> bool:
             setattr(row, name, value)
         row.latency_ms, row.finished_at = latency_ms, utcnow()
         db.commit()
-    log.info("explanation", extra={"status": result.get("error", result["status"]), "duration_ms": latency_ms})
+    log.info("explanation", extra={"outcome": result.get("error", result["status"]), "duration_ms": latency_ms})
     return True
 
 
@@ -149,10 +152,10 @@ def _warm_up(client: ChatClient) -> bool:
     try:
         client.complete(prompt.SYSTEM, prompt.WARMUP_USER, max_tokens=1, temperature=0)
     except LLMError as exc:
-        log.warning("llm warm-up failed", extra={"status": exc.code})
+        log.warning("llm warm-up failed", extra={"error": exc.code})
         return False
     except Exception as exc:  # noqa: BLE001 — прогрев необязателен
-        log.warning("llm warm-up failed", extra={"status": type(exc).__name__})
+        log.warning("llm warm-up failed", extra={"error": type(exc).__name__})
         return False
     return True
 

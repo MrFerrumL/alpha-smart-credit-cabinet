@@ -1,11 +1,12 @@
 import logging
+import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy import inspect
 
 from app.api import applications, auth, companies, feed, health, loans, meta, notifications, policy, products
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import SessionLocal, engine
 from app.errors import register_error_handlers
 from app.observability import RequestContextMiddleware, configure_logging
@@ -27,13 +28,21 @@ TAGS = [
 ]
 
 
+def ensure_secret_key(settings: Settings) -> None:
+    """Ключ-заглушку из репозитория знают все: вне локального запуска токены подписываются случайным ключом."""
+    if settings.environment in ("local", "test") or "change-me" not in settings.secret_key:
+        return
+    settings.secret_key = secrets.token_urlsafe(32)
+    log.warning("SECRET_KEY не задан — создан случайный ключ: после перезапуска backend все сессии сбросятся")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level)
-    if settings.environment not in ("local", "test") and "change-me" in settings.secret_key:
-        log.warning("SECRET_KEY не задан — используется демо-значение. Для любого внешнего окружения задайте свой.")
-    if settings.seed_on_start:
+    ensure_secret_key(settings)
+    # Демо-учётки с общим паролем нужны только демо-стенду.
+    if settings.seed_on_start and settings.demo_mode:
         if inspect(engine).has_table("users"):
             with SessionLocal() as db:
                 seed(db)
@@ -43,6 +52,8 @@ async def lifespan(_: FastAPI):
 
 
 def create_app() -> FastAPI:
+    # Вне демо-режима Swagger и спецификация не публикуются; scripts/export_openapi берёт её из app.openapi().
+    demo = get_settings().demo_mode
     app = FastAPI(
         title="Кредитный конвейер для МСБ — core API",
         version="1.0.0",
@@ -52,9 +63,9 @@ def create_app() -> FastAPI:
             "`{status, code, title, detail, errors?}`."
         ),
         openapi_tags=TAGS,
-        docs_url="/api/docs",
+        docs_url="/api/docs" if demo else None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if demo else None,
         lifespan=lifespan,
     )
     app.add_middleware(RequestContextMiddleware)

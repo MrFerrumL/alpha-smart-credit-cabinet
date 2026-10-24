@@ -1,4 +1,4 @@
-import { Anchor, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Button, Group, Skeleton, Text, TextInput, Title } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -11,7 +11,8 @@ import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
 import { NewsFeed } from '../components/NewsFeed';
 import { LoadError } from '../components/States';
-import { CompanyCard, RecentNotifications } from '../components/Side';
+import { CompanyCard, MoreMoney, RecentNotifications } from '../components/Side';
+import { byAction, Chip } from '../components/Status';
 import { NBSP, dayMonth, greeting, money } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
@@ -19,7 +20,6 @@ import { nb } from '../lib/nobreak';
 function GrowthArt() {
   return (
     <svg className="potok-promo-art" viewBox="0 0 280 180" fill="none" aria-hidden="true">
-      <rect x="0" y="0" width="280" height="180" rx="24" fill="#f2f3f5" />
       <rect x="36" y="112" width="28" height="40" rx="6" fill="#d2d3d9" />
       <rect x="80" y="96" width="28" height="56" rx="6" fill="#d2d3d9" />
       <rect x="124" y="80" width="28" height="72" rx="6" fill="#babbc2" />
@@ -67,18 +67,6 @@ function Promo() {
         </dl>
       </div>
       <GrowthArt />
-    </section>
-  );
-}
-
-/** Когда заявка уже идёт — промо свёрнуто до строки. */
-function PromoStrip() {
-  return (
-    <section className="potok-panel potok-strip">
-      <span>Нужны ещё деньги на бизнес? Подберём кредит под задачу.</span>
-      <Button component={Link} to="/match" size="md" variant="default">
-        Подобрать кредит
-      </Button>
     </section>
   );
 }
@@ -174,7 +162,7 @@ function CompanyOnboarding() {
   };
 
   return (
-    <section className="potok-panel" style={{ maxWidth: 680 }}>
+    <section className="potok-panel">
       <Title order={3}>Расскажите о компании</Title>
       <Text c="dimmed" mt={4}>
         Введите ИНН — мы сами подтянем данные из ЕГРЮЛ, и вручную ничего заполнять не придётся.
@@ -192,7 +180,15 @@ function CompanyOnboarding() {
           }}
           error={lookupMessage}
         />
-        <Button size="lg" leftSection={<IconSearch size={18} />} loading={lookup.isPending} disabled={!ready} onClick={() => lookup.mutate(inn)}>
+        {/* Компания найдена — главным становится «Да, это моя компания», поиск остаётся спокойным. */}
+        <Button
+          size="lg"
+          variant={found ? 'default' : 'filled'}
+          leftSection={<IconSearch size={18} />}
+          loading={lookup.isPending}
+          disabled={!ready}
+          onClick={() => lookup.mutate(inn)}
+        >
           Найти
         </Button>
       </Group>
@@ -205,8 +201,8 @@ function CompanyOnboarding() {
       </Text>
 
       {found && (
-        <Paper withBorder p="lg" mt="lg" radius="lg" className="fade-in">
-          <Group justify="space-between" align="flex-start">
+        <div className="potok-wz-inset fade-in">
+          <div className="potok-wz-inset-head">
             <div>
               <Text fw={600} fz="lg">
                 {found.short_name}
@@ -216,45 +212,39 @@ function CompanyOnboarding() {
                 {found.ogrn ? `, ОГРН ${found.ogrn}` : ''}
               </Text>
             </div>
-            <Badge color={found.status === 'active' ? 'teal' : 'orange'} variant="light">
-              {found.status_title}
-            </Badge>
-          </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} mt="md" spacing="sm">
+            <Chip tone={found.status === 'active' ? 'success' : 'warning'}>{found.status_title}</Chip>
+          </div>
+          <dl className="potok-kv">
             <div>
-              <Text fz="sm" c="dimmed">
-                Руководитель
-              </Text>
-              <Text fw={500}>{found.director}</Text>
+              <dt>Руководитель</dt>
+              <dd>{found.director}</dd>
             </div>
-            <div>
-              <Text fz="sm" c="dimmed">
-                Вид деятельности
-              </Text>
-              <Text fw={500}>
+            <div className="potok-kv-wide">
+              <dt>Вид деятельности</dt>
+              <dd>
                 {found.okved} — {found.okved_name}
-              </Text>
+              </dd>
             </div>
-            <div>
-              <Text fz="sm" c="dimmed">
-                Адрес
-              </Text>
-              <Text fw={500}>{found.address}</Text>
+            <div className="potok-kv-full">
+              <dt>Адрес</dt>
+              <dd>{found.address}</dd>
             </div>
-          </SimpleGrid>
+          </dl>
           <Button mt="lg" size="lg" onClick={confirm} loading={link.isPending}>
             Да, это моя компания
           </Button>
-        </Paper>
+        </div>
       )}
     </section>
   );
 }
 
-/** Какую заявку показать первой: та, где ход за клиентом, иначе самая свежая из идущих. */
+/**
+ * Какую заявку показать первой: где клиенту действовать срочнее всего (подписать, ответить на предложение, на запрос,
+ * дозаполнить), иначе самая свежая из идущих.
+ */
 function mainApplication(list: Application[]): Application | undefined {
-  const active = list.filter((a) => !a.status.terminal);
-  return [...active].sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id)[0];
+  return list.filter((a) => !a.status.terminal).sort(byAction)[0];
 }
 
 export function HomePage() {
@@ -266,7 +256,7 @@ export function HomePage() {
 
   if (!user.company) {
     return (
-      <Stack gap="lg">
+      <div className="potok-col">
         <div>
           <Title order={1}>
             {greeting()}, {firstName}
@@ -275,8 +265,11 @@ export function HomePage() {
             Осталось одно действие, чтобы открыть кредитный кабинет
           </Text>
         </div>
-        <CompanyOnboarding />
-      </Stack>
+        <div className="potok-home">
+          <CompanyOnboarding />
+          <HowItWorks />
+        </div>
+      </div>
     );
   }
 
@@ -286,7 +279,7 @@ export function HomePage() {
   const others = list.filter((a) => a.id !== main?.id).slice(0, 3);
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>
           {greeting()}, {firstName}
@@ -296,8 +289,10 @@ export function HomePage() {
           {user.position ? `, ${user.position.toLowerCase()}` : ''}
         </Text>
       </div>
+      {/* Слева — то, с чем работать: главная заявка, остальные заявки, лента; справа — уведомления, кредиты,
+          короткий подбор и компания. */}
       <div className="potok-home">
-        <Stack gap="lg">
+        <div className="potok-col">
           {!user.can_sign && (
             <div className="potok-inline-note" style={{ marginTop: 0 }}>
               Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
@@ -312,17 +307,17 @@ export function HomePage() {
           ) : (
             <Promo />
           )}
-          {main && <PromoStrip />}
-          {!!loans.data?.length && <LoansBrief loans={loans.data} />}
           {others.length > 0 && <OtherApps apps={others} />}
           <NewsFeed />
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col">
           <RecentNotifications exclude={main ? `/applications/${main.id}` : undefined} />
+          {!!loans.data?.length && <LoansBrief loans={loans.data} />}
+          {main && <MoreMoney />}
           <CompanyCard company={user.company} />
           {!main && <HowItWorks />}
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

@@ -233,9 +233,10 @@ export function OfferActions({ app }: { app: Application }) {
             </Button>
           </div>
         )}
+        {/* Без права подписи передача руководителю — главное действие экрана, поэтому красная. */}
         {canHandoff && (
           <div className={canAccept ? undefined : 'potok-cta-main'}>
-            <Button size="lg" variant="default" loading={handoff.isPending} onClick={() => handoff.mutate()}>
+            <Button size="lg" variant={canAccept ? 'default' : 'filled'} loading={handoff.isPending} onClick={() => handoff.mutate()}>
               Передать руководителю на подпись
             </Button>
           </div>
@@ -381,18 +382,12 @@ export function DecisionBlock({ app }: { app: Application }) {
   return null;
 }
 
-/** Почему решение такое — второй план под блоком решения. */
+/** Почему решение такое — второй план под блоком решения. Почему заявку смотрит специалист — в самом блоке статуса. */
 export function DecisionReasons({ app }: { app: Application }) {
   const d = app.decision;
   if (!d || !d.reasons.length) return null;
   const title =
-    app.status.code === 'approved'
-      ? 'Почему одобрено'
-      : app.status.code === 'counter_offer'
-        ? 'Почему условия другие'
-        : app.status.code === 'manual_review'
-          ? 'Почему заявку смотрит специалист'
-          : null;
+    app.status.code === 'approved' ? 'Почему одобрено' : app.status.code === 'counter_offer' ? 'Почему условия другие' : null;
   if (!title) return null;
   return (
     <section className="potok-panel">
@@ -450,33 +445,63 @@ export function AutoExplanation({ app }: { app: Application }) {
   );
 }
 
-/** Что дальше по предложению — настоящая последовательность, поэтому с номерами. */
+const PIPELINE = ['submitted', 'validation', 'enrichment', 'scoring'];
+
+/**
+ * Что дальше по заявке — настоящая последовательность, поэтому с номерами: проверка, ответ на запрос, решение
+ * специалиста, предложение, подписание. На телефоне — сразу под главным блоком.
+ */
 export function NextSteps({ app }: { app: Application }) {
-  const product = useProduct(app.offer?.product_code);
+  const offered = useProduct(app.offer?.product_code);
+  const asked = useProduct(app.product.code);
   const { user } = useAuth();
-  if (!['approved', 'counter_offer'].includes(app.status.code)) return null;
-  const last =
+  const code = app.status.code;
+  const product = offered ?? asked;
+  const payout =
     product?.repayment === 'interest_only'
       ? 'Банк открывает лимит овердрафта на расчётном счёте'
       : product?.collateral
         ? 'После оформления залога деньги приходят на расчётный счёт'
         : 'Деньги приходят на расчётный счёт';
+  const decision =
+    asked?.decision === 'manual'
+      ? 'Решение примет кредитный специалист — придёт уведомление в кабинет'
+      : 'Банк примет решение и пришлёт уведомление в кабинет';
+
+  let steps: string[] | null = null;
+  if (code === 'approved' || code === 'counter_offer') {
+    steps = user?.can_sign
+      ? ['Вы принимаете предложение', 'Подписываете договор кодом в окне подписания', payout]
+      : ['Вы передаёте предложение руководителю', 'Руководитель принимает его и подписывает договор кодом в кабинете', payout];
+  } else if (code === 'signing' && app.offer?.status !== 'signed') {
+    const last =
+      product?.repayment === 'interest_only'
+        ? 'Введите 6 цифр, и лимит овердрафта откроется через несколько секунд'
+        : app.open_tasks > 0
+          ? 'Введите 6 цифр и закройте условия выдачи — после этого деньги придут на счёт'
+          : 'Введите 6 цифр, и деньги придут на счёт через несколько секунд';
+    steps = app.allowed_actions.includes('sign')
+      ? ['Отметьте согласие с условиями договора', 'Нажмите «Подписать кодом»: код появится в окне подписания, SMS не нужна', last]
+      : ['Руководитель открывает договор в своём кабинете', 'Подписывает его кодом из окна подписания', payout];
+  } else if (code === 'needs_info') {
+    steps = ['Вы отвечаете на запрос банка', 'Проверка продолжается сама — ничего нажимать не нужно', decision];
+  } else if (code === 'manual_review') {
+    steps = [
+      'Специалист проверяет оценку, данные компании и условия',
+      'Решение придёт уведомлением в кабинет',
+      'Если банк одобрит, вы примете предложение и подпишете договор кодом',
+    ];
+  } else if (PIPELINE.includes(code)) {
+    steps = ['Банк сам проверяет компанию в ЕГРЮЛ, ФНС и БКИ', 'Оценивает заявку и подбирает условия', decision];
+  }
+  if (!steps) return null;
   return (
-    <section className="potok-panel">
+    <section className="potok-panel potok-phone-first">
       <Title order={3}>Что дальше</Title>
       <ol className="potok-steps">
-        {user?.can_sign ? (
-          <>
-            <li>Вы принимаете предложение</li>
-            <li>Подписываете договор кодом в окне подписания</li>
-          </>
-        ) : (
-          <>
-            <li>Вы передаёте предложение руководителю</li>
-            <li>Руководитель принимает его и подписывает договор кодом в кабинете</li>
-          </>
-        )}
-        <li>{last}</li>
+        {steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
       </ol>
     </section>
   );

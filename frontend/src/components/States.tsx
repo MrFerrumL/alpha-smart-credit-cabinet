@@ -1,9 +1,9 @@
-import { Button, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Button, Skeleton, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 
 import { ApiError } from '../api/client';
 
-/** Свои простые иллюстрации: линия графитом, плоскость «Туман», волна «Потока» — без наборов иконок. */
+/** Простые иллюстрации пустых состояний и ошибок. */
 function Art({ kind }: { kind: 'folder' | 'list' | 'queue' | 'error' }) {
   if (kind === 'error') {
     return (
@@ -73,7 +73,7 @@ export function Empty({
   );
 }
 
-/** Ошибка загрузки: что случилось и что сделать, без извинений. */
+/** Ошибка загрузки: что случилось и что сделать. */
 export function LoadError({ error, what, back }: { error: unknown; what: string; back?: ReactNode }) {
   const code = error instanceof ApiError ? error.status : null;
   return (
@@ -109,7 +109,7 @@ export function LoadError({ error, what, back }: { error: unknown; what: string;
 /** Скелетон страницы заявки: в форме блока решения, а не пустое ожидание. */
 export function DecisionSkeleton() {
   return (
-    <Stack gap="lg" aria-busy="true" aria-label="Загружаем заявку">
+    <div className="potok-col" aria-busy="true" aria-label="Загружаем заявку">
       <Skeleton h={36} w="100%" maw={320} radius="md" />
       <div className="potok-decision">
         <Skeleton h={4} radius="xl" />
@@ -125,6 +125,6 @@ export function DecisionSkeleton() {
           ))}
         </div>
       </div>
-    </Stack>
+    </div>
   );
 }

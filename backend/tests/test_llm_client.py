@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from app.config import Settings
+from app.observability import JsonFormatter
 from app.services import llm
 from app.services.llm import ChatClient, Completion, LLMError
 
@@ -218,10 +219,12 @@ def test_log_has_outcome_and_time_but_no_content(caplog):
         )
 
     records = [r for r in caplog.records if r.name == "app.llm"]
-    assert [r.status for r in records] == ["ok", "http_503"]
+    assert [r.outcome for r in records] == ["ok", "http_503"]
     assert all(isinstance(r.duration_ms, int) for r in records)
+    logged = " ".join(JsonFormatter().format(r) for r in records)  # строки лога целиком, со всеми полями
     for secret in (prompt, reply, SECRET):
         assert secret not in caplog.text
+        assert secret not in logged
 
 
 # --- фабрика ---

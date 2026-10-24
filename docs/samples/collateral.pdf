@@ -1,0 +1,52 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 334 >>
+stream
+BT
+/F1 16 Tf
+72 770 Td
+(Dokumenty po zalogu \(sinteticheskie\)) Tj
+/F1 11 Tf
+0 -22 Td
+(Synthetic collateral documents for the Potok demo stand.) Tj
+0 -22 Td
+(Pledgor: demo client, test data only.) Tj
+0 -22 Td
+(Pledged property: equipment) Tj
+0 -22 Td
+(Appraised value: 30 000 000 RUB) Tj
+0 -22 Td
+(This is not a real document.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title <FEFF0414043E043A0443043C0435043D0442044B0020043F043E002004370430043B043E043304430020002804410438043D0442043504420438044704350441043A043804350029> /Producer (Potok demo) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000344 00000 n 
+0000000728 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+926
+%%EOF

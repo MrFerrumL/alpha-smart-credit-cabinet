@@ -29,7 +29,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
-      {/* Сверху: внизу подписи демо и закреплённая кнопка на телефоне. */}
+      {/* Сверху: внизу на телефоне закреплены вкладки и главная кнопка. */}
       <Notifications position="top-right" limit={3} transitionDuration={200} />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

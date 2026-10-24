@@ -1,6 +1,6 @@
 import { ActionIcon, Indicator, Popover, ScrollArea, Text, UnstyledButton } from '@mantine/core';
 import { notifications as toasts } from '@mantine/notifications';
-import { IconBell, IconKey } from '@tabler/icons-react';
+import { IconBell } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -46,11 +46,10 @@ export function NotificationsBell() {
     }
     const fresh = query.data.filter((n) => n.id > (seen.current ?? 0) && !n.read_at).reverse();
     for (const n of fresh) {
+      // Тост — тёмная плашка с текстом, без цветной метки и значка.
       toasts.show({
         title: clean(n.title),
         message: n.body ? clean(n.body) : '',
-        color: n.kind === 'signing_code' ? 'brand' : 'blue',
-        icon: n.kind === 'signing_code' ? <IconKey size={16} /> : <IconBell size={16} />,
         autoClose: n.kind === 'signing_code' ? 15_000 : 6_000,
       });
     }

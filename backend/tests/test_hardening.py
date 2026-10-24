@@ -3,11 +3,13 @@
 import time
 
 import jwt
+from fastapi.testclient import TestClient
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import SessionLocal, engine
 from app.domain.authority import authority_of, same_person
 from app.domain.inn import _W10, _check_digit, is_valid_inn
+from app.main import app, ensure_secret_key
 from app.models import User
 from app.security import hash_password
 from mockapi.data import COMPANIES
@@ -199,3 +201,23 @@ def test_step_that_keeps_crashing_hands_application_to_specialist(client, mocks,
     card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
     assert card["review_reason"] == "pipeline_failure"
     assert card["scored"] is False
+
+
+def test_placeholder_secret_is_replaced_outside_local_runs(caplog):
+    placeholder = "change-me-to-a-long-random-string-in-production"
+    demo = Settings(environment="demo", secret_key=placeholder)
+    ensure_secret_key(demo)
+    assert "change-me" not in demo.secret_key and len(demo.secret_key) >= 40
+    assert "сессии сбросятся" in caplog.text
+    for kept in (Settings(environment="local", secret_key=placeholder), Settings(environment="demo", secret_key="s3cret")):
+        before = kept.secret_key
+        ensure_secret_key(kept)
+        assert kept.secret_key == before
+
+
+def test_backend_start_puts_the_generated_secret_into_cached_settings(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "environment", "demo")
+    monkeypatch.setattr(settings, "secret_key", "change-me")
+    with TestClient(app):
+        assert "change-me" not in get_settings().secret_key

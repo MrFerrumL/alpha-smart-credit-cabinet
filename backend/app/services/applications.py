@@ -13,6 +13,7 @@ from app.domain.statuses import (
     SIGNED_AWAITING_ISSUE,
     SIGNED_AWAITING_LIMIT,
     LIMIT_OPENED,
+    OFFER_STATUSES,
     STATUS_INFO,
     Actor,
     Status,
@@ -61,6 +62,9 @@ EVENT_TITLES = {
     "issued": "Деньги зачислены на расчётный счёт",
 }
 
+# Пока у заявки есть предложение банка (до выдачи): отзыв заявки здесь равен отказу от кредита.
+OFFER_STAGE = OFFER_STATUSES | {Status.SIGNING}
+
 
 def status_out(status: Status, info: StatusInfo | None = None) -> StatusInfoOut:
     info = info or STATUS_INFO[status]
@@ -77,6 +81,12 @@ def status_out(status: Status, info: StatusInfo | None = None) -> StatusInfoOut:
 
 def user_may_sign(user: User, app: Application) -> bool:
     return may_sign(user.full_name, user.can_sign, app.company.director)
+
+
+def require_owner(app: Application, user: User) -> None:
+    """Действия по заявке выполняет клиент её компании; для остальных заявка «не найдена»."""
+    if user.role != "client" or user.company_id != app.company_id:
+        raise NotFound("Заявка не найдена")
 
 
 def handed_off(db: Session, app: Application, offer: Offer) -> bool:
@@ -101,7 +111,7 @@ def allowed_actions(app: Application, user: User, offer: Offer | None = None, op
             actions.append("answer_tasks")
             if status == Status.SIGNING and signer:
                 actions.append("confirm_guarantee")  # поручительство подтверждает только руководитель (tasks.answer_task)
-        if status in (Status.APPROVED, Status.COUNTER_OFFER) and offer is not None and offer.status == "active":
+        if status in OFFER_STATUSES and offer is not None and offer.status == "active":
             if signer:
                 actions += ["accept_offer", "decline_offer"]
             else:
@@ -110,7 +120,7 @@ def allowed_actions(app: Application, user: User, offer: Offer | None = None, op
             actions.append("sign")
         # Когда у заявки есть предложение банка, отзыв равен отказу от кредита — это решение руководителя.
         # После подписи договора отозвать заявку нельзя — деньги уже в пути.
-        offer_stage = status in (Status.APPROVED, Status.COUNTER_OFFER, Status.SIGNING)
+        offer_stage = status in OFFER_STAGE
         if can_transition(status, Status.CANCELLED, Actor.CLIENT) and not signed and (signer or not offer_stage):
             actions.append("cancel")
     if user.role == "analyst" and status == Status.MANUAL_REVIEW:
@@ -166,7 +176,7 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         amount=int(app.amount),
         term_months=app.term_months,
         monthly_payment=int(monthly_payment(app.amount, product.rate, app.term_months, product.repayment)),
-        form=ApplicationForm.model_validate(app.form or {}),
+        form=ApplicationForm.model_validate(app.form or {}, context={"stored": True}),
         company=CompanyRef(id=app.company.id, inn=app.company.inn, name=app.company.short_name),
         allowed_actions=actions,
         awaiting_signer=awaiting,
@@ -330,7 +340,7 @@ def submit(db: Session, user: User, app: Application, idempotency_key: str | Non
 
 
 def cancel(db: Session, user: User, app: Application, comment: str | None) -> Application:
-    offer_stage = app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value, Status.SIGNING.value)
+    offer_stage = Status(app.status) in OFFER_STAGE
     if offer_stage and user.role == "client" and user.company_id == app.company_id and not user_may_sign(user, app):
         raise Forbidden("Отказаться от одобренного кредита может только руководитель компании")
     offer = latest_offer(db, app)

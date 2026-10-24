@@ -9,7 +9,7 @@ import { StatusBlock, StatusChip } from './Status';
  * Заявка с её статусом: сумма, срок и платёж, затем общий компонент статуса с кнопкой следующего шага. Первый блок
  * главной и строка «в работе» в списке заявок.
  */
-export function AppStatusCard({ app }: { app: Application }) {
+export function AppStatusCard({ app, primary }: { app: Application; primary?: boolean }) {
   const products = useProducts();
   const terms = shownTerms(app, products.data);
   const offer = ['approved', 'counter_offer'].includes(app.status.code) ? app.offer : null;
@@ -32,7 +32,7 @@ export function AppStatusCard({ app }: { app: Application }) {
       <p className="potok-home-terms">
         на {months(term)}, {payment} {interestOnly ? 'процентов в месяц' : 'в месяц'}
       </p>
-      <StatusBlock app={app} />
+      <StatusBlock app={app} primary={primary} />
     </section>
   );
 }

@@ -17,11 +17,7 @@ function addMonths(iso: string, months: number): string {
   return d.toISOString();
 }
 
-/**
- * График платежей столбиками: основной долг и проценты по месяцам. Подписи — с постоянным шагом (каждый третий
- * месяц, у длинных сроков — каждый шестой); год — у первой подписи и у первой подписи нового года (январь, если
- * он попал на шаг). Обычные div, без библиотек графиков.
- */
+/** График платежей: основной долг и проценты по месяцам; подписи — каждый третий или шестой месяц. */
 export function PaymentBars({ rows, firstDate, current }: { rows: BarRow[]; firstDate?: string; current?: number }) {
   if (rows.length === 0) return null;
   const dated = rows.map((r, i) => ({ ...r, date: r.date ?? (firstDate ? addMonths(firstDate, i) : undefined) }));

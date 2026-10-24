@@ -8,14 +8,14 @@ import { nb } from '../lib/nobreak';
 import { shownTerms } from './ApplicationBlocks';
 import { StatusChip } from './Status';
 
-/** Заявка одной строкой: продукт и сумма слева, статус справа, вся строка — ссылка. */
+/** Заявка одной строкой: продукт и сумма слева, статус справа (на телефоне — под названием), вся строка — ссылка. */
 export function AppRow({ app }: { app: Application }) {
   const products = useProducts();
   const terms = shownTerms(app, products.data);
   const to = app.status.code === 'draft' ? `/applications/${app.id}/edit` : `/applications/${app.id}`;
   return (
     <li>
-      <Link to={to} className="potok-row">
+      <Link to={to} className="potok-row potok-app-row">
         <span className="potok-row-main">
           <span className="potok-row-title">{nb(terms.product)}</span>
           <span className="potok-row-sub">

@@ -41,9 +41,13 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     sources = get_sources()
 
-    with SessionLocal() as db:
-        recovered = recover_stale(db)
-    log.info("worker started", extra={"status": f"recovered {recovered} stale jobs"})
+    try:
+        with SessionLocal() as db:
+            recovered = recover_stale(db)
+    except Exception:  # noqa: BLE001 — сбой восстановления не мешает старту: цикл повторит его при уборке
+        log.exception("stale job recovery failed, continuing")
+        recovered = 0
+    log.info("worker started", extra={"recovered": recovered})
     if settings.llm_active:
         # Пояснение решения: отдельный поток, чтобы медленная модель не задерживала шаги конвейера.
         host = urlsplit(settings.llm_base_url.strip()).netloc.rpartition("@")[2]  # без логина и пароля, если есть
@@ -51,7 +55,7 @@ def main() -> None:
             target=run_explanations, args=(SessionLocal, get_llm_client(), _stop_event), daemon=True,
             name="llm-explanation",
         ).start()
-        log.info("explanation thread started", extra={"status": f"model {settings.llm_model}, host {host}"})
+        log.info("explanation thread started", extra={"model": settings.llm_model, "host": host})
 
     next_housekeeping = 0.0
     heartbeat = Path(settings.worker_heartbeat_file) if settings.worker_heartbeat_file else None
@@ -65,7 +69,7 @@ def main() -> None:
                     # Задачи упавшего соседнего воркера возвращаются в очередь и во время работы, не только на старте.
                     recovered = recover_stale(db)
                 if expired or recovered:
-                    log.info("housekeeping", extra={"status": f"expired {expired}, recovered {recovered}"})
+                    log.info("housekeeping", extra={"expired": expired, "recovered": recovered})
                 next_housekeeping = time.monotonic() + settings.housekeeping_interval_s
             worked = process_next(SessionLocal, sources)
         except OperationalError:

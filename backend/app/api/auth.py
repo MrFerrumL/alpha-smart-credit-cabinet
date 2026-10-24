@@ -8,7 +8,7 @@ from app.db import get_db
 from app.errors import NotFound, Unauthorized
 from app.models import User
 from app.schemas import DemoAccountOut, DemoLoginIn, LoginIn, TokenOut, UserOut
-from app.security import create_token, verify_password
+from app.security import DUMMY_PASSWORD_HASH, create_token, verify_password
 from app.seed import DEMO_SCENARIOS
 
 router = APIRouter(prefix="/auth", tags=["Вход"])
@@ -21,7 +21,9 @@ def _token(user: User) -> TokenOut:
 @router.post("/login", response_model=TokenOut, summary="Вход по почте и паролю")
 def login(data: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
     user = db.scalar(select(User).where(User.email == data.email.strip().lower()))
-    if user is None or not verify_password(data.password, user.password_hash):
+    # Пароль проверяется и для неизвестной почты: по времени ответа не понять, есть ли такой пользователь.
+    valid = verify_password(data.password, user.password_hash if user is not None else DUMMY_PASSWORD_HASH)
+    if user is None or not valid:
         raise Unauthorized("Неверная почта или пароль")
     return _token(user)
 

@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Button, Skeleton, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -7,6 +7,7 @@ import type { Application } from '../api/types';
 import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
 import { Empty, LoadError } from '../components/States';
+import { byAction } from '../components/Status';
 import { money } from '../lib/format';
 
 type Filter = 'all' | 'active' | 'closed';
@@ -75,12 +76,14 @@ export function ApplicationsPage() {
   const [filter, setFilter] = useState<Filter>('all');
   const match = FILTERS.find((f) => f.value === filter)!.match;
   const shown = list.filter(match);
-  // Идущие — компонентом статуса, свежие сверху; закрытые — строками.
-  const active = shown.filter((a) => !a.status.terminal).sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id);
+  // Идущие — компонентом статуса, сверху та, где ход за клиентом; закрытые — строками.
+  const active = shown.filter((a) => !a.status.terminal).sort(byAction);
   const closed = shown.filter((a) => a.status.terminal);
+  // Красная кнопка — одна на экране: у первой заявки, где ход за клиентом, у остальных — спокойные.
+  const lead = active.find((a) => a.status.action_required);
 
   return (
-    <Stack gap="lg">
+    <div className="potok-col">
       <div>
         <Title order={1}>Мои заявки</Title>
         <Text c="dimmed" mt={4}>
@@ -88,7 +91,7 @@ export function ApplicationsPage() {
         </Text>
       </div>
       <div className="potok-below">
-        <Stack gap="md">
+        <div className="potok-col">
           <div className="potok-q-filters" role="group" aria-label="Фильтр заявок">
             {FILTERS.map((f) => (
               <button key={f.value} type="button" className="potok-q-filter" aria-pressed={f.value === filter} onClick={() => setFilter(f.value)}>
@@ -132,7 +135,7 @@ export function ApplicationsPage() {
           ) : (
             <>
               {active.map((a) => (
-                <AppStatusCard key={a.id} app={a} />
+                <AppStatusCard key={a.id} app={a} primary={a === lead} />
               ))}
               {closed.length > 0 && (
                 <section className="potok-panel">
@@ -146,12 +149,12 @@ export function ApplicationsPage() {
               )}
             </>
           )}
-        </Stack>
-        <Stack gap="lg">
+        </div>
+        <div className="potok-col potok-sticky">
           {list.length > 0 && <Summary apps={list} />}
           <HowItGoes />
-        </Stack>
+        </div>
       </div>
-    </Stack>
+    </div>
   );
 }

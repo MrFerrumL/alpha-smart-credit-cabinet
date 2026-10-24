@@ -12,7 +12,7 @@ import hmac
 import json
 import math
 import secrets
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -21,17 +21,15 @@ from app.config import get_settings
 from app.db import get_by_id
 from app.domain.authority import may_sign
 from app.domain.products import PRODUCTS, PURPOSES, Purpose, schedule
-from app.domain.statuses import Actor, Status
+from app.domain.statuses import OFFER_STATUSES, Actor, Status
 from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound, TooManyRequests
 from app.models import Application, ApplicationEvent, ClientTask, Document, Offer, SigningChallenge, User, utcnow
 from app.pipeline.queue import enqueue
 from app.schemas import ContractOut, ContractSection, ScheduleRowOut
-from app.services.applications import handed_off, user_may_sign
+from app.services.applications import handed_off, latest_offer, require_owner, user_may_sign
 from app.services.notifications import notify_users
 from app.services.tasks import BEFORE_ISSUE, open_issue_conditions
 from app.services.state_machine import apply_transition, record_event
-
-OFFER_STATUSES = (Status.APPROVED.value, Status.COUNTER_OFFER.value)
 
 COLLATERAL_TITLES = {
     "real_estate": "недвижимость",
@@ -39,15 +37,6 @@ COLLATERAL_TITLES = {
     "equipment": "оборудование",
     "guarantee": "поручительство собственника",
 }
-
-
-def current_offer(db: Session, app: Application) -> Offer | None:
-    return db.scalar(select(Offer).where(Offer.application_id == app.id).order_by(Offer.id.desc()).limit(1))
-
-
-def _require_owner(app: Application, user: User) -> None:
-    if user.role != "client" or user.company_id != app.company_id:
-        raise NotFound("Заявка не найдена")
 
 
 def _require_signer(user: User, app: Application | None = None) -> None:
@@ -66,7 +55,7 @@ def _require_signer(user: User, app: Application | None = None) -> None:
 def handoff_to_signer(db: Session, user: User, app: Application) -> Application:
     """Сотрудник без права подписи (бухгалтер) передаёт предложение руководителю: тому приходит уведомление
     в кабинете, а в журнале остаётся, кто подготовил и кому передал."""
-    _require_owner(app, user)
+    require_owner(app, user)
     if user_may_sign(user, app):
         raise Conflict("Вы можете принять предложение сами")
     if app.status not in OFFER_STATUSES:
@@ -101,7 +90,7 @@ def handoff_to_signer(db: Session, user: User, app: Application) -> Application:
 
 
 def _require_offer(db: Session, app: Application, *statuses: str) -> Offer:
-    offer = current_offer(db, app)
+    offer = latest_offer(db, app)
     if offer is None or offer.status not in statuses:
         raise Conflict("Предложение недоступно")
     return offer
@@ -130,8 +119,13 @@ def issue_conditions(product) -> list[dict]:
     ]
 
 
+def _expired(moment: datetime) -> bool:
+    # SQLite отдаёт время без пояса (в БД всё в UTC), PostgreSQL — с поясом сессии: сравниваются моменты, а не цифры.
+    return (moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)) < utcnow()
+
+
 def _require_valid(offer: Offer) -> None:
-    if offer.valid_until and offer.valid_until.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
+    if offer.valid_until and _expired(offer.valid_until):
         raise Conflict("Срок предложения истёк — подайте новую заявку")
 
 
@@ -155,7 +149,7 @@ def terms_hash(app: Application, offer: Offer) -> str:
 
 
 def accept_offer(db: Session, user: User, app: Application) -> Offer:
-    _require_owner(app, user)
+    require_owner(app, user)
     _require_signer(user, app)
     if app.status not in OFFER_STATUSES:
         raise Conflict("Принять можно только действующее предложение банка")
@@ -190,7 +184,7 @@ def accept_offer(db: Session, user: User, app: Application) -> Offer:
 
 
 def decline_offer(db: Session, user: User, app: Application, comment: str | None) -> Application:
-    _require_owner(app, user)
+    require_owner(app, user)
     # Отказ от одобренного кредита — решение руководителя, как и согласие.
     _require_signer(user, app)
     if app.status not in OFFER_STATUSES:
@@ -215,7 +209,7 @@ def _hash(challenge_salt: str, terms: str, code: str) -> str:
 
 def request_code(db: Session, user: User, app: Application) -> tuple[SigningChallenge, str]:
     """Создаёт одноразовый код. Возвращает его один раз — интерфейс показывает код в окне подписания."""
-    _require_owner(app, user)
+    require_owner(app, user)
     _require_signer(user, app)
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
@@ -270,7 +264,7 @@ def request_code(db: Session, user: User, app: Application) -> tuple[SigningChal
 
 
 def confirm(db: Session, user: User, app: Application, challenge_id: int, code: str) -> Offer:
-    _require_owner(app, user)
+    require_owner(app, user)
     _require_signer(user, app)
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
@@ -280,7 +274,7 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
         raise NotFound("Запросите код ещё раз")
     if challenge.used_at is not None or challenge.attempts_left <= 0:
         raise Conflict("Этот код больше не действует — запросите новый")
-    if challenge.expires_at.replace(tzinfo=None) < utcnow().replace(tzinfo=None):
+    if _expired(challenge.expires_at):
         raise Conflict("Срок действия кода истёк — запросите новый")
     _require_valid(offer)
     terms = terms_hash(app, offer)
@@ -336,7 +330,7 @@ def confirm(db: Session, user: User, app: Application, challenge_id: int, code: 
 
 
 def contract(db: Session, app: Application) -> ContractOut:
-    offer = current_offer(db, app)
+    offer = latest_offer(db, app)
     if offer is None or offer.status not in ("accepted", "signed") or not offer.contract_number:
         if app.status in (Status.CANCELLED.value, Status.EXPIRED.value) or (offer and offer.status in ("declined", "expired")):
             raise NotFound("Договора нет: заявка закрыта, предложение банка больше не действует")

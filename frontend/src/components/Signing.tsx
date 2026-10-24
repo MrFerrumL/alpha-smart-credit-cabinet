@@ -1,4 +1,5 @@
 import { Anchor, Button, Checkbox, Collapse, Loader, Modal, PinInput, Stack, Text, Title } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -53,6 +54,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const left = useCountdown(challenge?.expires_at ?? null);
+  // Шесть полей size="lg" не помещаются в окно на телефоне.
+  const phone = useMediaQuery('(max-width: 45em)');
 
   const send = () => {
     setError(null);
@@ -69,7 +72,7 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   useEffect(() => {
     const expired = challenge !== null && new Date(challenge.expires_at).getTime() <= Date.now();
     if (opened && (!challenge || expired) && !request.isPending) send();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Только при открытии окна: код не перезапрашивается при каждом изменении challenge.
   }, [opened]);
 
   const submit = (value: string) => {
@@ -93,7 +96,8 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Подписание договора</Text>} centered radius="lg">
+    // Заголовок — в h2 самого окна, оформлен как Title третьего уровня: вложенный Title дал бы h3 внутри h2.
+    <Modal opened={opened} onClose={onClose} title="Подписание договора" classNames={{ title: 'potok-modal-title' }} centered radius="lg">
       <Stack align="center" gap="md" ta="center">
         <Text fz="sm" c="dimmed" maw={340}>
           Введите одноразовый код, чтобы подписать договор простой электронной подписью.
@@ -111,7 +115,9 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
           length={6}
           type="number"
           oneTimeCode
-          size="lg"
+          size={phone ? 'md' : 'lg'}
+          gap={phone ? 8 : 'md'}
+          placeholder=""
           value={code}
           onChange={setCode}
           onComplete={submit}
@@ -148,11 +154,7 @@ function nextMonth(): string {
   return d.toISOString();
 }
 
-/**
- * Подписание — главный блок страницы: компактный статус, договор (сумма крупно, условия, переплата из договора,
- * мини-график), согласие и подпись кодом. Хеш условий — под «Подробнее», рядом со ссылкой на договор. На телефоне
- * «Подписать кодом» закреплена внизу. После подписи — настоящее состояние перевода, а не демонстрационная вставка.
- */
+/** Подписание: договор, согласие и подпись кодом; после подписи — состояние перевода. */
 export function SigningCard({ app, extra }: { app: Application; extra?: ReactNode }) {
   const contract = useContract(app.id, true);
   const interestOnly = useInterestOnly(app.offer?.product_code);
@@ -165,7 +167,7 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
 
   return (
     <section className="potok-decision" id="signing">
-      <StatusBlock app={app} onPage hint={false} action={false} />
+      <StatusBlock app={app} onPage showLabels hint={false} action={false} />
       <Title order={2} className="potok-say">
         {signed ? 'Договор подписан' : 'Договор готов к подписанию'}
       </Title>
@@ -231,7 +233,7 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
       {signed ? (
         <div className="potok-inline-note" data-tone={c?.issue_delayed || app.open_tasks > 0 ? 'warn' : 'ok'} role="status">
           {app.open_tasks > 0
-            ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они выше на странице.'
+            ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они ниже на странице.'
             : c?.issue_delayed
               ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
               : interestOnly
@@ -267,8 +269,8 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
 }
 
 /**
- * Выдача: деньги на счёте или, для овердрафта, открытый лимит. Первый платёж и ближайшие платежи — из графика
- * выданного кредита (тот же расчёт, что на странице кредита).
+ * Выдача: деньги на счёте или, для овердрафта, открытый лимит, ближайшие платежи и переход к кредиту. Платежи — из
+ * графика выданного кредита (тот же расчёт, что на странице кредита).
  */
 export function IssuedCard({ app }: { app: Application }) {
   const offer = app.offer;
@@ -278,7 +280,7 @@ export function IssuedCard({ app }: { app: Application }) {
   const upcoming = l ? l.schedule.filter((r) => !l.next_payment_date || r.date >= l.next_payment_date).slice(0, 3) : [];
   return (
     <section className="potok-decision">
-      <StatusBlock app={app} onPage hint={false} action={false} />
+      <StatusBlock app={app} onPage showLabels hint={false} action={false} />
       <Title order={2} className="potok-say">
         {interestOnly ? 'Лимит открыт!' : 'Деньги на счёте!'}
       </Title>
@@ -294,14 +296,29 @@ export function IssuedCard({ app }: { app: Application }) {
           </Text>
         </>
       )}
-      {l?.next_payment_date && l.next_payment_amount && (
-        <div className="potok-inline-note">
-          <b>
-            Первый платёж — {money(l.next_payment_amount)}, {date(l.next_payment_date)}.
-          </b>{' '}
-          {interestOnly ? 'Это проценты; основной долг возвращается в конце срока. ' : ''}Спишется с расчётного счёта
-          автоматически — следить за датой не нужно.
-        </div>
+      {upcoming.length > 0 && (
+        <section className="potok-sched">
+          <Title order={3}>Ближайшие платежи</Title>
+          <ul className="potok-rows">
+            {upcoming.map((r) => (
+              <li key={r.n}>
+                <Link to={`/loans/${app.loan_id}`} className="potok-row">
+                  <span className="potok-row-main">
+                    <span className="potok-row-title">{date(r.date)}</span>
+                    <span className="potok-row-sub">
+                      {r.principal > 0 ? `основной долг ${money(r.principal)}, проценты ${money(r.interest)}` : `проценты ${money(r.interest)}`}
+                    </span>
+                  </span>
+                  <span className="potok-row-side num">{money(r.payment)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Text fz="sm" c="dimmed" mt={8}>
+            {interestOnly ? 'Каждый месяц — только проценты, основной долг возвращается в конце срока. ' : ''}
+            Платежи списываются с расчётного счёта автоматически — следить за датой не нужно.
+          </Text>
+        </section>
       )}
       <div className="potok-cta">
         {app.loan_id && (
@@ -313,26 +330,6 @@ export function IssuedCard({ app }: { app: Application }) {
           Скачать договор
         </Button>
       </div>
-      {upcoming.length > 0 && (
-        <section className="potok-sched">
-          <Title order={3}>Ближайшие платежи</Title>
-          <ul className="potok-rows">
-            {upcoming.map((r) => (
-              <li key={r.n}>
-                <Link to={`/loans/${app.loan_id}`} className="potok-row">
-                  <span className="potok-row-main">
-                    <span className="potok-row-title">{date(r.date)}</span>
-                    <span className="potok-row-sub">
-                      основной долг {money(r.principal)}, проценты {money(r.interest)}
-                    </span>
-                  </span>
-                  <span className="potok-row-side">{money(r.payment)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </section>
   );
 }

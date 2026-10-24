@@ -20,11 +20,6 @@ export function MoneyInput({ unit = '₽', ...props }: NumberInputProps & { unit
   );
 }
 
-export interface Tick {
-  value: number;
-  label: string;
-}
-
 // Логарифмическая шкала: 100 делений от минимума до максимума, значение округляется до круглого — 3 000 000
 // оказывается в середине шкалы, а не прижат к левому краю. Шаг округления растёт вместе с суммой.
 const LOG_STEPS = 100;
@@ -100,11 +95,7 @@ export function AmountControl({
   );
 }
 
-/**
- * Сумма и срок рядом — один блок для подбора и анкеты: две равные колонки, у суммы слайдер на всю колонку, у срока
- * быстрые значения сеткой 3×2; «₽» и «мес.» стоят с одинаковым отступом от края поля. Срок без выбора (лимит
- * открывается на фиксированный срок) показан текстом.
- */
+/** Сумма и срок для подбора и анкеты. Если срок у продукта фиксированный, он показан текстом. */
 export function AmountTermFields({
   amount,
   onAmount,
@@ -156,11 +147,7 @@ export function AmountTermFields({
 
 const TERM_PRESETS = [6, 12, 18, 24, 36];
 
-/**
- * Срок: поле в месяцах и быстрые значения — синхронно, без слайдера. Быстрые значения — 6, 12, 18, 24, 36 и
- * максимум продукта, только в его диапазоне. Срок больше максимума — сообщение по правилу продукта, при уходе
- * из поля значение возвращается в диапазон.
- */
+/** Срок: поле в месяцах и быстрые значения в диапазоне продукта; при уходе из поля значение возвращается в диапазон. */
 export function TermControl({
   label = 'Срок',
   value,
@@ -181,6 +168,9 @@ export function TermControl({
   error?: ReactNode;
 }) {
   const presets = [...new Set([...TERM_PRESETS, max])].filter((v) => v >= min && v <= max).sort((a, b) => a - b);
+  // Ровные ряды: четыре — 2 × 2; из пяти второе значение убираем, чтобы не было ряда 3 + 2.
+  if (presets.length === 5) presets.splice(1, 1);
+  const columns = presets.length === 4 ? 2 : Math.min(presets.length, 3);
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   // Текст — как у правила продукта на сервере. Меньше минимума не ругаемся: человек, скорее всего, ещё печатает.
   const rangeError = value > max ? `Срок — от ${min} до ${max} мес.` : undefined;
@@ -198,7 +188,12 @@ export function TermControl({
         onBlur={() => onChange(clamp(value))}
         error={error ?? rangeError}
       />
-      <div className="potok-presets" role="group" aria-label="Быстрый выбор срока">
+      <div
+        className="potok-presets"
+        role="group"
+        aria-label="Быстрый выбор срока"
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      >
         {presets.map((p) => (
           <button key={p} type="button" className="potok-preset" aria-pressed={value === p} onClick={() => onChange(p)}>
             {monthsShort(p)}

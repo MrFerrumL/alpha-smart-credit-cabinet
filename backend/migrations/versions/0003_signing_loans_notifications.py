@@ -81,16 +81,9 @@ def upgrade() -> None:
         batch_op.create_foreign_key('fk_offers_signed_by_id_users', 'users', ['signed_by_id'], ['id'])
 
 
-
 def downgrade() -> None:
     with op.batch_alter_table('offers', schema=None) as batch_op:
-        # WARNING: constraint name is None; this directive will fail as
-        # rendered.  Add a name, or use a naming convention; see
-        # https://alembic.sqlalchemy.org/en/latest/naming.html
         batch_op.drop_constraint('fk_offers_signed_by_id_users', type_='foreignkey')
-        # WARNING: constraint name is None; this directive will fail as
-        # rendered.  Add a name, or use a naming convention; see
-        # https://alembic.sqlalchemy.org/en/latest/naming.html
         batch_op.drop_constraint('uq_offers_contract_number', type_='unique')
         batch_op.drop_column('signed_by_id')
         batch_op.drop_column('signed_at')

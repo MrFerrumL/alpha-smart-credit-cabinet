@@ -31,6 +31,11 @@ class Actor(StrEnum):
     SYSTEM = "system"
 
 
+# Положительное решение банка — у заявки есть предложение: «Одобрено» (запрошенные условия) и «Есть предложение»
+# (другие условия). Status — StrEnum, поэтому группа сравнивается и со значением из БД: app.status in OFFER_STATUSES.
+OFFER_STATUSES: frozenset[Status] = frozenset({Status.APPROVED, Status.COUNTER_OFFER})
+
+
 # Этапы, которые клиент видит на таймлайне заявки.
 STAGES: tuple[str, ...] = (
     "Заявка",
@@ -221,7 +226,3 @@ def to_mermaid() -> str:
         if info.terminal:
             lines.append(f"    {status.value} --> [*]")
     return "\n".join(lines)
-
-
-if __name__ == "__main__":
-    print(to_mermaid())

@@ -7,11 +7,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_stream_user, require_analyst, require_client
+from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
 from app.explanation import jobs as explanation_jobs
-from app.models import ApplicationEvent, CheckResult, ClientTask, Document, User
-from app.pipeline.steps import SOURCE_TITLES, SOURCES
+from app.models import ApplicationEvent, ClientTask, Document, User
+from app.pipeline.steps import SOURCE_TITLES, SOURCES, checks_by_source
 from app.schemas import (
     AnalystDecisionIn,
     AssessmentOut,
@@ -205,10 +206,7 @@ def application_checks(
     application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[CheckOut]:
     app = svc.get_for_user(db, user, application_id)
-    rows = {
-        c.source: c
-        for c in db.scalars(select(CheckResult).where(CheckResult.application_id == app.id).order_by(CheckResult.id))
-    }
+    rows = checks_by_source(db, app)
     result = []
     for source in SOURCES:
         row = rows.get(source)
@@ -331,7 +329,7 @@ def request_signing_code(
     challenge, code = signing_svc.request_code(db, user, app)
     return SigningCodeOut(
         challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left,
-        demo_code=code,
+        demo_code=code if get_settings().demo_mode else None,
     )
 
 
