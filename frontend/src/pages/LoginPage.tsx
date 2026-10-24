@@ -112,6 +112,26 @@ function EmailField({
 }
 
 /**
+ * Декоративная линия входа — белая лента на «Тумане» за заголовком: одна петля, затем вниз между текстом и формой,
+ * не задевая форму. Рисуется один раз при открытии; на телефоне — одна дуга над формой, без движения.
+ */
+function LoginLine() {
+  return (
+    <>
+      <svg className="potok-deco potok-deco-line" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+        <path
+          pathLength={1}
+          d="M-800 636L-480 600C-120 560 220 250 430 250C610 250 690 380 600 455C520 520 400 470 430 380C460 290 620 290 690 400C740 480 730 700 680 960S640 1240 650 1500"
+        />
+      </svg>
+      <svg className="potok-deco potok-deco-arc" viewBox="0 0 390 260" aria-hidden="true" focusable="false">
+        <path d="M-30 140C60 36 200 26 260 74C320 122 300 176 420 158" />
+      </svg>
+    </>
+  );
+}
+
+/**
  * Куда после входа: на страницу, которую открывали без входа (ссылка из уведомления, закладка), иначе на главную
  * роли. Чужую для роли страницу дальше развернёт RequireRole.
  */
@@ -164,41 +184,44 @@ export function LoginPage() {
   };
 
   return (
-    <main className="potok-login">
-      <section className="potok-login-promo">
-        <Logo size={32} />
-        <Title order={1} className="potok-login-title">
-          {typo('Кредит для бизнеса — от заявки до денег на счёте')}
-        </Title>
-        <Text className="potok-login-lead">
-          {typo('Подбор, решение банка, подписание и выдача — в одном кабинете.')}
-          <span className="potok-desktop-only"> Данные компании подтягиваются из ЕГРЮЛ и налоговой сами.</span>
-        </Text>
-        <ul className="potok-login-points">
-          <li>Платёж виден ещё до заявки</li>
-          <li>Статус обновляется сам</li>
-          <li>Договор подписывается кодом в кабинете</li>
-        </ul>
-      </section>
-      <section className="potok-panel potok-login-form">
-        <Title order={2} className="potok-login-h">
-          Вход в кабинет
-        </Title>
-        <form onSubmit={submit}>
-          <EmailField value={email} onChange={setEmail} accounts={demo} onPick={pick} />
-          <PasswordInput
-            mt="md"
-            label="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.currentTarget.value)}
-            autoComplete="current-password"
-          />
-          <Button ref={submitRef} type="submit" size="lg" fullWidth mt="lg" loading={pending} disabled={!email.trim()}>
-            Войти
-          </Button>
-        </form>
-      </section>
-      <p className="potok-login-note">Прототип для Альфа-Хакатона 2026. Все компании и люди вымышлены, данные синтетические.</p>
-    </main>
+    <div className="potok-login-page">
+      <main className="potok-login">
+        <LoginLine />
+        <section className="potok-login-promo">
+          <Logo size={32} />
+          <Title order={1} className="potok-login-title">
+            {typo('Кредит для бизнеса — от заявки до денег на счёте')}
+          </Title>
+          <Text className="potok-login-lead">
+            {typo('Подбор, решение банка, подписание и выдача — в одном кабинете.')}
+            <span className="potok-desktop-only"> Данные компании подтягиваются из ЕГРЮЛ и налоговой сами.</span>
+          </Text>
+          <ul className="potok-login-points">
+            <li>Платёж виден ещё до заявки</li>
+            <li>Статус обновляется сам</li>
+            <li>Договор подписывается кодом в кабинете</li>
+          </ul>
+        </section>
+        <section className="potok-panel potok-login-form">
+          <Title order={2} className="potok-login-h">
+            Вход в кабинет
+          </Title>
+          <form onSubmit={submit}>
+            <EmailField value={email} onChange={setEmail} accounts={demo} onPick={pick} />
+            <PasswordInput
+              mt="md"
+              label="Пароль"
+              value={password}
+              onChange={(e) => setPassword(e.currentTarget.value)}
+              autoComplete="current-password"
+            />
+            <Button ref={submitRef} type="submit" size="lg" fullWidth mt="lg" loading={pending} disabled={!email.trim()}>
+              Войти
+            </Button>
+          </form>
+        </section>
+        <p className="potok-login-note">Прототип для Альфа-Хакатона 2026. Все компании и люди вымышлены, данные синтетические.</p>
+      </main>
+    </div>
   );
 }

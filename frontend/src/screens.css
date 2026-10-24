@@ -1534,7 +1534,14 @@ a.potok-note-title:hover {
 }
 
 /* --- Вход ----------------------------------------------------------------------------------------- */
+/* Линия выходит за сетку входа — края обрезает страница, без горизонтальной прокрутки. */
+.potok-login-page {
+  position: relative;
+  overflow: hidden;
+}
+
 .potok-login {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 456px;
   grid-template-areas: 'promo form' 'note note';
@@ -1546,6 +1553,64 @@ a.potok-note-title:hover {
   min-height: 100dvh;
   margin: 0 auto;
   padding: 48px 24px;
+}
+
+.potok-login > :not(.potok-deco) {
+  position: relative;
+  z-index: 1;
+}
+
+.potok-deco {
+  position: absolute;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.potok-deco path {
+  fill: none;
+  stroke: var(--potok-paper);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Координаты линии — экран 1440 × 900. Линия привязана к первой строке сетки справа, то есть к форме входа:
+   при любой ширине она проходит между текстом и формой на том же расстоянии от формы. */
+.potok-deco-line {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  top: -204px;
+  right: -168px;
+  width: 1440px;
+  height: 900px;
+}
+
+.potok-deco-line path {
+  stroke-width: 72;
+  stroke-dasharray: 1;
+  animation: potok-draw 1.4s var(--ease-in) 0.1s both;
+}
+
+.potok-deco-arc {
+  display: none;
+}
+
+@keyframes potok-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .potok-deco-line path {
+    animation: none;
+  }
+}
+
+@media print {
+  .potok-deco {
+    display: none;
+  }
 }
 
 .potok-login-promo {
@@ -2280,6 +2345,26 @@ a.potok-note-title:hover {
     gap: 20px;
     align-content: start;
     padding: 20px 16px;
+  }
+
+  /* На телефоне — одна дуга во всю ширину экрана над формой, без движения. */
+  .potok-deco-line {
+    display: none;
+  }
+
+  .potok-deco-arc {
+    display: block;
+    grid-row: 1;
+    grid-column: 1 / -1;
+    top: -20px;
+    left: -16px;
+    width: calc(100% + 32px);
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
+
+  .potok-deco-arc path {
+    stroke-width: 40;
   }
 
   .potok-login-title {
