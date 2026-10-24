@@ -34,7 +34,7 @@ app.include_router(llm_router)
 
 
 class FaultIn(BaseModel):
-    source: Literal["egrul", "bki", "fns", "abs", "llm", "all"]
+    source: Literal[Source, "llm", "all"]
     mode: Literal["error", "timeout", "contradict", "wrong_numbers", "none"]
     count: int | None = Field(default=None, ge=1, description="Сколько запросов сломать; пусто — до отмены")
 

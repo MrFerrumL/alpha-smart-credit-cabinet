@@ -221,7 +221,3 @@ def to_mermaid() -> str:
         if info.terminal:
             lines.append(f"    {status.value} --> [*]")
     return "\n".join(lines)
-
-
-if __name__ == "__main__":
-    print(to_mermaid())

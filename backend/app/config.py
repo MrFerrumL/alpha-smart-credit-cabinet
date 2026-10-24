@@ -10,7 +10,6 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Кредитный конвейер — core API"
     environment: str = "local"
 
     # По умолчанию — файл SQLite рядом с кодом backend, независимо от текущей папки.
