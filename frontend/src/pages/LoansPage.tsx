@@ -206,7 +206,7 @@ export function LoansPage() {
         </div>
         <div className="potok-col">
           {next && (
-            <section className="potok-panel">
+            <section className="potok-panel potok-phone-first">
               <Title order={3}>Следующий платёж</Title>
               <div className="potok-side-amount">{moneyBig(next.next_payment_amount!)}</div>
               <div className="potok-muted-text">

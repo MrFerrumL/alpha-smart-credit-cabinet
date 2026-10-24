@@ -2307,12 +2307,35 @@ a.potok-note-title:hover {
   }
 
 
-  .potok-home,
   .potok-lists,
-  .potok-below,
-  .potok-analyst,
-  .potok-kv {
+  .potok-analyst {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-kv {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* Обе колонки — одной лентой: «Что дальше» и «Следующий платёж» встают перед историей и списками, лента новостей
+     на главной — в конец. */
+  .potok-below,
+  .potok-home {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .potok-below > .potok-col,
+  .potok-home > .potok-col {
+    display: contents;
+  }
+
+  .potok-phone-first {
+    order: -1;
+  }
+
+  .potok-home .potok-news {
+    order: 1;
   }
 
   .potok-facts {
