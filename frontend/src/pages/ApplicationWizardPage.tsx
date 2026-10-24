@@ -109,7 +109,7 @@ function WizardSummary({ product, purpose, amount, term, payment }: { product: P
   );
 }
 
-/** Что понадобится для заявки — вместо второго списка шагов (степпер один, сверху). */
+/** Что понадобится для заявки. */
 function NeededDocuments({ product }: { product: Product }) {
   return (
     <section className="potok-panel">

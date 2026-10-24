@@ -30,7 +30,7 @@ class Features:
     blocked_accounts: bool
     requested_payment: int  # платёж по запрошенным сумме и сроку
     dsr: float | None  # доля выручки, которая уйдёт на все кредитные платежи
-    # Заявлено клиентом в анкете. Поле добавлено позже остальных: у сохранённых раньше признаков его нет.
+    # Заявлено клиентом в анкете; None — не заявлено или признаки сохранены без этого поля.
     declared_debt_payments: int | None = None
 
     def as_dict(self) -> dict:

@@ -40,9 +40,7 @@ services:
       SEED_ON_START: ${SEED_ON_START:-true}
       ENVIRONMENT: ${ENVIRONMENT:-demo}
       UPLOAD_DIR: /data/uploads
-      # Пояснение решения простыми словами (необязательно, по умолчанию выключено). Backend отдаёт флаг в /api/meta
-      # и готовый текст, а пишет текст воркер — поэтому и здесь те же адрес и модель: функция включена, только если
-      # они заданы.
+      # Пояснение решения (необязательно): backend отдаёт флаг и готовый текст, пишет текст воркер.
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
@@ -70,8 +68,7 @@ services:
       PIPELINE_STEP_DELAY_S: ${PIPELINE_STEP_DELAY_S:-1.5}
       SEED_ON_START: "false"
       WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
-      # Пояснение решения: отдельный поток воркера ходит в OpenAI-совместимый API. Ключ нужен только внешнему
-      # провайдеру, локальной модели — нет.
+      # Пояснение решения: поток воркера ходит в OpenAI-совместимый API сервера модели; ключ — если сервер его требует.
       LLM_ENABLED: ${LLM_ENABLED:-false}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
@@ -88,15 +85,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Необязательная локальная модель для пояснения решения: включается профилем llm (COMPOSE_PROFILES=llm) вместе с
-  # LLM_ENABLED=true. Без профиля сервис не создаётся. Работает на процессоре; с видеокартой быстрее запустить Ollama
-  # на самом ПК и указать LLM_BASE_URL=http://host.docker.internal:11434/v1 (см. README).
+  # Необязательная локальная модель для пояснения решения: COMPOSE_PROFILES=llm и LLM_ENABLED=true.
+  # Работает на процессоре; с видеокартой быстрее запустить Ollama на самом ПК (см. docs/llm.md).
   ollama:
     image: ollama/ollama:0.40.2
     profiles: ["llm"]
     init: true
-    # Модель качается при первом запуске, если её ещё нет в томе, и сразу загружается в память: healthcheck станет
-    # «здоров», когда модель готова отвечать. Без интернета при первом запуске pull упадёт, и up --wait — тоже.
+    # При первом запуске скачивает модель; сервис здоров, когда модель загружена и отвечает.
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -114,10 +109,10 @@ services:
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_CONTEXT_LENGTH: "2048"
-    # Порт наружу не публикуется: воркер ходит к модели по сети compose, а у пользователя может быть свой Ollama на 11434.
+    # Порт не публикуется: воркер ходит к модели по сети compose.
     volumes:
       - ollama:/root/.ollama
-    # Модель 7B в Q4 занимает около 5 ГБ памяти; при нехватке упадёт только этот сервис, а не база.
+    # Модели 7B в Q4 нужно около 5 ГБ памяти.
     mem_limit: 7g
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/ready"]
@@ -139,6 +134,5 @@ services:
 volumes:
   pgdata:
   uploads:
-  # Модель локального профиля (около 4,7 ГБ). Удаляет её docker compose --profile llm down -v (down -v без профиля
-  # её не трогает); при следующем запуске — новая загрузка.
+  # Модель профиля llm (около 4,7 ГБ); удаляется командой docker compose --profile llm down -v.
   ollama:

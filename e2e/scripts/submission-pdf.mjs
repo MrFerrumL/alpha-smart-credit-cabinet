@@ -2,7 +2,7 @@
 //
 //   npm run submission-pdf                                         # docs/SUBMISSION.pdf, версия как в документе
 //   npm run submission-pdf -- --tag v1.0.0 --commit 1a2b3c4d5e6f   # подставить тег и хеш коммита
-//   npm run submission-pdf -- --out ../SUBMISSION-rc.pdf           # другой файл (путь от текущей папки)
+//   npm run submission-pdf -- --out ../SUBMISSION-v1.pdf           # другой файл (путь от текущей папки)
 //
 // Сам SUBMISSION.md не меняется. Хеш подставляется между метками <!--COMMIT-->…<!--/COMMIT-->, тег — между
 // <!--TAG-->…<!--/TAG--> и во всех ссылках и командах документа, где стоит тег по умолчанию.

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { ApiError } from '../api/client';
 
-/** Свои простые иллюстрации: линия графитом, плоскость «Туман», волна «Потока» — без наборов иконок. */
+/** Простые иллюстрации пустых состояний и ошибок. */
 function Art({ kind }: { kind: 'folder' | 'list' | 'queue' | 'error' }) {
   if (kind === 'error') {
     return (
@@ -73,7 +73,7 @@ export function Empty({
   );
 }
 
-/** Ошибка загрузки: что случилось и что сделать, без извинений. */
+/** Ошибка загрузки: что случилось и что сделать. */
 export function LoadError({ error, what, back }: { error: unknown; what: string; back?: ReactNode }) {
   const code = error instanceof ApiError ? error.status : null;
   return (

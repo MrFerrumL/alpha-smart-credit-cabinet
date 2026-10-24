@@ -69,7 +69,7 @@ function CodeModal({ app, opened, onClose }: { app: Application; opened: boolean
   useEffect(() => {
     const expired = challenge !== null && new Date(challenge.expires_at).getTime() <= Date.now();
     if (opened && (!challenge || expired) && !request.isPending) send();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Только при открытии окна: код не перезапрашивается при каждом изменении challenge.
   }, [opened]);
 
   const submit = (value: string) => {
@@ -148,11 +148,7 @@ function nextMonth(): string {
   return d.toISOString();
 }
 
-/**
- * Подписание — главный блок страницы: компактный статус, договор (сумма крупно, условия, переплата из договора,
- * мини-график), согласие и подпись кодом. Хеш условий — под «Подробнее», рядом со ссылкой на договор. На телефоне
- * «Подписать кодом» закреплена внизу. После подписи — настоящее состояние перевода, а не демонстрационная вставка.
- */
+/** Подписание: договор, согласие и подпись кодом; после подписи — состояние перевода. */
 export function SigningCard({ app, extra }: { app: Application; extra?: ReactNode }) {
   const contract = useContract(app.id, true);
   const interestOnly = useInterestOnly(app.offer?.product_code);

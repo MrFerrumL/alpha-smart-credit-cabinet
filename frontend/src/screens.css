@@ -559,7 +559,7 @@
 }
 
 /* --- Анкета --------------------------------------------------------------------------------------- */
-/* Сверху справа — степпер, слева 336 — липкая сводка, справа 672 — один шаг на белой панели. */
+/* Слева — липкая сводка заявки, справа — шаг анкеты. */
 .potok-wz-head,
 .potok-wz {
   display: grid;
@@ -1163,7 +1163,7 @@ a.potok-note-title:hover {
   gap: 16px;
 }
 
-/* Поиск — той же высоты, что лента фильтров (44 px), подсказка внутри поля, лупа слева; белый на «Тумане». */
+/* Поиск — той же высоты, что фильтры. */
 .potok-search .mantine-Input-input {
   min-height: 44px;
   height: 44px;
@@ -1224,7 +1224,7 @@ a.potok-note-title:hover {
   color: var(--potok-paper);
 }
 
-/* Счётчики — серые, нули — бледнее; красного нет. */
+/* Счётчики фильтров; нули — бледнее. */
 .potok-q-count {
   opacity: 0.75;
 }
@@ -1483,7 +1483,7 @@ a.potok-note-title:hover {
   color: var(--warn-text);
 }
 
-/* Запрос банка: строка на «Тумане», без цветной рамки вокруг всей карточки — статус говорит чип. */
+/* Запрос банка — строка на сером фоне, статус показывает чип. */
 .potok-task {
   background: var(--potok-canvas) !important;
 }
@@ -1563,7 +1563,7 @@ a.potok-note-title:hover {
   margin-top: 8px;
 }
 
-/* Маркер — короткая графитовая черта, без иконок в кружках. */
+/* Маркер списка — короткая черта. */
 .potok-login-points li::before {
   content: '';
   position: absolute;
@@ -2114,7 +2114,6 @@ a.potok-note-title:hover {
     border-top: 1px solid var(--potok-line);
   }
 
-  /* Кнопки панели — 48 px: панель 73 px, со шторкой 56 px вместе 129 px. */
   .potok-wz-bar .mantine-Button-root {
     height: 48px !important;
   }

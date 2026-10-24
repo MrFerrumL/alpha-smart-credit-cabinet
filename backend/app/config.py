@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # Сколько дней банк ждёт ответа на свой запрос, прежде чем закрыть заявку.
     needs_info_ttl_days: int = 14
 
-    # Подписание договора одноразовым кодом из уведомлений кабинета.
+    # Подписание договора одноразовым кодом.
     signing_code_ttl_s: int = 300
     signing_max_attempts: int = 3
     signing_codes_per_hour: int = 5

@@ -132,7 +132,7 @@ export function LoginPage() {
     event.preventDefault();
     setPending(true);
     try {
-      // Демо-профиль без пароля входит как раньше, в один шаг; с паролем — обычный вход по почте и паролю.
+      // Демо-профиль без пароля входит в один шаг; с паролем — обычный вход по почте и паролю.
       const isDemo = demo.some((a) => a.email === email.trim().toLowerCase());
       finish(
         isDemo && !password

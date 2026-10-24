@@ -23,7 +23,7 @@ export const tokenStore = {
     try {
       sessionStorage.removeItem(TOKEN_KEY);
     } catch {
-      /* ignore */
+      /* хранилище недоступно — удалять нечего */
     }
   },
 };

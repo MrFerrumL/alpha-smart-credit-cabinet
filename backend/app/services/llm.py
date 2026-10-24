@@ -17,7 +17,7 @@ from app.config import get_settings
 
 log = logging.getLogger("app.llm")
 
-LLM_TIMEOUT_S = 60.0  # общий срок одного вызова; константа, не переменная окружения
+LLM_TIMEOUT_S = 60.0  # общий срок одного вызова
 CONNECT_TIMEOUT_S = 3.0  # недоступный сервер выясняется быстро, а не за весь срок
 
 

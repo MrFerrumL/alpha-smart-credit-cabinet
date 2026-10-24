@@ -2,7 +2,7 @@
    в комментарии — исходный токен. Свои имена, чтобы интерфейс не зависел от их переименований. */
 :root {
   --potok-ink: #212124; /* neutral-1300: текст и данные */
-  --potok-steel: #5f5f66; /* neutral-700-press: вторичный текст, 6,3:1 на белом */
+  --potok-steel: #5f5f66; /* neutral-700-press: вторичный текст */
   --potok-paper: #ffffff; /* base-bg-primary: поверхности */
   --potok-canvas: #f2f3f5; /* base-bg-secondary, neutral-100: холст и поля */
   --potok-line: #e7e8eb; /* neutral-300: разделители */
@@ -13,7 +13,7 @@
   --potok-press: rgba(30, 43, 68, 0.08); /* neutral-translucent-200 */
 
   --potok-accent: #ef3124; /* accent-primary: активный шаг, фокус, метки */
-  --potok-accent-fill: #e32a17; /* accent-primary-hover: заливка кнопки — 4,56:1 с белым текстом */
+  --potok-accent-fill: #e32a17; /* accent-primary-hover: заливка кнопки */
   --potok-accent-hover: #d72505; /* accent-primary-press */
   --potok-accent-press: #c41400; /* corp ruby wine */
 
@@ -47,18 +47,11 @@
     0 0 1px rgba(0, 0, 0, 0.04);
   --shadow-l-up: 0 0 24px rgba(0, 0, 0, 0.12), 0 -12px 24px rgba(0, 0, 0, 0.24);
 
-  /* Движение: значения сняты с интерфейса T-Bank (computed styles). */
   --ease: cubic-bezier(0.2, 0, 0.4, 0.9);
   --ease-in: cubic-bezier(0, 0, 0.4, 1);
   --dur-press: 100ms;
   --dur-hover: 200ms;
   --dur-panel: 240ms;
-
-  /* Совместимость со старыми именами, пока экраны переходят на новые токены. */
-  --app-bg: var(--potok-canvas);
-  --app-ink: var(--potok-ink);
-  --app-muted: var(--potok-steel);
-  --app-line: var(--potok-line);
 }
 
 html,
@@ -661,7 +654,7 @@ body {
   border-radius: 0 0 3px 3px;
 }
 
-/* Текущий платёж на графике — чуть темнее, без красной черты (её читали как подчёркивание заголовка). */
+/* Текущий платёж на графике — чуть темнее. */
 .potok-bar[data-current='true'] .potok-bar-p {
   background: var(--potok-ink);
 }
@@ -853,8 +846,7 @@ body {
   color: var(--potok-steel);
 }
 
-/* Быстрые значения срока — под слайдером вместо подписей шкалы; выбранное — графитом. */
-/* Быстрые значения — сетка 3×2 равной ширины, на любом экране. */
+/* Быстрые значения срока — сеткой под полем; выбранное — графитом. */
 .potok-presets {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

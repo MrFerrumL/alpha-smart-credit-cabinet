@@ -31,7 +31,7 @@ function RequireRole({ role }: { role: 'client' | 'analyst' }) {
   return <Outlet />;
 }
 
-/** Нет такой страницы — своя иллюстрация и путь назад, без крупного красного «404». */
+/** Нет такой страницы — иллюстрация и путь назад. */
 function NotFoundPage() {
   return (
     <section className="potok-panel">
