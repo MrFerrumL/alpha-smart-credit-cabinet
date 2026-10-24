@@ -387,7 +387,6 @@
   grid-template-columns: minmax(0, 1fr) 200px;
   gap: 24px;
   align-items: center;
-  padding: 32px;
 }
 
 .potok-promo-art {
@@ -2006,7 +2005,6 @@ a.potok-note-title:hover {
   .potok-promo {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
-    padding: 20px 16px;
   }
 
   /* На телефоне иллюстрация — узкая полоса над текстом, а не квадрат на пол-экрана. */

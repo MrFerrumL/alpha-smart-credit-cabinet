@@ -20,7 +20,6 @@ import { nb } from '../lib/nobreak';
 function GrowthArt() {
   return (
     <svg className="potok-promo-art" viewBox="0 0 280 180" fill="none" aria-hidden="true">
-      <rect x="0" y="0" width="280" height="180" rx="24" fill="#f2f3f5" />
       <rect x="36" y="112" width="28" height="40" rx="6" fill="#d2d3d9" />
       <rect x="80" y="96" width="28" height="56" rx="6" fill="#d2d3d9" />
       <rect x="124" y="80" width="28" height="72" rx="6" fill="#babbc2" />
