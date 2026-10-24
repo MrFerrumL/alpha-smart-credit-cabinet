@@ -26,7 +26,7 @@ def _finish(db: Session, job_id: int, attempt: int, status: str, error: str | No
     owned = update(Job).where(Job.id == job_id, Job.status == "running", Job.attempts == attempt)
     if db.execute(owned.values(status=status, last_error=error)).rowcount != 1:
         db.rollback()
-        log.warning("pipeline step result discarded", extra={"path": f"job {job_id}", "status": "job was recovered"})
+        log.warning("pipeline step result discarded", extra={"job_id": job_id, "outcome": "recovered"})
         return
     db.commit()
 
@@ -50,7 +50,7 @@ def _retry_or_fail(session_factory: SessionFactory, job_id: int, attempt: int, e
     with session_factory() as db:
         job = db.get(Job, job_id, with_for_update=True)
         if job.status != "running" or job.attempts != attempt:
-            log.warning("pipeline step result discarded", extra={"path": f"job {job_id}", "status": "job was recovered"})
+            log.warning("pipeline step result discarded", extra={"job_id": job_id, "outcome": "recovered"})
             return
         if job.attempts < settings.pipeline_max_attempts:
             job.status = "pending"

@@ -78,7 +78,7 @@ def recover_stale(db: Session) -> int:
             exhausted += exhaust_stale(db, job_id, seen)
         except Exception as exc:  # noqa: BLE001 — сбой на одной задаче не мешает остальным
             db.rollback()
-            log.exception("stale job recovery failed", extra={"path": kind, "status": f"job {job_id}"})
+            log.exception("stale job recovery failed", extra={"job": kind, "job_id": job_id})
             _take(db, job_id, seen, status="failed", last_error=f"recovery failed: {exc.__class__.__name__}: {exc}")
             db.commit()
     return requeued + exhausted
