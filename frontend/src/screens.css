@@ -406,14 +406,6 @@
   color: var(--potok-steel);
 }
 
-.potok-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 24px;
-}
-
 .potok-link {
   color: var(--potok-ink) !important;
   font-weight: 500;
@@ -2015,12 +2007,6 @@ a.potok-note-title:hover {
 
   .potok-promo .mantine-Button-root {
     width: 100%;
-  }
-
-  .potok-strip {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 16px;
   }
 
   /* Анкета на телефоне: степпер без подписей, сводка — шторка 56 px над закреплёнными «Назад/Далее», вместе ≤ 140 px. */

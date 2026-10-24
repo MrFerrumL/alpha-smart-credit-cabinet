@@ -8,7 +8,7 @@ import { ApiError, api } from '../api/client';
 import { useApplications, useInterestOnly, useLoan, useLoans } from '../api/hooks';
 import type { Application, Loan, LoanDetail } from '../api/types';
 import { BarsLegend, PaymentBars } from '../components/PaymentBars';
-import { MyCompany } from '../components/Side';
+import { MoreMoney, MyCompany } from '../components/Side';
 import { Empty, LoadError } from '../components/States';
 import { Chip } from '../components/Status';
 import { NBSP, date, dayMonth, money, moneyBig, months, rate, shortDate } from '../lib/format';
@@ -252,12 +252,7 @@ export function LoansPage() {
               </ul>
             </section>
           )}
-          <section className="potok-panel potok-strip-v">
-            <Text>Нужны ещё деньги на бизнес?</Text>
-            <Button component={Link} to="/match" variant="default" size="md">
-              Подобрать кредит
-            </Button>
-          </section>
+          <MoreMoney />
           {!list.length && <MyCompany />}
         </div>
       </div>

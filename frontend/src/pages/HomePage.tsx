@@ -11,7 +11,7 @@ import { AppRow } from '../components/AppRow';
 import { AppStatusCard } from '../components/AppStatusCard';
 import { NewsFeed } from '../components/NewsFeed';
 import { LoadError } from '../components/States';
-import { CompanyCard, RecentNotifications } from '../components/Side';
+import { CompanyCard, MoreMoney, RecentNotifications } from '../components/Side';
 import { NBSP, dayMonth, greeting, money } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
@@ -67,18 +67,6 @@ function Promo() {
         </dl>
       </div>
       <GrowthArt />
-    </section>
-  );
-}
-
-/** Когда заявка уже идёт — промо свёрнуто до строки. */
-function PromoStrip() {
-  return (
-    <section className="potok-panel potok-strip">
-      <span>Нужны ещё деньги на бизнес? Подберём кредит под задачу.</span>
-      <Button component={Link} to="/match" size="md" variant="default">
-        Подобрать кредит
-      </Button>
     </section>
   );
 }
@@ -296,6 +284,8 @@ export function HomePage() {
           {user.position ? `, ${user.position.toLowerCase()}` : ''}
         </Text>
       </div>
+      {/* Слева — то, с чем работать: главная заявка, остальные заявки, лента; справа — уведомления, кредиты,
+          короткий подбор и компания. */}
       <div className="potok-home">
         <div className="potok-col">
           {!user.can_sign && (
@@ -312,13 +302,13 @@ export function HomePage() {
           ) : (
             <Promo />
           )}
-          {main && <PromoStrip />}
-          {!!loans.data?.length && <LoansBrief loans={loans.data} />}
           {others.length > 0 && <OtherApps apps={others} />}
           <NewsFeed />
         </div>
         <div className="potok-col">
           <RecentNotifications exclude={main ? `/applications/${main.id}` : undefined} />
+          {!!loans.data?.length && <LoansBrief loans={loans.data} />}
+          {main && <MoreMoney />}
           <CompanyCard company={user.company} />
           {!main && <HowItWorks />}
         </div>
