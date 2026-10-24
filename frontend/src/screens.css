@@ -242,6 +242,24 @@
   align-items: start;
 }
 
+/* Последняя панель более короткой колонки дотягивается до низа соседней. */
+@media (min-width: 721px) {
+  .potok-even {
+    align-items: stretch;
+  }
+
+  .potok-even > .potok-col > :last-child {
+    flex-grow: 1;
+  }
+}
+
+/* Запрос банка внутри блока статуса — под строкой статуса, через линию. */
+.potok-status-tasks {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--potok-line);
+}
+
 
 .potok-cta-main {
   display: contents;

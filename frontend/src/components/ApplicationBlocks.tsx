@@ -60,15 +60,20 @@ export function shownTerms(app: Application, products?: Product[]) {
 }
 // --- Запросы банка -----------------------------------------------------------------------------
 
-function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask; readOnly: boolean }) {
+// Поручительство собственника (условие выдачи) подтверждает только руководитель — сервер даёт ему отдельное действие.
+const signerOnlyTask = (task: ClientTask) => task.kind === 'question' && task.payload?.condition === 'before_issue';
+
+function canAnswerTask(app: Application, task: ClientTask): boolean {
+  return task.status === 'open' && app.allowed_actions.includes(signerOnlyTask(task) ? 'confirm_guarantee' : 'answer_tasks');
+}
+
+function TaskItem({ app, task, readOnly, primary }: { app: Application; task: ClientTask; readOnly: boolean; primary: boolean }) {
   const answer = useAnswerTask(app.id);
   const upload = useUploadDocument(app.id);
   const [value, setValue] = useState<string | number>('');
   const done = task.status === 'done';
-  // Поручительство собственника (условие выдачи) подтверждает только руководитель — сервер даёт ему отдельное действие.
-  const signerOnly = task.kind === 'question' && task.payload?.condition === 'before_issue';
-  const canAnswer =
-    task.status === 'open' && !readOnly && app.allowed_actions.includes(signerOnly ? 'confirm_guarantee' : 'answer_tasks');
+  const signerOnly = signerOnlyTask(task);
+  const canAnswer = !readOnly && canAnswerTask(app, task);
 
   return (
     <Paper p="md" radius={16} className="potok-task" data-done={done}>
@@ -102,8 +107,15 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
           accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.csv,.doc,.docx,.txt"
         >
           {(props) => (
-            <Button {...props} mt="md" variant="default" size="md" leftSection={<IconFileUpload size={18} />} loading={upload.isPending}>
-              Загрузить файл
+            <Button
+              {...props}
+              mt="md"
+              variant={primary ? 'filled' : 'default'}
+              size="md"
+              leftSection={<IconFileUpload size={18} />}
+              loading={upload.isPending}
+            >
+              {task.payload?.document_kind === 'bank_statement' ? 'Загрузить выписку' : 'Загрузить файл'}
             </Button>
           )}
         </FileButton>
@@ -122,6 +134,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
             style={{ flex: 1, maxWidth: 280 }}
           />
           <Button
+            variant={primary ? 'filled' : 'default'}
             loading={answer.isPending}
             disabled={!value}
             onClick={() => answer.mutate({ taskId: task.id, answer: String(value) })}
@@ -135,6 +148,7 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
           <Textarea value={String(value)} onChange={(e) => setValue(e.currentTarget.value)} autosize minRows={2} />
           <Group>
             <Button
+              variant={primary ? 'filled' : 'default'}
               loading={answer.isPending}
               disabled={!String(value).trim()}
               onClick={() => answer.mutate({ taskId: task.id, answer: String(value) })}
@@ -153,12 +167,28 @@ function TaskItem({ app, task, readOnly }: { app: Application; task: ClientTask;
   );
 }
 
-export function TasksCard({ app, tasks, readOnly = false }: { app: Application; tasks: ClientTask[]; readOnly?: boolean }) {
+/**
+ * Запросы банка и условия выдачи. Отдельной панелью — или частью блока статуса (embedded), когда запрос и есть
+ * текущий шаг заявки. Красная кнопка — только у первого открытого запроса и только когда ход за клиентом.
+ */
+export function TasksCard({
+  app,
+  tasks,
+  readOnly = false,
+  embedded = false,
+}: {
+  app: Application;
+  tasks: ClientTask[];
+  readOnly?: boolean;
+  embedded?: boolean;
+}) {
   if (tasks.length === 0) return null;
   const open = tasks.filter((t) => t.status === 'open').length;
   const signing = app.status.code === 'signing';
+  const leading = app.status.code === 'needs_info' || app.offer?.status === 'signed';
+  const first = leading && !readOnly ? tasks.find((t) => canAnswerTask(app, t)) : undefined;
   return (
-    <section className="potok-panel fade-in">
+    <section className={embedded ? 'potok-status-tasks fade-in' : 'potok-panel fade-in'} id="tasks">
       <Title order={3}>{signing ? 'Условия выдачи' : open ? 'Банк просит уточнить' : 'Запросы банка'}</Title>
       <Text fz="sm" c="dimmed" mt={4}>
         {signing
@@ -173,7 +203,7 @@ export function TasksCard({ app, tasks, readOnly = false }: { app: Application; 
       </Text>
       <Stack gap="sm" mt="md">
         {tasks.map((task) => (
-          <TaskItem key={task.id} app={app} task={task} readOnly={readOnly} />
+          <TaskItem key={task.id} app={app} task={task} readOnly={readOnly} primary={task === first} />
         ))}
       </Stack>
     </section>

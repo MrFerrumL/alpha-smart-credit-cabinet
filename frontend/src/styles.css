@@ -575,6 +575,51 @@ body {
   max-width: 68ch;
 }
 
+.potok-status-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+/* «Статус обновляется сам» — продолжение строки подсказки, точка не отрывается от текста. */
+.potok-live-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.potok-status-why {
+  margin-top: 8px;
+  max-width: 68ch;
+  font-size: 14px;
+}
+
+.potok-status-why-h {
+  display: inline;
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+@media (max-width: 720px) {
+  .potok-live-tail {
+    display: flex;
+    margin: 6px 0 0;
+  }
+
+  .potok-status-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .potok-status-actions .mantine-Button-root[data-variant='subtle'] {
+    align-self: flex-start;
+  }
+}
+
 @media (max-width: 720px) {
   .potok-stepper[data-labels='true'] .potok-stepper-label {
     position: absolute;

@@ -78,7 +78,8 @@ function nextAction(app: Application, role: string | undefined, onPage: boolean)
     case 'draft':
       return { label: 'Продолжить оформление', to: `${page}/edit` };
     case 'needs_info':
-      return { label: 'Ответить на запрос', to: onPage ? '#tasks' : page };
+      // На странице заявки запрос банка — в том же блоке статуса, со своей кнопкой.
+      return onPage ? null : { label: 'Ответить на запрос', to: page };
     case 'approved':
     case 'counter_offer':
       // На странице заявки главное действие — в блоке решения; здесь кнопку не дублируем.
@@ -140,6 +141,9 @@ export function StatusBlock({
   note,
   action = true,
   hint = true,
+  hintTail,
+  aside,
+  children,
 }: {
   app: Application;
   onPage?: boolean;
@@ -148,6 +152,12 @@ export function StatusBlock({
   action?: boolean;
   /** Подсказка статуса; в блоке решения её заменяет фраза исхода. */
   hint?: boolean;
+  /** Продолжение строки подсказки — например, «статус обновляется сам». */
+  hintTail?: ReactNode;
+  /** Второстепенное действие справа в строке статуса. */
+  aside?: ReactNode;
+  /** Строки под подсказкой. */
+  children?: ReactNode;
 }) {
   const meta = useMeta();
   const { user } = useAuth();
@@ -172,19 +182,26 @@ export function StatusBlock({
           {hint && (
             <div className="potok-status-next">
               {typo(user?.role === 'analyst' ? (BANK_HINT[app.status.code] ?? app.status.title) : app.status.hint)}
+              {hintTail}
             </div>
           )}
+          {children}
         </div>
-        {next &&
-          (next.to.startsWith('#') ? (
-            <Button component="a" href={next.to} size="md" variant={variant} className="potok-status-action">
-              {next.label}
-            </Button>
-          ) : (
-            <Button component={Link} to={next.to} size="md" variant={variant} className="potok-status-action">
-              {next.label}
-            </Button>
-          ))}
+        {(next || aside) && (
+          <div className="potok-status-actions">
+            {next &&
+              (next.to.startsWith('#') ? (
+                <Button component="a" href={next.to} size="md" variant={variant} className="potok-status-action">
+                  {next.label}
+                </Button>
+              ) : (
+                <Button component={Link} to={next.to} size="md" variant={variant} className="potok-status-action">
+                  {next.label}
+                </Button>
+              ))}
+            {aside}
+          </div>
+        )}
       </div>
     </div>
   );

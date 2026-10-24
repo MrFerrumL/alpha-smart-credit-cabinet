@@ -227,7 +227,7 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
       {signed ? (
         <div className="potok-inline-note" data-tone={c?.issue_delayed || app.open_tasks > 0 ? 'warn' : 'ok'} role="status">
           {app.open_tasks > 0
-            ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они выше на странице.'
+            ? 'Договор подписан. Деньги поступят, как только вы закроете условия выдачи — они ниже на странице.'
             : c?.issue_delayed
               ? 'Система банка временно не отвечает — перевод задерживается, мы повторяем его автоматически. Договор подписан, ничего делать не нужно.'
               : interestOnly
@@ -263,8 +263,8 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
 }
 
 /**
- * Выдача: деньги на счёте или, для овердрафта, открытый лимит. Первый платёж и ближайшие платежи — из графика
- * выданного кредита (тот же расчёт, что на странице кредита).
+ * Выдача: деньги на счёте или, для овердрафта, открытый лимит, ближайшие платежи и переход к кредиту. Платежи — из
+ * графика выданного кредита (тот же расчёт, что на странице кредита).
  */
 export function IssuedCard({ app }: { app: Application }) {
   const offer = app.offer;
@@ -290,14 +290,29 @@ export function IssuedCard({ app }: { app: Application }) {
           </Text>
         </>
       )}
-      {l?.next_payment_date && l.next_payment_amount && (
-        <div className="potok-inline-note">
-          <b>
-            Первый платёж — {money(l.next_payment_amount)}, {date(l.next_payment_date)}.
-          </b>{' '}
-          {interestOnly ? 'Это проценты; основной долг возвращается в конце срока. ' : ''}Спишется с расчётного счёта
-          автоматически — следить за датой не нужно.
-        </div>
+      {upcoming.length > 0 && (
+        <section className="potok-sched">
+          <Title order={3}>Ближайшие платежи</Title>
+          <ul className="potok-rows">
+            {upcoming.map((r) => (
+              <li key={r.n}>
+                <Link to={`/loans/${app.loan_id}`} className="potok-row">
+                  <span className="potok-row-main">
+                    <span className="potok-row-title">{date(r.date)}</span>
+                    <span className="potok-row-sub">
+                      {r.principal > 0 ? `основной долг ${money(r.principal)}, проценты ${money(r.interest)}` : `проценты ${money(r.interest)}`}
+                    </span>
+                  </span>
+                  <span className="potok-row-side num">{money(r.payment)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Text fz="sm" c="dimmed" mt={8}>
+            {interestOnly ? 'Каждый месяц — только проценты, основной долг возвращается в конце срока. ' : ''}
+            Платежи списываются с расчётного счёта автоматически — следить за датой не нужно.
+          </Text>
+        </section>
       )}
       <div className="potok-cta">
         {app.loan_id && (
@@ -309,26 +324,6 @@ export function IssuedCard({ app }: { app: Application }) {
           Скачать договор
         </Button>
       </div>
-      {upcoming.length > 0 && (
-        <section className="potok-sched">
-          <Title order={3}>Ближайшие платежи</Title>
-          <ul className="potok-rows">
-            {upcoming.map((r) => (
-              <li key={r.n}>
-                <Link to={`/loans/${app.loan_id}`} className="potok-row">
-                  <span className="potok-row-main">
-                    <span className="potok-row-title">{date(r.date)}</span>
-                    <span className="potok-row-sub">
-                      основной долг {money(r.principal)}, проценты {money(r.interest)}
-                    </span>
-                  </span>
-                  <span className="potok-row-side">{money(r.payment)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </section>
   );
 }
