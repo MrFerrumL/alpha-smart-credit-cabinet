@@ -19,6 +19,8 @@ erDiagram
     applications ||--o{ signing_challenges : "коды подписи"
     companies ||--o{ loans : "кредиты"
     users ||--o{ notifications : "уведомления"
+    applications ||--o{ decision_explanations : "пояснения"
+    application_events ||--o| decision_explanations : "к решению"
 
     companies {
         int id PK
@@ -175,6 +177,19 @@ erDiagram
         datetime run_after
         string last_error
     }
+    decision_explanations {
+        int id PK
+        int application_id FK
+        int decision_event_id FK "событие решения, UK"
+        string status "queued | running | ready | failed | skipped"
+        json facts "что ушло модели"
+        string prompt_version
+        string model
+        string text "только прошедший проверку текст"
+        string error
+        string raw_response "непрошедший ответ, наружу не отдаётся"
+        int latency_ms
+    }
 ```
 
 ## Зачем так
@@ -185,5 +200,9 @@ erDiagram
 - **Каждый этап конвейера оставляет след.** Ответы источников (`check_results`), скоринг с версией модели
   (`scoring_results`) и предложения (`offers`) хранятся отдельно — решение по заявке можно воспроизвести и
   объяснить.
+- **Пояснение решения — отдельная таблица.** `decision_explanations` заполняется, только если включено
+  необязательное пояснение ([llm.md](llm.md)). Она же служит очередью генерации: фоновый поток пишет сюда и не
+  трогает строку заявки, у которой оптимистическая блокировка. Пояснение привязано к событию решения, поэтому
+  новое решение получает новое пояснение. Клиенту отдаётся только текст, прошедший проверку.
 - **Компания отделена от пользователя.** У одной компании несколько сотрудников с разными правами: бухгалтер
   готовит заявку, подписывает руководитель (`can_sign`).
