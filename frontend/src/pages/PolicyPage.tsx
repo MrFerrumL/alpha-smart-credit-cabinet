@@ -1,4 +1,4 @@
-import { Button, Skeleton, Slider, Text, Title } from '@mantine/core';
+import { Button, Skeleton, Slider, Table, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -6,7 +6,7 @@ import { ApiError } from '../api/client';
 import { usePolicySimulation } from '../api/hooks';
 import type { PolicySummary, Tone } from '../api/types';
 import { Chip } from '../components/Status';
-import { money, percent } from '../lib/format';
+import { NBSP, money, percent } from '../lib/format';
 import { nb } from '../lib/nobreak';
 
 // Действующие пороги (правила от 22 октября) — с них начинается симулятор, к ним возвращает «Вернуть действующие».
@@ -82,30 +82,72 @@ function Rule({
   );
 }
 
-function Summary({ title, s }: { title: string; s: PolicySummary }) {
+const MINUS = '−';
+const signed = (d: number, text: string) => `${d > 0 ? '+' : MINUS}${text}`;
+
+/**
+ * Итог пересчёта таблицей «Исход | Сейчас | С новыми порогами»: числа по правому краю, изменившиеся строки
+ * выделены, рядом с новым значением — разница.
+ */
+function Comparison({ now, then }: { now: PolicySummary; then: PolicySummary }) {
+  const codes = [...new Set([...Object.keys(OUTCOME), ...Object.keys(now.counts), ...Object.keys(then.counts)])].filter(
+    (code) => now.counts[code] || then.counts[code],
+  );
+  const rows: { label: string; was: string; will: string; delta: string | null }[] = [
+    ...codes.map((code) => {
+      const a = now.counts[code] ?? 0;
+      const b = then.counts[code] ?? 0;
+      return { label: OUTCOME[code]?.title ?? code, was: String(a), will: String(b), delta: a === b ? null : signed(b - a, String(Math.abs(b - a))) };
+    }),
+    {
+      label: 'Положительные решения',
+      was: percent(now.approval_share, 0),
+      will: percent(then.approval_share, 0),
+      delta:
+        Math.round(now.approval_share * 100) === Math.round(then.approval_share * 100)
+          ? null
+          : signed(then.approval_share - now.approval_share, `${Math.abs(Math.round((then.approval_share - now.approval_share) * 100))}${NBSP}п.п.`),
+    },
+    {
+      label: 'Объём предложений',
+      was: money(now.offered_total),
+      will: money(then.offered_total),
+      delta: now.offered_total === then.offered_total ? null : signed(then.offered_total - now.offered_total, money(Math.abs(then.offered_total - now.offered_total))),
+    },
+  ];
   return (
-    <div className="potok-sim-col">
-      <Text fw={600}>{title}</Text>
-      <Text fz="sm" c="dimmed">
-        нагрузка до {percent(s.max_dsr, 0)} выручки, покрытие от {x(s.min_coverage)}
-      </Text>
-      <dl className="potok-pairs">
-        <div>
-          <dt>Положительные решения</dt>
-          <dd>{percent(s.approval_share, 0)}</dd>
-        </div>
-        <div>
-          <dt>Объём предложений</dt>
-          <dd>{money(s.offered_total)}</dd>
-        </div>
-      </dl>
-      <div className="potok-sim-chips">
-        {Object.entries(s.counts).map(([code, n]) => (
-          <Chip key={code} tone={OUTCOME[code]?.tone ?? 'neutral'}>
-            {OUTCOME[code]?.title ?? code}: {n}
-          </Chip>
-        ))}
-      </div>
+    <div className="potok-sim-wrap">
+      <Table className="potok-sim-table" withRowBorders verticalSpacing={10} aria-label="Исходы по поданным заявкам">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Исход</Table.Th>
+            <Table.Th ta="right">
+              <span>Сейчас</span>
+              <span className="potok-terms-hint">
+                до {percent(now.max_dsr, 0)}, {x(now.min_coverage)}
+              </span>
+            </Table.Th>
+            <Table.Th ta="right">
+              <span>С новыми порогами</span>
+              <span className="potok-terms-hint">
+                до {percent(then.max_dsr, 0)}, {x(then.min_coverage)}
+              </span>
+            </Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {rows.map((r) => (
+            <Table.Tr key={r.label} data-changed={r.delta !== null}>
+              <Table.Td>{r.label}</Table.Td>
+              <Table.Td ta="right">{r.was}</Table.Td>
+              <Table.Td ta="right">
+                {r.will}
+                {r.delta && <span className="potok-sim-delta">{r.delta}</span>}
+              </Table.Td>
+            </Table.Tr>
+          ))}
+        </Table.Tbody>
+      </Table>
     </div>
   );
 }
@@ -203,10 +245,7 @@ export function PolicyPage() {
               <p className="potok-sim-total">
                 Изменится решение: {sim.data.changed.length} из {sim.data.applications}
               </p>
-              <div className="potok-sim-cols">
-                <Summary title="По текущей политике" s={sim.data.current} />
-                <Summary title="С новыми порогами" s={sim.data.simulated} />
-              </div>
+              <Comparison now={sim.data.current} then={sim.data.simulated} />
               {sim.data.changed.length === 0 ? (
                 <Text c="dimmed" fz="sm" mt="md">
                   При этих порогах ни одно решение не меняется.

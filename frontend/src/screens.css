@@ -1359,24 +1359,21 @@ a.potok-note-title:hover {
   font: 600 22px/1.25 var(--font-display);
 }
 
-.potok-sim-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.potok-sim-col {
-  padding: 16px;
-  border-radius: var(--r-16);
-  background: var(--potok-canvas);
-}
-
-.potok-sim-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.potok-sim-wrap {
   margin-top: 12px;
+  overflow-x: auto;
+}
+
+.potok-sim-table tr[data-changed='true'] td {
+  background: var(--potok-canvas);
+  font-weight: 600;
+}
+
+.potok-sim-delta {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--potok-steel);
 }
 
 .potok-sim-rows {
@@ -2249,9 +2246,19 @@ a.potok-note-title:hover {
     margin-top: 10px;
   }
 
-  .potok-policy,
-  .potok-sim-cols {
+  .potok-policy {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-sim-table .mantine-Table-th,
+  .potok-sim-table .mantine-Table-td {
+    padding-inline: 6px;
+    font-size: 13px;
+  }
+
+  .potok-sim-delta {
+    display: block;
+    margin: 2px 0 0;
   }
 
   .potok-sim-row {
