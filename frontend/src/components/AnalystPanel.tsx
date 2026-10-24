@@ -86,19 +86,25 @@ function Facts({ app, a }: { app: Application; a: Assessment | undefined }) {
     ['Цель', app.purpose_title],
   ];
   if (collateral?.kind) items.push(['Залог', `${collateral.description ?? 'указан'}${collateral.value ? `, ${money(collateral.value)}` : ''}`]);
+  // Источник — после запятой, «в месяц» — один раз в подзаголовке: подписи в узкой сетке не растягиваются на 3 строки.
   if (a?.revenue) {
-    items.push([`Выручка в месяц ${a.revenue.source === 'fns' ? 'по ФНС' : 'по выписке'}`, a.revenue.confirmed_monthly ? money(a.revenue.confirmed_monthly) : '—']);
-    items.push(['Выручка в месяц со слов клиента', a.revenue.declared_monthly ? money(a.revenue.declared_monthly) : 'не указана']);
+    items.push([`Выручка, ${a.revenue.source === 'fns' ? 'ФНС' : 'выписка'}`, a.revenue.confirmed_monthly ? money(a.revenue.confirmed_monthly) : '—']);
+    items.push(['Выручка, со слов клиента', a.revenue.declared_monthly ? money(a.revenue.declared_monthly) : 'не указана']);
   }
   if (a) {
-    if (a.monthly_profit !== null) items.push(['Прибыль в месяц по ФНС', money(a.monthly_profit)]);
-    items.push(['Платежи по кредитам в месяц: БКИ и наш банк', a.existing_payments !== null ? money(a.existing_payments) : '—']);
-    items.push(['Платежи по кредитам в месяц со слов клиента', a.declared_debt_payments ? money(a.declared_debt_payments) : 'не указаны']);
+    if (a.monthly_profit !== null) items.push(['Прибыль, ФНС', money(a.monthly_profit)]);
+    items.push(['Платежи по кредитам, БКИ', a.existing_payments !== null ? money(a.existing_payments) : '—']);
+    items.push(['Платежи по кредитам, со слов клиента', a.declared_debt_payments ? money(a.declared_debt_payments) : 'не указаны']);
     if (a.revenue_limit !== null) items.push(['Лимит по выручке', money(a.revenue_limit)]);
   }
   return (
     <section className="potok-panel">
       <Title order={3}>Заявка и компания</Title>
+      {a && (
+        <Text fz="sm" c="dimmed" mt={4}>
+          Выручка, прибыль и платежи — в месяц; платежи по данным БКИ — вместе с кредитами в нашем банке.
+        </Text>
+      )}
       <dl className="potok-facts">
         {items.map(([k, v]) => (
           <div key={k}>
@@ -134,7 +140,12 @@ function AssessmentPanel({ a }: { a: Assessment }) {
         <span>
           балл <b>{a.score}</b> из{NBSP}100
         </span>
-        {a.probability_default !== null && <span className="potok-muted-text">вероятность дефолта {percent(a.probability_default, 0)}</span>}
+        {/* Вероятность дефолта не считается по заявке — это справочное значение, закреплённое за грейдом. */}
+        {a.probability_default !== null && (
+          <span className="potok-muted-text">
+            ориентир для грейда — вероятность дефолта около {percent(a.probability_default, 0)}
+          </span>
+        )}
       </div>
       <div className="potok-factors">
         {factors.map((f) => (

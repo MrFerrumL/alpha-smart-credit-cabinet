@@ -2307,9 +2307,13 @@ a.potok-note-title:hover {
   .potok-lists,
   .potok-below,
   .potok-analyst,
-  .potok-kv,
-  .potok-facts {
+  .potok-kv {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
 
   .potok-analyst-side,
