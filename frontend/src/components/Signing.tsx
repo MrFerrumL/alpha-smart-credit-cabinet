@@ -161,7 +161,7 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
 
   return (
     <section className="potok-decision" id="signing">
-      <StatusBlock app={app} onPage hint={false} action={false} />
+      <StatusBlock app={app} onPage showLabels hint={false} action={false} />
       <Title order={2} className="potok-say">
         {signed ? 'Договор подписан' : 'Договор готов к подписанию'}
       </Title>
@@ -274,7 +274,7 @@ export function IssuedCard({ app }: { app: Application }) {
   const upcoming = l ? l.schedule.filter((r) => !l.next_payment_date || r.date >= l.next_payment_date).slice(0, 3) : [];
   return (
     <section className="potok-decision">
-      <StatusBlock app={app} onPage hint={false} action={false} />
+      <StatusBlock app={app} onPage showLabels hint={false} action={false} />
       <Title order={2} className="potok-say">
         {interestOnly ? 'Лимит открыт!' : 'Деньги на счёте!'}
       </Title>

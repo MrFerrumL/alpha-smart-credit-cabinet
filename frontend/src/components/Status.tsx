@@ -51,7 +51,7 @@ export function Stepper({
     return state === 'rejected' ? 'stop' : state === 'closed' ? 'closed' : 'now';
   };
   return (
-    <ol className="potok-stepper" data-labels={showLabels} style={{ gridTemplateColumns: `repeat(${labels.length}, 1fr)` }}>
+    <ol className="potok-stepper" data-labels={showLabels} style={{ gridTemplateColumns: `repeat(${shown.length}, 1fr)` }}>
       {shown.map((label, i) => (
         <li key={label} data-seg={segment(i)} aria-current={segment(i) === 'now' ? 'step' : undefined}>
           <span className="potok-stepper-label">{label}</span>
