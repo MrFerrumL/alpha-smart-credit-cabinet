@@ -29,8 +29,9 @@ erDiagram
         string ogrn
         date registered_at
         string okved
+        string okved_name
         string address
-        string director
+        string director "руководитель по выписке ЕГРЮЛ при подключении"
     }
     users {
         int id PK
@@ -54,7 +55,7 @@ erDiagram
         string status "см. state-machine.md"
         json form "анкета: финансы, залог, контакт, согласие на запрос в БКИ"
         json decision "итог конвейера: исход, причины, подсказки"
-        string submit_key UK "Idempotency-Key"
+        string submit_key "Idempotency-Key отправки"
         int version "оптимистическая блокировка"
         datetime submitted_at
         datetime decided_at
@@ -77,6 +78,7 @@ erDiagram
         string source "egrul | bki | fns"
         string status "ok | failed"
         json data "ответ источника как есть"
+        string error
         int attempts
     }
     scoring_results {
@@ -94,12 +96,15 @@ erDiagram
         int id PK
         int application_id FK
         string kind "approved | counter"
+        string product_code "может отличаться от продукта заявки"
         decimal amount
         int term_months
         decimal rate
         decimal monthly_payment
         json explanation
         string status "active | accepted | signed | declined | expired"
+        datetime valid_until
+        datetime accepted_at
         string contract_number UK "КД-2026-000001"
         datetime signed_at
         int signed_by_id FK
@@ -108,7 +113,7 @@ erDiagram
         int id PK
         int application_id FK
         int user_id FK
-        string code_hash "HMAC кода, сам код не хранится"
+        string code_hash "HMAC кода и хеша условий договора, сам код не хранится"
         datetime expires_at
         int attempts_left
         datetime used_at
@@ -118,6 +123,7 @@ erDiagram
         int application_id FK
         int company_id FK
         string contract_number UK
+        string product_code
         decimal amount
         decimal rate
         int term_months
@@ -126,12 +132,14 @@ erDiagram
         datetime issued_at
         date first_payment_date
         string payment_ref "номер платежа в АБС"
+        string status "active | closed"
     }
     notifications {
         int id PK
         int user_id FK
-        string kind "status | signing_code | info"
+        string kind "status | signing_code | signature_requested | info"
         string title
+        string body
         string link
         datetime read_at
     }
@@ -140,9 +148,12 @@ erDiagram
         int application_id FK
         string kind "document | field | question"
         string title
-        json payload "какой документ или поле анкеты нужно"
-        string status "open | done"
+        string description
+        json payload "какой документ или поле анкеты нужно; условие выдачи"
+        string status "open | done | expired"
         string answer
+        string created_by_type "system | analyst"
+        datetime resolved_at
     }
     documents {
         int id PK
@@ -150,7 +161,10 @@ erDiagram
         int application_id FK
         string kind
         string filename
+        string content_type
+        int size_bytes
         string storage_key
+        int uploaded_by_id FK
     }
     jobs {
         int id PK

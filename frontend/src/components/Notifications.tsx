@@ -1,4 +1,4 @@
-import { ActionIcon, Badge, Button, Group, Indicator, Popover, ScrollArea, Stack, Text, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Indicator, Popover, ScrollArea, Text, UnstyledButton } from '@mantine/core';
 import { notifications as toasts } from '@mantine/notifications';
 import { IconBell, IconKey } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
@@ -7,7 +7,24 @@ import { useNavigate } from 'react-router';
 import { useNotifications, useReadAllNotifications } from '../api/hooks';
 import type { AppNotification } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { dateTime } from '../lib/format';
+import { dateTime, typo } from '../lib/format';
+import { nb } from '../lib/nobreak';
+
+/** «Заявка № 2026-000003» → «Заявка 2026-000003»; число не отрывается от единицы. */
+const clean = (text: string) => typo(text.replace(/№\s*(?=\d)/g, ''));
+
+/** Группы по дню: «Сегодня», «Вчера», «Раньше» — время у всех в одном виде. */
+function groups(items: AppNotification[]): [string, AppNotification[]][] {
+  const day = (iso: string) => new Date(iso).toDateString();
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86_400_000).toDateString();
+  const out: [string, AppNotification[]][] = [
+    ['Сегодня', items.filter((n) => day(n.created_at) === today)],
+    ['Вчера', items.filter((n) => day(n.created_at) === yesterday)],
+    ['Раньше', items.filter((n) => ![today, yesterday].includes(day(n.created_at)))],
+  ];
+  return out.filter(([, g]) => g.length > 0);
+}
 
 /** Уведомления внутри кабинета: вместо SMS и почты. Новые показываются всплывающим сообщением. */
 export function NotificationsBell() {
@@ -30,8 +47,8 @@ export function NotificationsBell() {
     const fresh = query.data.filter((n) => n.id > (seen.current ?? 0) && !n.read_at).reverse();
     for (const n of fresh) {
       toasts.show({
-        title: n.title,
-        message: n.body ?? '',
+        title: clean(n.title),
+        message: n.body ? clean(n.body) : '',
         color: n.kind === 'signing_code' ? 'brand' : 'blue',
         icon: n.kind === 'signing_code' ? <IconKey size={16} /> : <IconBell size={16} />,
         autoClose: n.kind === 'signing_code' ? 15_000 : 6_000,
@@ -49,72 +66,52 @@ export function NotificationsBell() {
     <Popover
       opened={opened}
       onChange={setOpened}
-      width={360}
+      width="min(400px, calc(100vw - 32px))"
       position="bottom-end"
       shadow="md"
       radius="lg"
       onOpen={() => unread > 0 && readAll.mutate()}
     >
       <Popover.Target>
-        <Indicator label={unread} size={18} disabled={unread === 0} offset={4} color="brand">
+        <Indicator label={unread} size={18} disabled={unread === 0} offset={4} color="dark">
           <ActionIcon variant="subtle" color="gray" size="lg" radius="xl" onClick={() => setOpened((o) => !o)} aria-label="Уведомления">
             <IconBell size={22} />
           </ActionIcon>
         </Indicator>
       </Popover.Target>
-      <Popover.Dropdown p={0}>
-        <Group justify="space-between" px="md" py="sm" style={{ borderBottom: '1px solid var(--app-line)' }}>
-          <Text fw={800}>Уведомления</Text>
-          {items.length > 0 && (
-            <Badge variant="light" color="gray">
-              {items.length}
-            </Badge>
-          )}
-        </Group>
+      <Popover.Dropdown p={0} className="potok-ntf">
+        <div className="potok-ntf-head">
+          <Text fw={600} fz="lg">
+            Уведомления
+          </Text>
+        </div>
         {items.length === 0 ? (
-          <Text c="dimmed" fz="sm" p="md">
+          <Text c="dimmed" fz="sm" px="lg" pb="md">
             Пока ничего нет. Здесь появятся новости по заявкам и коды для подписания договора.
           </Text>
         ) : (
-          <ScrollArea.Autosize mah={420}>
-            <Stack gap={0}>
-              {items.map((n) => (
-                <UnstyledButton
-                  key={n.id}
-                  onClick={() => open(n)}
-                  px="md"
-                  py="sm"
-                  style={{
-                    borderBottom: '1px solid var(--app-line)',
-                    background: n.read_at ? undefined : 'var(--mantine-color-brand-0)',
-                  }}
-                >
-                  <Group gap="xs" wrap="nowrap" align="flex-start">
-                    {n.kind === 'signing_code' && <IconKey size={16} color="var(--mantine-color-brand-6)" style={{ marginTop: 2 }} />}
-                    <div>
-                      <Text fz="sm" fw={700} lh={1.35}>
-                        {n.title}
-                      </Text>
-                      {n.body && (
-                        <Text fz="xs" c="dimmed" mt={2} lineClamp={2}>
-                          {n.body}
-                        </Text>
-                      )}
-                      <Text fz={11} c="dimmed" mt={4}>
-                        {dateTime(n.created_at)}
-                      </Text>
-                    </div>
-                  </Group>
-                </UnstyledButton>
-              ))}
-            </Stack>
+          <ScrollArea.Autosize mah="min(480px, 70dvh)">
+            {groups(items).map(([title, group]) => (
+              <div key={title}>
+                <div className="potok-ntf-group">{title}</div>
+                <ul className="potok-ntf-list">
+                  {group.map((n) => (
+                    <li key={n.id}>
+                      <UnstyledButton onClick={() => open(n)} className="potok-ntf-item" data-unread={!n.read_at}>
+                        <span className="potok-ntf-title">{nb(clean(n.title))}</span>
+                        {n.body && <span className="potok-ntf-body">{nb(clean(n.body))}</span>}
+                        <span className="potok-ntf-when">{dateTime(n.created_at)}</span>
+                      </UnstyledButton>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </ScrollArea.Autosize>
         )}
-        {items.length > 0 && (
-          <Button variant="subtle" fullWidth radius={0} onClick={() => setOpened(false)}>
-            Закрыть
-          </Button>
-        )}
+        <Text fz="xs" c="dimmed" className="potok-ntf-foot">
+          Уведомления приходят только в кабинет: SMS и почта в демо не используются.
+        </Text>
       </Popover.Dropdown>
     </Popover>
   );

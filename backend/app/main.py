@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import inspect
 
-from app.api import applications, auth, companies, health, loans, meta, notifications, products
+from app.api import applications, auth, companies, feed, health, loans, meta, notifications, policy, products
 from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.errors import register_error_handlers
@@ -20,6 +20,8 @@ TAGS = [
     {"name": "Компании", "description": "Данные компании из ЕГРЮЛ/ЕГРИП"},
     {"name": "Заявки", "description": "Жизненный цикл кредитной заявки: анкета, конвейер, решение, договор, подпись"},
     {"name": "Кредиты", "description": "Выданные кредиты и графики платежей"},
+    {"name": "Лента", "description": "Персональная лента новостей (синтетические новости)"},
+    {"name": "Политика", "description": "Симулятор изменения порогов кредитной политики"},
     {"name": "Уведомления", "description": "Уведомления внутри кабинета — вместо SMS и почты"},
     {"name": "Служебное", "description": "Проверки живости и готовности"},
 ]
@@ -43,7 +45,7 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Кредитный конвейер для МСБ — core API",
-        version="0.1.0",
+        version="1.0.0",
         description=(
             "Ядро цифрового кредитного конвейера: заявки, их статусы и переходы, каталог продуктов, "
             "интеграции с внешними источниками. Ошибки возвращаются в едином формате "
@@ -58,7 +60,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
     app.include_router(health.router)
-    for module in (auth, meta, products, companies, applications, loans, notifications):
+    for module in (auth, meta, products, companies, applications, loans, notifications, feed, policy):
         app.include_router(module.router, prefix="/api")
     return app
 

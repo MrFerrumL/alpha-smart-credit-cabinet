@@ -55,7 +55,9 @@ def test_amount_above_revenue_limit_gets_counter_offer(client, mocks):
     assert app["status"]["code"] == "counter_offer"
     assert app["offer"]["kind"] == "counter"
     assert app["offer"]["amount"] == 4_500_000
-    assert app["offer"]["term_months"] == 12
+    # На 12 мес. платёж 423 тыс. при прибыли 417 тыс.; срок увеличен до самого короткого, при котором прибыль
+    # покрывает платёж в 1,2 раза (16 мес., ≈329 тыс.).
+    assert app["offer"]["term_months"] == 16
     assert any("выручкой" in r for r in app["decision"]["reasons"])
 
 
@@ -133,9 +135,21 @@ def test_missing_tax_revenue_requests_statement_and_resumes(client, mocks):
 
     run_pipeline(mocks)
     app = get(client, app_id, headers)
-    assert app["status"]["code"] == "approved"
+    # Выручку подтверждает только выписка — заявку сверяет специалист, а не автомат.
+    assert app["status"]["code"] == "manual_review"
     assert app["open_tasks"] == 0
     assert "document_uploaded" in events(client, app_id, headers)
+    analyst = auth(client, "analyst@demo.local")
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
+    assert card["review_reason"] == "unverified_revenue"
+    assert card["revenue"]["source"] == "statement"
+    approved = client.post(
+        f"/api/applications/{app_id}/decision",
+        json={"outcome": "approve", "comment": "Обороты по выписке совпадают с заявленной выручкой"},
+        headers=analyst,
+    )
+    assert approved.status_code == 200, approved.text
+    assert get(client, app_id, headers)["status"]["code"] == "approved"
 
 
 def test_incomplete_form_asks_for_revenue_and_continues(client, mocks):
@@ -160,6 +174,8 @@ def test_short_outage_is_retried_transparently(client, mocks):
     run_pipeline(mocks)
     assert get(client, app_id, headers)["status"]["code"] == "approved"
     assert "check_retry" in events(client, app_id, headers)
+    titles = [e["title"] for e in client.get(f"/api/applications/{app_id}/events", headers=headers).json()]
+    assert "Бюро кредитных историй: нет ответа — повторяем запрос" in titles
 
 
 def test_long_outage_hands_application_to_specialist(client, mocks):
@@ -218,3 +234,76 @@ def test_financials_prefill_from_tax_data(client):
     }
     smirnova = client.get("/api/companies/me/financials", headers=auth(client, "smirnova@demo.local")).json()
     assert smirnova["available"] is False
+
+
+def test_heavy_existing_debt_gets_an_overdraft_instead(client, mocks):
+    # «Городская химчистка»: платежи по кредитам 485 тыс. при выручке 1 млн в месяц — «Экспресс-оборот» не проходит
+    # даже на минимальную сумму, а у овердрафта минимум ниже: 150 тыс. проходят по нагрузке.
+    app_id, headers = submit(client, "clean@demo.local", amount=300_000)
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "counter_offer", app["decision"]
+    assert app["offer"]["product_code"] == "overdraft"
+    assert app["offer"]["amount"] == 150_000
+    assert "Овердрафт" in app["decision"]["reasons"][0]
+
+
+def _own_active_payments(inn: str) -> int:
+    from sqlalchemy import select
+
+    from app.models import Company, Loan
+
+    with SessionLocal() as db:
+        company_id = db.scalar(select(Company.id).where(Company.inn == inn))
+        return sum(int(p) for p in db.scalars(
+            select(Loan.monthly_payment).where(Loan.company_id == company_id, Loan.status == "active")))
+
+
+def test_loans_issued_by_the_bank_count_in_debt_load(client, mocks):
+    # Эмулятор БКИ не знает о кредитах, выданных этим банком: их платежи банк добавляет к нагрузке сам.
+    from sqlalchemy import update
+
+    from app.models import Loan
+    from tests.test_signing import approved, sign
+
+    first, headers = approved(client, mocks, amount=1_000_000)
+    assert client.post(f"/api/applications/{first}/offer/accept", headers=headers).status_code == 200
+    sign(client, first, headers)
+    run_pipeline(mocks)
+    assert get(client, first, headers)["status"]["code"] == "issued"
+    own = _own_active_payments("0077010019")
+    assert own > 0
+
+    second, _ = submit(client, "bakery@demo.local", amount=1_000_000)
+    run_pipeline(mocks)
+    card = client.get(f"/api/applications/{second}/assessment", headers=auth(client, "analyst@demo.local")).json()
+    assert card["existing_payments"] == 85_000 + own  # лизинг по БКИ + свои кредиты
+    # Закрытые кредиты в нагрузку не входят; закрываем, чтобы не менять условия другим тестам пекарни.
+    with SessionLocal() as db:
+        db.execute(update(Loan).where(Loan.application_id == first).values(status="closed"))
+        db.commit()
+
+
+def test_declared_debt_payments_above_bki_count_in_debt_load(client, mocks):
+    # Клиент сам указал платежи 2 млн в месяц — больше, чем видит БКИ: банк берёт большее.
+    app_id, headers = submit(client, "bakery@demo.local", form={
+        "finance": {"monthly_revenue": 4_500_000, "debt_payments": 2_000_000}, "consent_bki": True})
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "counter_offer", app["decision"]
+    assert app["offer"]["term_months"] > 12  # та же сумма — только на больший срок
+    analyst = auth(client, "analyst@demo.local")
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=analyst).json()
+    assert card["existing_payments"] == 2_000_000 and card["declared_debt_payments"] == 2_000_000
+    assert card["requested"]["dsr"] > 0.5
+    assert client.post(f"/api/applications/{app_id}/assessment/replay", headers=analyst).json()["matches"] is True
+
+
+def test_declared_debt_payments_below_bki_do_not_lower_debt_load(client, mocks):
+    app_id, headers = submit(client, "clean@demo.local", amount=300_000, form={
+        "finance": {"monthly_revenue": 1_000_000, "debt_payments": 100_000}, "consent_bki": True})
+    run_pipeline(mocks)
+    app = get(client, app_id, headers)
+    assert app["status"]["code"] == "counter_offer" and app["offer"]["product_code"] == "overdraft"
+    card = client.get(f"/api/applications/{app_id}/assessment", headers=auth(client, "analyst@demo.local")).json()
+    assert card["existing_payments"] == 485_000 + _own_active_payments("0077090092")

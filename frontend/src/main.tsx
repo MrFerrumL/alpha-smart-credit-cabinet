@@ -1,7 +1,8 @@
-import '@fontsource-variable/manrope';
+import './fonts';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import './styles.css';
+import './screens.css';
 
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
@@ -28,7 +29,8 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
-      <Notifications position="top-right" />
+      {/* Сверху: внизу подписи демо и закреплённая кнопка на телефоне. */}
+      <Notifications position="top-right" limit={3} transitionDuration={200} />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>

@@ -1,143 +1,150 @@
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Grid,
-  Group,
-  Paper,
-  SimpleGrid,
-  Skeleton,
-  Stack,
-  Text,
-  TextInput,
-  ThemeIcon,
-  Title,
-} from '@mantine/core';
-import { IconArrowRight, IconBuildingStore, IconFileText, IconInfoCircle, IconSearch } from '@tabler/icons-react';
+import { Anchor, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, TextInput, Title } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { ApiError } from '../api/client';
 import { useApplications, useCompanyLookup, useLinkCompany, useLoans } from '../api/hooks';
-import type { Company } from '../api/types';
+import type { Application, Loan } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { ApplicationCard } from '../components/ApplicationCard';
-import { LoanCard } from '../components/LoanCard';
-import { EmptyState, Section } from '../components/ui';
-import { greeting, plural, yearsSince } from '../lib/format';
+import { AppRow } from '../components/AppRow';
+import { AppStatusCard } from '../components/AppStatusCard';
+import { NewsFeed } from '../components/NewsFeed';
+import { LoadError } from '../components/States';
+import { CompanyCard, RecentNotifications } from '../components/Side';
+import { NBSP, dayMonth, greeting, money } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
-function HeroCard() {
+/** Своя иллюстрация промоблока: серые столбики роста, графитовая база и одна красная волна «Потока». */
+function GrowthArt() {
   return (
-    <Paper className="hero" p={{ base: 'lg', sm: 32 }} radius="xl">
-      <Stack gap="md" style={{ position: 'relative', zIndex: 1 }} maw={560}>
-        <Title order={2} c="white" lh={1.15}>
-          Деньги на развитие бизнеса
-        </Title>
-        <Text c="rgba(255,255,255,0.92)" fz="lg">
-          Подберём кредит под вашу задачу и покажем платёж ещё до подачи заявки. Данные компании уже у нас — заполнять
-          почти ничего не нужно.
+    <svg className="potok-promo-art" viewBox="0 0 280 180" fill="none" aria-hidden="true">
+      <rect x="0" y="0" width="280" height="180" rx="24" fill="#f2f3f5" />
+      <rect x="36" y="112" width="28" height="40" rx="6" fill="#d2d3d9" />
+      <rect x="80" y="96" width="28" height="56" rx="6" fill="#d2d3d9" />
+      <rect x="124" y="80" width="28" height="72" rx="6" fill="#babbc2" />
+      <rect x="168" y="60" width="28" height="92" rx="6" fill="#babbc2" />
+      <rect x="212" y="36" width="28" height="116" rx="6" fill="#898991" />
+      <path d="M28 152h224" stroke="#212124" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M34 84c12 0 16-26 28-26s16 36 28 36 16-36 28-36 14 18 22 18"
+        stroke="#ef3124"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="226" cy="22" r="7" fill="#fff" stroke="#212124" strokeWidth="2" />
+    </svg>
+  );
+}
+
+/** Промоблок — главный, когда активной заявки нет. */
+function Promo() {
+  return (
+    <section className="potok-panel potok-promo">
+      <div>
+        <Title order={2}>Деньги на развитие бизнеса</Title>
+        <Text className="potok-note" mt="sm">
+          Подберём кредит под задачу и покажем платёж ещё до заявки. Данные компании уже у нас, заполнять почти
+          ничего не нужно.
         </Text>
-        <Group mt="xs">
-          <Button component={Link} to="/match" variant="white" size="md" rightSection={<IconArrowRight size={18} />}>
-            Подобрать кредит
-          </Button>
-        </Group>
-        <SimpleGrid cols={3} mt="sm" spacing="lg" maw={460}>
-          {[
-            ['до 50 млн ₽', 'на любые цели'],
-            ['от 15 минут', 'до решения'],
-            ['0 визитов', 'в офис банка'],
-          ].map(([value, label]) => (
-            <div key={value}>
-              <Text c="white" fw={800} fz="lg">
-                {value}
-              </Text>
-              <Text c="rgba(255,255,255,0.8)" fz="xs">
-                {label}
-              </Text>
-            </div>
-          ))}
-        </SimpleGrid>
-      </Stack>
-    </Paper>
+        <Button component={Link} to="/match" size="lg" mt="lg">
+          Подобрать кредит
+        </Button>
+        <dl className="potok-promo-facts">
+          <div>
+            <dt>до{NBSP}50 млн{NBSP}₽</dt>
+            <dd>на любые цели</dd>
+          </div>
+          <div>
+            <dt>от{NBSP}15 минут</dt>
+            <dd>до решения</dd>
+          </div>
+          <div>
+            <dt>0 визитов</dt>
+            <dd>в офис банка</dd>
+          </div>
+        </dl>
+      </div>
+      <GrowthArt />
+    </section>
   );
 }
 
-function CompanyCard({ company }: { company: Company }) {
-  const years = company.registered_at ? yearsSince(company.registered_at) : null;
-  const rows: [string, string | null][] = [
-    ['ИНН', company.inn],
-    ['ОГРН', company.ogrn],
-    ['Вид деятельности', company.okved ? `${company.okved} — ${company.okved_name}` : null],
-    ['Руководитель', company.director],
-    ['Адрес', company.address],
-  ];
+/** Когда заявка уже идёт — промо свёрнуто до строки. */
+function PromoStrip() {
   return (
-    <Card>
-      <Group gap="sm" wrap="nowrap">
-        <ThemeIcon size={42} radius="md" variant="light">
-          <IconBuildingStore size={22} />
-        </ThemeIcon>
-        <div style={{ minWidth: 0 }}>
-          <Text fw={800} lh={1.3} lineClamp={2}>
-            {company.short_name}
-          </Text>
-          {years !== null && (
-            <Text fz="xs" c="dimmed">
-              {years > 0 ? `${years} ${plural(years, ['год', 'года', 'лет'])} на рынке` : 'Меньше года на рынке'}
-            </Text>
-          )}
-        </div>
-      </Group>
-      <Stack gap={10} mt="md">
-        {rows
-          .filter(([, v]) => v)
-          .map(([label, value]) => (
-            <div key={label}>
-              <Text fz="xs" c="dimmed">
-                {label}
-              </Text>
-              <Text fz="sm" fw={600}>
-                {value}
-              </Text>
-            </div>
-          ))}
-      </Stack>
-      <Text fz="xs" c="dimmed" mt="md">
-        Данные из ЕГРЮЛ — подставляются в заявки автоматически.
-      </Text>
-    </Card>
+    <section className="potok-panel potok-strip">
+      <span>Нужны ещё деньги на бизнес? Подберём кредит под задачу.</span>
+      <Button component={Link} to="/match" size="md" variant="default">
+        Подобрать кредит
+      </Button>
+    </section>
   );
 }
 
-const STEPS = [
-  'Выберите цель и сумму — мы подберём подходящий продукт',
-  'Отправьте заявку — данные компании уже заполнены',
-  'Следите за статусом — он обновляется сам',
-  'Подпишите договор в кабинете — деньги придут на счёт',
-];
+function LoansBrief({ loans }: { loans: Loan[] }) {
+  return (
+    <section className="potok-panel">
+      <div className="potok-panel-head">
+        <Title order={3}>Мои кредиты</Title>
+        <Anchor component={Link} to="/loans" className="potok-link">
+          Все кредиты
+        </Anchor>
+      </div>
+      <ul className="potok-rows">
+        {loans.slice(0, 2).map((loan) => (
+          <li key={loan.id}>
+            <Link to={`/loans/${loan.id}`} className="potok-row">
+              <span className="potok-row-main">
+                <span className="potok-row-title">{nb(loan.product_name)}</span>
+                <span className="potok-row-sub">
+                  Основной долг к погашению {money(loan.balance)}
+                </span>
+              </span>
+              {loan.next_payment_amount && loan.next_payment_date && (
+                <span className="potok-row-side num">
+                  {money(loan.next_payment_amount)}
+                  <span>{dayMonth(loan.next_payment_date)}</span>
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function OtherApps({ apps }: { apps: Application[] }) {
+  return (
+    <section className="potok-panel">
+      <div className="potok-panel-head">
+        <Title order={3}>Мои заявки</Title>
+        <Anchor component={Link} to="/applications" className="potok-link">
+          Все заявки
+        </Anchor>
+      </div>
+      <ul className="potok-rows">
+        {apps.map((a) => (
+          <AppRow key={a.id} app={a} />
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function HowItWorks() {
   return (
-    <Card>
-      <Title order={5}>Как это работает</Title>
-      <Stack gap="sm" mt="md">
-        {STEPS.map((step, i) => (
-          <Group key={step} wrap="nowrap" align="flex-start" gap="sm">
-            <ThemeIcon size={26} radius="xl" variant="light" style={{ flex: '0 0 auto' }}>
-              <Text fz="xs" fw={800}>
-                {i + 1}
-              </Text>
-            </ThemeIcon>
-            <Text fz="sm" lh={1.4}>
-              {step}
-            </Text>
-          </Group>
-        ))}
-      </Stack>
-    </Card>
+    <section className="potok-panel">
+      <Title order={3}>Как это работает</Title>
+      <ol className="potok-steps">
+        <li>Выберите цель и сумму, а мы подберём продукт</li>
+        <li>Отправьте заявку: данные компании уже заполнены</li>
+        <li>Следите за статусом, он обновляется сам</li>
+        <li>Подпишите договор в кабинете, и деньги придут на счёт</li>
+      </ol>
+    </section>
   );
 }
 
@@ -148,6 +155,12 @@ function CompanyOnboarding() {
   const link = useLinkCompany();
   const found = lookup.data;
   const lookupError = lookup.error instanceof ApiError ? lookup.error : null;
+  // Эмулятор ЕГРЮЛ знает только вымышленные компании: ИНН реальной организации в демо не найдётся.
+  const lookupMessage = !lookupError
+    ? undefined
+    : lookupError.status === 404
+      ? `${lookupError.message}. В демо все компании вымышлены — их ИНН начинаются с «00»`
+      : (lookupError.errors?.[0]?.message ?? lookupError.message);
   const ready = inn.length === 10 || inn.length === 12;
 
   const confirm = async () => {
@@ -161,20 +174,14 @@ function CompanyOnboarding() {
   };
 
   return (
-    <Card p="xl" maw={680}>
-      <ThemeIcon size={52} radius="md" variant="light">
-        <IconBuildingStore size={28} />
-      </ThemeIcon>
-      <Title order={3} mt="md">
-        Расскажите о компании
-      </Title>
+    <section className="potok-panel" style={{ maxWidth: 680 }}>
+      <Title order={3}>Расскажите о компании</Title>
       <Text c="dimmed" mt={4}>
         Введите ИНН — мы сами подтянем данные из ЕГРЮЛ, и вручную ничего заполнять не придётся.
       </Text>
       <Group mt="lg" align="flex-start" wrap="nowrap">
         <TextInput
           style={{ flex: 1 }}
-          size="md"
           label="ИНН компании или ИП"
           placeholder="10 или 12 цифр"
           inputMode="numeric"
@@ -183,37 +190,30 @@ function CompanyOnboarding() {
             setInn(e.currentTarget.value.replace(/\D/g, '').slice(0, 12));
             lookup.reset();
           }}
-          error={lookupError ? (lookupError.errors?.[0]?.message ?? lookupError.message) : undefined}
+          error={lookupMessage}
         />
-        <Button
-          size="md"
-          mt={25}
-          leftSection={<IconSearch size={18} />}
-          loading={lookup.isPending}
-          disabled={!ready}
-          onClick={() => lookup.mutate(inn)}
-        >
+        <Button size="lg" leftSection={<IconSearch size={18} />} loading={lookup.isPending} disabled={!ready} onClick={() => lookup.mutate(inn)}>
           Найти
         </Button>
       </Group>
-      <Text fz="xs" c="dimmed" mt={6}>
+      <Text fz="sm" c="dimmed" mt={6}>
         Для демо:{' '}
-        <Anchor fz="xs" onClick={() => setInn('0077070071')}>
+        <Anchor component="button" type="button" fz="sm" className="potok-link" onClick={() => setInn('0077070071')}>
           0077070071
         </Anchor>{' '}
         — ООО «Новые горизонты»
       </Text>
 
       {found && (
-        <Paper withBorder p="lg" mt="lg" className="fade-in">
+        <Paper withBorder p="lg" mt="lg" radius="lg" className="fade-in">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Text fw={800} fz="lg">
+              <Text fw={600} fz="lg">
                 {found.short_name}
               </Text>
               <Text fz="sm" c="dimmed">
-                ИНН {found.inn}
-                {found.ogrn ? ` · ОГРН ${found.ogrn}` : ''}
+                ИНН{NBSP}{found.inn}
+                {found.ogrn ? `, ОГРН ${found.ogrn}` : ''}
               </Text>
             </div>
             <Badge color={found.status === 'active' ? 'teal' : 'orange'} variant="light">
@@ -222,37 +222,39 @@ function CompanyOnboarding() {
           </Group>
           <SimpleGrid cols={{ base: 1, sm: 2 }} mt="md" spacing="sm">
             <div>
-              <Text fz="xs" c="dimmed">
+              <Text fz="sm" c="dimmed">
                 Руководитель
               </Text>
-              <Text fz="sm" fw={600}>
-                {found.director}
-              </Text>
+              <Text fw={500}>{found.director}</Text>
             </div>
             <div>
-              <Text fz="xs" c="dimmed">
+              <Text fz="sm" c="dimmed">
                 Вид деятельности
               </Text>
-              <Text fz="sm" fw={600}>
+              <Text fw={500}>
                 {found.okved} — {found.okved_name}
               </Text>
             </div>
             <div>
-              <Text fz="xs" c="dimmed">
+              <Text fz="sm" c="dimmed">
                 Адрес
               </Text>
-              <Text fz="sm" fw={600}>
-                {found.address}
-              </Text>
+              <Text fw={500}>{found.address}</Text>
             </div>
           </SimpleGrid>
-          <Button mt="lg" onClick={confirm} loading={link.isPending}>
+          <Button mt="lg" size="lg" onClick={confirm} loading={link.isPending}>
             Да, это моя компания
           </Button>
         </Paper>
       )}
-    </Card>
+    </section>
   );
+}
+
+/** Какую заявку показать первой: та, где ход за клиентом, иначе самая свежая из идущих. */
+function mainApplication(list: Application[]): Application | undefined {
+  const active = list.filter((a) => !a.status.terminal);
+  return [...active].sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id)[0];
 }
 
 export function HomePage() {
@@ -264,12 +266,14 @@ export function HomePage() {
 
   if (!user.company) {
     return (
-      <Stack gap="xl">
+      <Stack gap="lg">
         <div>
-          <Title order={2}>
+          <Title order={1}>
             {greeting()}, {firstName}
           </Title>
-          <Text c="dimmed">Осталось одно действие, чтобы открыть кредитный кабинет</Text>
+          <Text c="dimmed" mt={4}>
+            Осталось одно действие, чтобы открыть кредитный кабинет
+          </Text>
         </div>
         <CompanyOnboarding />
       </Stack>
@@ -277,89 +281,48 @@ export function HomePage() {
   }
 
   const list = apps.data ?? [];
-  const attention = list.filter((a) => a.status.action_required);
-  const rest = list.filter((a) => !a.status.action_required).slice(0, 3);
+  const main = mainApplication(list);
+  // Та же единственная заявка второй раз не показывается.
+  const others = list.filter((a) => a.id !== main?.id).slice(0, 3);
 
   return (
-    <Stack gap="xl">
+    <Stack gap="lg">
       <div>
-        <Title order={2}>
+        <Title order={1}>
           {greeting()}, {firstName}
         </Title>
-        <Text c="dimmed">
-          {user.company.short_name} · {user.position}
+        <Text c="dimmed" mt={4}>
+          {user.company.short_name}
+          {user.position ? `, ${user.position.toLowerCase()}` : ''}
         </Text>
       </div>
-      <Grid gutter="lg">
-        <Grid.Col span={{ base: 12, md: 8 }}>
-          <Stack gap="xl">
-            <HeroCard />
-            {!user.can_sign && (
-              <Alert icon={<IconInfoCircle />} color="blue" variant="light" radius="lg">
-                Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
-              </Alert>
-            )}
-            {!!loans.data?.length && (
-              <Section
-                title="Мои кредиты"
-                action={
-                  <Anchor component={Link} to="/loans" fz="sm" fw={600}>
-                    Все кредиты
-                  </Anchor>
-                }
-              >
-                {loans.data.slice(0, 2).map((loan) => (
-                  <LoanCard key={loan.id} loan={loan} />
-                ))}
-              </Section>
-            )}
-            {attention.length > 0 && (
-              <Section title="Нужно ваше действие">
-                {attention.map((a) => (
-                  <ApplicationCard key={a.id} app={a} />
-                ))}
-              </Section>
-            )}
-            <Section
-              title="Мои заявки"
-              action={
-                list.length > 0 && (
-                  <Anchor component={Link} to="/applications" fz="sm" fw={600}>
-                    Все заявки
-                  </Anchor>
-                )
-              }
-            >
-              {apps.isLoading ? (
-                <Skeleton h={128} radius="lg" />
-              ) : list.length === 0 ? (
-                <EmptyState
-                  icon={IconFileText}
-                  title="Заявок пока нет"
-                  text="Подберите продукт под задачу бизнеса — это займёт минуту, а платёж будет виден сразу."
-                  action={
-                    <Button component={Link} to="/match">
-                      Подобрать кредит
-                    </Button>
-                  }
-                />
-              ) : rest.length === 0 ? (
-                <Text c="dimmed" fz="sm">
-                  Остальные заявки — выше, в блоке «Нужно ваше действие».
-                </Text>
-              ) : (
-                rest.map((a) => <ApplicationCard key={a.id} app={a} />)
-              )}
-            </Section>
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Stack gap="lg">
-            <CompanyCard company={user.company} />
-            <HowItWorks />
-          </Stack>
-        </Grid.Col>
-      </Grid>
+      <div className="potok-home">
+        <Stack gap="lg">
+          {!user.can_sign && (
+            <div className="potok-inline-note" style={{ marginTop: 0 }}>
+              Вы можете готовить и отправлять заявки. Подписать договор сможет только руководитель компании.
+            </div>
+          )}
+          {apps.isLoading ? (
+            <Skeleton h={240} radius={24} />
+          ) : apps.isError ? (
+            <LoadError error={apps.error} what="заявки" />
+          ) : main ? (
+            <AppStatusCard app={main} />
+          ) : (
+            <Promo />
+          )}
+          {main && <PromoStrip />}
+          {!!loans.data?.length && <LoansBrief loans={loans.data} />}
+          {others.length > 0 && <OtherApps apps={others} />}
+          <NewsFeed />
+        </Stack>
+        <Stack gap="lg">
+          <RecentNotifications exclude={main ? `/applications/${main.id}` : undefined} />
+          <CompanyCard company={user.company} />
+          {!main && <HowItWorks />}
+        </Stack>
+      </div>
     </Stack>
   );
 }

@@ -1,9 +1,12 @@
-import { Alert, Anchor, Badge, Button, Card, Group, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
-import { IconArrowLeft, IconPrinter, IconSignature } from '@tabler/icons-react';
+import { Anchor, Button, Group, Skeleton, Stack, Table, Text, Title } from '@mantine/core';
+import { IconArrowLeft, IconPrinter } from '@tabler/icons-react';
 import { Link, useParams } from 'react-router';
 
 import { useContract } from '../api/hooks';
-import { date, dateTime, money, months, rate } from '../lib/format';
+import { Chip } from '../components/Status';
+import { LoadError } from '../components/States';
+import { date, dateTime, int, money, months, rate } from '../lib/format';
+import { nb } from '../lib/nobreak';
 
 /** Печатная форма кредитного договора: «Скачать PDF» — через печать браузера. */
 export function ContractPage() {
@@ -21,7 +24,7 @@ export function ContractPage() {
           </Group>
         </Anchor>
         {c && (
-          <Button variant="light" leftSection={<IconPrinter size={18} />} onClick={() => window.print()}>
+          <Button variant="default" size="md" leftSection={<IconPrinter size={18} />} onClick={() => window.print()}>
             Скачать PDF
           </Button>
         )}
@@ -29,40 +32,38 @@ export function ContractPage() {
 
       {contract.isLoading && <Skeleton h={600} radius="lg" />}
       {contract.error && (
-        <Alert color="orange" radius="lg" title="Договора пока нет">
-          {contract.error.message}
-        </Alert>
+        <LoadError
+          error={contract.error}
+          what="договор"
+          back={
+            <Button component={Link} to={`/applications/${applicationId}`} size="lg" variant="default">
+              К заявке
+            </Button>
+          }
+        />
       )}
 
       {c && (
-        <Card p={{ base: 'lg', sm: 48 }} className="print-sheet">
+        <section className="potok-panel potok-contract print-sheet">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Text fz="xs" c="dimmed" tt="uppercase" fw={700} lts={0.5}>
+              <Text fz="sm" c="dimmed">
                 {c.bank_name}
               </Text>
-              <Title order={2} mt={6}>
-                Кредитный договор № {c.number}
+              <Title order={1} mt={6} className="potok-contract-h">
+                {nb(`Кредитный договор № ${c.number}`)}
               </Title>
               <Text c="dimmed" mt={4}>
                 г. Москва, {date(c.date)}
               </Text>
             </div>
-            {c.signed ? (
-              <Badge color="teal" size="lg" variant="light" leftSection={<IconSignature size={14} />}>
-                Подписан
-              </Badge>
-            ) : (
-              <Badge color="orange" size="lg" variant="light">
-                Ждёт подписи
-              </Badge>
-            )}
+            {c.signed ? <Chip tone="success">Подписан</Chip> : <Chip tone="warning">Ждёт подписи</Chip>}
           </Group>
 
           <Stack gap="lg" mt="xl">
             {c.sections.map((section) => (
               <div key={section.title}>
-                <Text fw={800} mb={6}>
+                <Text fw={600} mb={6}>
                   {section.title}
                 </Text>
                 {section.paragraphs.map((p) => (
@@ -78,39 +79,42 @@ export function ContractPage() {
             Приложение 1. График платежей
           </Text>
           <Text fz="xs" c="dimmed" mb="sm">
-            {money(c.amount)} · {months(c.term_months)} · {rate(c.rate)} годовых. Даты платежей фиксируются в день выдачи.
+            {money(c.amount)} на {months(c.term_months)} под {rate(c.rate)} годовых. Суммы в рублях, даты платежей фиксируются в день
+            выдачи.
           </Text>
-          <Table fz="sm" striped withTableBorder verticalSpacing={6}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>№</Table.Th>
-                <Table.Th ta="right">Платёж</Table.Th>
-                <Table.Th ta="right">Основной долг</Table.Th>
-                <Table.Th ta="right">Проценты</Table.Th>
-                <Table.Th ta="right">Остаток</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {c.schedule.map((r) => (
-                <Table.Tr key={r.n}>
-                  <Table.Td>{r.n}</Table.Td>
-                  <Table.Td ta="right">{money(r.payment)}</Table.Td>
-                  <Table.Td ta="right">{money(r.principal)}</Table.Td>
-                  <Table.Td ta="right">{money(r.interest)}</Table.Td>
-                  <Table.Td ta="right">{money(r.balance)}</Table.Td>
+          <div className="potok-contract-table">
+            <Table fz="sm" withTableBorder withRowBorders verticalSpacing={8}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>№</Table.Th>
+                  <Table.Th ta="right">Платёж</Table.Th>
+                  <Table.Th ta="right">Основной долг</Table.Th>
+                  <Table.Th ta="right">Проценты</Table.Th>
+                  <Table.Th ta="right">Остаток</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-            <Table.Tfoot>
-              <Table.Tr>
-                <Table.Th>Итого</Table.Th>
-                <Table.Th ta="right">{money(c.total_payments)}</Table.Th>
-                <Table.Th ta="right">{money(c.amount)}</Table.Th>
-                <Table.Th ta="right">{money(c.total_payments - c.amount)}</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Tfoot>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {c.schedule.map((r) => (
+                  <Table.Tr key={r.n}>
+                    <Table.Td>{r.n}</Table.Td>
+                    <Table.Td ta="right">{int(r.payment)}</Table.Td>
+                    <Table.Td ta="right">{int(r.principal)}</Table.Td>
+                    <Table.Td ta="right">{int(r.interest)}</Table.Td>
+                    <Table.Td ta="right">{int(r.balance)}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+              <Table.Tfoot>
+                <Table.Tr>
+                  <Table.Th>Итого</Table.Th>
+                  <Table.Th ta="right">{int(c.total_payments)}</Table.Th>
+                  <Table.Th ta="right">{int(c.amount)}</Table.Th>
+                  <Table.Th ta="right">{int(c.total_payments - c.amount)}</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Tfoot>
+            </Table>
+          </div>
 
           <Group justify="space-between" mt={40} align="flex-end">
             <div>
@@ -131,7 +135,7 @@ export function ContractPage() {
               </Text>
             </div>
           </Group>
-        </Card>
+        </section>
       )}
     </Stack>
   );

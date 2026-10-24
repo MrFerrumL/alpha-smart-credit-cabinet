@@ -3,7 +3,7 @@
   "info": {
     "title": "Кредитный конвейер для МСБ — core API",
     "description": "Ядро цифрового кредитного конвейера: заявки, их статусы и переходы, каталог продуктов, интеграции с внешними источниками. Ошибки возвращаются в едином формате `{status, code, title, detail, errors?}`.",
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/health/live": {
@@ -390,6 +390,7 @@
           "Компании"
         ],
         "summary": "Привязать компанию к учётной записи нового клиента",
+        "description": "Подключить компанию к кабинету может её руководитель или учредитель по данным ЕГРЮЛ. К уже\nподключённой компании присоединяется только руководитель — он источник полномочий и не должен остаться\nбез доступа, если первым компанию подключил учредитель. Право подписи получает только руководитель.",
         "operationId": "link_api_companies_link_post",
         "requestBody": {
           "content": {
@@ -839,6 +840,204 @@
         }
       }
     },
+    "/api/applications/{application_id}/explanation": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Пояснение решения простыми словами (если функция включена)",
+        "operationId": "application_explanation_api_applications__application_id__explanation_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplanationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/assessment": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
+        "operationId": "application_assessment_api_applications__application_id__assessment_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/assessment/replay": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)",
+        "operationId": "replay_decision_api_applications__application_id__assessment_replay_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/decision": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
+        "operationId": "analyst_decision_api_applications__application_id__decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalystDecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/tasks": {
       "get": {
         "tags": [
@@ -1205,6 +1404,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/offer/handoff": {
+      "post": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Передать предложение руководителю на подпись (для сотрудника без права подписи)",
+        "operationId": "handoff_offer_api_applications__application_id__offer_handoff_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/offer/decline": {
       "post": {
         "tags": [
@@ -1321,7 +1567,7 @@
         "tags": [
           "Заявки"
         ],
-        "summary": "Запросить код для подписания (приходит в уведомления кабинета)",
+        "summary": "Запросить код для подписания (показывается в окне подписания)",
         "operationId": "request_signing_code_api_applications__application_id__signing_code_post",
         "security": [
           {
@@ -1545,10 +1791,220 @@
           }
         ]
       }
+    },
+    "/api/feed": {
+      "get": {
+        "tags": [
+          "Лента"
+        ],
+        "summary": "Персональная лента новостей (синтетические новости, подобраны под компанию и её заявки)",
+        "operationId": "news_feed_api_feed_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedItemOut"
+                  },
+                  "type": "array",
+                  "title": "Response News Feed Api Feed Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/policy/simulate": {
+      "post": {
+        "tags": [
+          "Политика"
+        ],
+        "summary": "Что если изменить пороги политики: пересчёт сохранённых заявок без изменения данных",
+        "operationId": "simulate_policy_api_policy_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicySimulationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicySimulationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AnalystDecisionIn": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "counter_offer",
+              "request_info",
+              "reject",
+              "retry_checks"
+            ],
+            "title": "Outcome"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Comment",
+            "description": "Обоснование для журнала аудита, клиент его не видит"
+          },
+          "client_message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Message",
+            "description": "Что увидит клиент"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "term_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term Months"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "reasons": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Reasons",
+            "description": "Причины отказа для клиента",
+            "default": []
+          },
+          "tips": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Tips",
+            "default": []
+          },
+          "task_kind": {
+            "type": "string",
+            "enum": [
+              "document",
+              "question"
+            ],
+            "title": "Task Kind",
+            "default": "document"
+          },
+          "task_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Title"
+          },
+          "task_description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "comment"
+        ],
+        "title": "AnalystDecisionIn"
+      },
       "ApplicationCreate": {
         "properties": {
           "product_code": {
@@ -1734,6 +2190,12 @@
             ],
             "title": "Loan Id"
           },
+          "awaiting_signer": {
+            "type": "boolean",
+            "title": "Awaiting Signer",
+            "description": "Предложение передано руководителю на подпись",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1856,6 +2318,257 @@
         },
         "type": "object",
         "title": "ApplicationUpdate"
+      },
+      "AssessmentOut": {
+        "properties": {
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason",
+            "description": "manual_product | grade | source_failure | pipeline_failure | other; пусто, если заявка не у специалиста"
+          },
+          "review_reason_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason Title"
+          },
+          "scored": {
+            "type": "boolean",
+            "title": "Scored"
+          },
+          "failed_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Failed Sources"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "probability_default": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability Default"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/FactorOut"
+            },
+            "type": "array",
+            "title": "Factors",
+            "default": []
+          },
+          "stop_checks": {
+            "items": {
+              "$ref": "#/components/schemas/StopCheckOut"
+            },
+            "type": "array",
+            "title": "Stop Checks",
+            "default": []
+          },
+          "revenue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevenueOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "existing_payments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Payments",
+            "description": "Учтённые платежи по действующим кредитам в месяц: БКИ и кредиты этого банка или заявленные, если больше"
+          },
+          "declared_debt_payments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Debt Payments",
+            "description": "Платежи по кредитам, заявленные в анкете"
+          },
+          "monthly_profit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Profit",
+            "description": "Прибыль в месяц по данным ФНС"
+          },
+          "requested": {
+            "$ref": "#/components/schemas/TermsOut"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Rate",
+            "description": "Минимальная ставка для грейда"
+          },
+          "max_dsr": {
+            "type": "number",
+            "title": "Max Dsr"
+          },
+          "min_coverage": {
+            "type": "number",
+            "title": "Min Coverage",
+            "description": "Минимальное покрытие платежа прибылью (DSCR)"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version",
+            "description": "Версия правил кредитного решения"
+          },
+          "authority_limit": {
+            "type": "integer",
+            "title": "Authority Limit",
+            "description": "Максимальная сумма, которую аналитик одобряет сам"
+          },
+          "revenue_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Limit",
+            "description": "Лимит по выручке для грейда"
+          },
+          "repayment": {
+            "type": "string",
+            "title": "Repayment",
+            "description": "annuity | interest_only"
+          },
+          "product_limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Product Limits"
+          },
+          "can_decide": {
+            "type": "boolean",
+            "title": "Can Decide"
+          },
+          "trace": {
+            "items": {
+              "$ref": "#/components/schemas/TraceStepOut"
+            },
+            "type": "array",
+            "title": "Trace",
+            "description": "Как конвейер принял решение: правила по порядку",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_reason",
+          "review_reason_title",
+          "scored",
+          "failed_sources",
+          "requested",
+          "max_dsr",
+          "min_coverage",
+          "policy_version",
+          "authority_limit",
+          "repayment",
+          "product_limits",
+          "can_decide"
+        ],
+        "title": "AssessmentOut",
+        "description": "Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."
       },
       "Body_upload_document_api_applications__application_id__documents_post": {
         "properties": {
@@ -2380,6 +3093,16 @@
               }
             ],
             "title": "Signed By"
+          },
+          "terms_hash": {
+            "type": "string",
+            "title": "Terms Hash",
+            "description": "SHA-256 условий договора и графика — подпись привязана к нему"
+          },
+          "issue_delayed": {
+            "type": "boolean",
+            "title": "Issue Delayed",
+            "description": "АБС не ответила — выдача повторяется автоматически"
           }
         },
         "type": "object",
@@ -2399,7 +3122,9 @@
           "schedule",
           "signed",
           "signed_at",
-          "signed_by"
+          "signed_by",
+          "terms_hash",
+          "issue_delayed"
         ],
         "title": "ContractOut",
         "description": "Кредитный договор в структурированном виде: интерфейс показывает и печатает его."
@@ -2623,6 +3348,18 @@
               }
             ],
             "title": "Comment"
+          },
+          "internal_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Comment",
+            "description": "Обоснование аналитика — только для банка"
           }
         },
         "type": "object",
@@ -2638,6 +3375,139 @@
           "comment"
         ],
         "title": "EventOut"
+      },
+      "ExplanationOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "none"
+            ],
+            "title": "Status",
+            "description": "pending — пояснение готовится; ready — готово; none — пояснения нет: функция выключена, решение его не предполагает или оно не получилось"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "Текст пояснения, только при ready: первое предложение пишет банк, продолжение — языковая модель"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At",
+            "description": "Когда пояснение готово, только при ready"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ExplanationOut",
+        "description": "Пояснение автоматического решения простыми словами. Необязательная функция: по умолчанию выключена."
+      },
+      "FactorOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "client_text": {
+            "type": "string",
+            "title": "Client Text"
+          },
+          "tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "value",
+          "points",
+          "client_text"
+        ],
+        "title": "FactorOut"
+      },
+      "FeedItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "description": "Почему новость показана этому клиенту"
+          },
+          "is_synthetic": {
+            "type": "boolean",
+            "title": "Is Synthetic",
+            "description": "Новость синтетическая — источник смоделирован"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "published_at",
+          "title",
+          "summary",
+          "reasons",
+          "is_synthetic"
+        ],
+        "title": "FeedItemOut"
       },
       "FinanceForm": {
         "properties": {
@@ -3157,13 +4027,19 @@
             },
             "type": "array",
             "title": "Purposes"
+          },
+          "llm_explanation": {
+            "type": "boolean",
+            "title": "Llm Explanation",
+            "description": "Включено пояснение решения простыми словами (языковая модель)"
           }
         },
         "type": "object",
         "required": [
           "stages",
           "statuses",
-          "purposes"
+          "purposes",
+          "llm_explanation"
         ],
         "title": "MetaOut"
       },
@@ -3327,6 +4203,65 @@
         ],
         "title": "OfferOut"
       },
+      "PolicySimulationIn": {
+        "properties": {
+          "max_dsr": {
+            "type": "number",
+            "maximum": 0.9,
+            "minimum": 0.1,
+            "title": "Max Dsr",
+            "description": "Максимальная доля выручки на все кредитные платежи"
+          },
+          "min_coverage": {
+            "type": "number",
+            "maximum": 3.0,
+            "minimum": 0.5,
+            "title": "Min Coverage",
+            "description": "Минимальное покрытие нового платежа прибылью"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_dsr",
+          "min_coverage"
+        ],
+        "title": "PolicySimulationIn"
+      },
+      "PolicySimulationOut": {
+        "properties": {
+          "applications": {
+            "type": "integer",
+            "title": "Applications",
+            "description": "Сколько заявок с сохранённой оценкой пересчитано"
+          },
+          "current": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Current"
+          },
+          "simulated": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Simulated"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/SimulatedApplicationOut"
+            },
+            "type": "array",
+            "title": "Changed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applications",
+          "current",
+          "simulated",
+          "changed"
+        ],
+        "title": "PolicySimulationOut",
+        "description": "Что изменилось бы при других порогах политики. Заявки не меняются."
+      },
       "ProductOut": {
         "properties": {
           "code": {
@@ -3487,6 +4422,124 @@
         ],
         "title": "PurposeOut"
       },
+      "ReplayOut": {
+        "properties": {
+          "matches": {
+            "type": "boolean",
+            "title": "Matches"
+          },
+          "differences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Differences"
+          },
+          "stored": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored"
+          },
+          "replayed": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Replayed"
+          },
+          "policy_version_stored": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version Stored"
+          },
+          "policy_version_current": {
+            "type": "string",
+            "title": "Policy Version Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches",
+          "differences",
+          "stored",
+          "replayed",
+          "policy_version_stored",
+          "policy_version_current"
+        ],
+        "title": "ReplayOut",
+        "description": "Воспроизведение решения конвейера на сохранённом снимке признаков текущими правилами."
+      },
+      "RevenueOut": {
+        "properties": {
+          "declared_monthly": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Monthly",
+            "description": "Заявлено клиентом в анкете"
+          },
+          "confirmed_monthly": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Monthly",
+            "description": "Принято банком: по данным ФНС или подтверждено выпиской"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "fns | statement"
+          },
+          "gap_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Pct",
+            "description": "Насколько заявленная выручка выше принятой, %"
+          }
+        },
+        "type": "object",
+        "required": [
+          "declared_monthly",
+          "confirmed_monthly",
+          "source",
+          "gap_pct"
+        ],
+        "title": "RevenueOut"
+      },
       "ScheduleRowOut": {
         "properties": {
           "n": {
@@ -3558,17 +4611,89 @@
           "delivery": {
             "type": "string",
             "title": "Delivery",
-            "description": "Код приходит в уведомления кабинета",
+            "description": "Код показывается в окне подписания в кабинете",
             "default": "in_app"
+          },
+          "demo_code": {
+            "type": "string",
+            "title": "Demo Code",
+            "description": "Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет один раз и не хранится в открытом виде"
           }
         },
         "type": "object",
         "required": [
           "challenge_id",
           "expires_at",
-          "attempts_left"
+          "attempts_left",
+          "demo_code"
         ],
         "title": "SigningCodeOut"
+      },
+      "SimulatedApplicationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "product": {
+            "type": "string",
+            "title": "Product"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Текущий статус заявки — для сравнения с пересчётом"
+          },
+          "requested": {
+            "type": "integer",
+            "title": "Requested"
+          },
+          "outcome_now": {
+            "type": "string",
+            "title": "Outcome Now"
+          },
+          "outcome_then": {
+            "type": "string",
+            "title": "Outcome Then"
+          },
+          "offered_now": {
+            "type": "integer",
+            "title": "Offered Now"
+          },
+          "offered_then": {
+            "type": "integer",
+            "title": "Offered Then"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "company",
+          "product",
+          "status",
+          "requested",
+          "outcome_now",
+          "outcome_then",
+          "offered_now",
+          "offered_then"
+        ],
+        "title": "SimulatedApplicationOut"
       },
       "StatusInfoOut": {
         "properties": {
@@ -3612,6 +4737,24 @@
           "terminal"
         ],
         "title": "StatusInfoOut"
+      },
+      "StopCheckOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "passed"
+        ],
+        "title": "StopCheckOut"
       },
       "TaskAnswerIn": {
         "properties": {
@@ -3712,6 +4855,59 @@
         ],
         "title": "TaskOut"
       },
+      "TermsOut": {
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          },
+          "dsr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dsr",
+            "description": "Доля выручки на все кредитные платежи при этих условиях"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage",
+            "description": "Во сколько раз прибыль по ФНС покрывает новый платёж"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "term_months",
+          "rate",
+          "monthly_payment",
+          "dsr"
+        ],
+        "title": "TermsOut"
+      },
       "TokenOut": {
         "properties": {
           "access_token": {
@@ -3733,6 +4929,30 @@
           "user"
         ],
         "title": "TokenOut"
+      },
+      "TraceStepOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result",
+            "description": "pass | fail | info | triggered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "detail",
+          "result"
+        ],
+        "title": "TraceStepOut"
       },
       "UserOut": {
         "properties": {
@@ -3855,6 +5075,14 @@
     {
       "name": "Кредиты",
       "description": "Выданные кредиты и графики платежей"
+    },
+    {
+      "name": "Лента",
+      "description": "Персональная лента новостей (синтетические новости)"
+    },
+    {
+      "name": "Политика",
+      "description": "Симулятор изменения порогов кредитной политики"
     },
     {
       "name": "Уведомления",

@@ -32,6 +32,7 @@ export interface Meta {
   stages: string[];
   statuses: StatusInfo[];
   purposes: PurposeInfo[];
+  llm_explanation: boolean;
 }
 
 export interface Company {
@@ -156,8 +157,10 @@ export type ApplicationAction =
   | 'submit'
   | 'cancel'
   | 'answer_tasks'
+  | 'confirm_guarantee'
   | 'accept_offer'
   | 'decline_offer'
+  | 'handoff_to_signer'
   | 'sign'
   | 'decide';
 
@@ -178,6 +181,7 @@ export interface Application {
   decision: Decision | null;
   open_tasks: number;
   loan_id: number | null;
+  awaiting_signer: boolean;
   created_at: string;
   updated_at: string;
   submitted_at: string | null;
@@ -194,6 +198,7 @@ export interface ApplicationEvent {
   from_status: string | null;
   to_status: string | null;
   comment: string | null;
+  internal_comment: string | null;
 }
 
 export interface Offer {
@@ -217,14 +222,21 @@ export interface Decision {
   tips: string[];
 }
 
+/** Пояснение решения простыми словами, составленное языковой моделью (необязательная функция). */
+export interface DecisionExplanation {
+  status: 'pending' | 'ready' | 'none';
+  text: string | null;
+  generated_at: string | null;
+}
+
 export interface ClientTask {
   id: number;
   kind: 'document' | 'field' | 'question';
   title: string;
   description: string | null;
-  status: 'open' | 'done';
+  status: 'open' | 'done' | 'expired';
   answer: string | null;
-  payload: { document_kind?: string; field?: string; input?: string } | null;
+  payload: { document_kind?: string; field?: string; input?: string; condition?: string } | null;
   created_at: string;
   resolved_at: string | null;
 }
@@ -285,6 +297,8 @@ export interface Contract {
   signed: boolean;
   signed_at: string | null;
   signed_by: string | null;
+  terms_hash: string;
+  issue_delayed: boolean;
 }
 
 export interface SigningCode {
@@ -292,6 +306,7 @@ export interface SigningCode {
   expires_at: string;
   attempts_left: number;
   delivery: 'in_app';
+  demo_code: string;
 }
 
 export interface Loan {
@@ -323,10 +338,129 @@ export interface LoanDetail extends Loan {
 
 export interface AppNotification {
   id: number;
-  kind: 'status' | 'signing_code' | 'info';
+  kind: 'status' | 'signing_code' | 'signature_requested' | 'info';
   title: string;
   body: string | null;
   link: string | null;
   created_at: string;
   read_at: string | null;
+}
+
+// --- Кабинет аналитика ---------------------------------------------------------------------
+
+export interface ScoreFactor {
+  code: string;
+  title: string;
+  value: string;
+  points: number;
+  client_text: string;
+  tip: string | null;
+}
+
+export interface Terms {
+  amount: number;
+  term_months: number;
+  rate: number;
+  monthly_payment: number;
+  dsr: number | null;
+  coverage: number | null;
+}
+
+export interface Assessment {
+  review_reason: 'manual_product' | 'grade' | 'source_failure' | 'pipeline_failure' | 'other' | null;
+  review_reason_title: string | null;
+  scored: boolean;
+  failed_sources: string[];
+  method: string | null;
+  model_version: string | null;
+  score: number | null;
+  grade: string | null;
+  probability_default: number | null;
+  factors: ScoreFactor[];
+  stop_checks: { title: string; passed: boolean }[];
+  revenue: {
+    declared_monthly: number | null;
+    confirmed_monthly: number | null;
+    source: 'fns' | 'statement' | null;
+    gap_pct: number | null;
+  } | null;
+  existing_payments: number | null;
+  declared_debt_payments: number | null;
+  monthly_profit: number | null;
+  requested: Terms;
+  recommendation: Terms | null;
+  min_rate: number | null;
+  max_dsr: number;
+  min_coverage: number;
+  policy_version: string;
+  authority_limit: number;
+  revenue_limit: number | null;
+  repayment: 'annuity' | 'interest_only';
+  product_limits: { min_amount: number; max_amount: number; min_term: number; max_term: number };
+  can_decide: boolean;
+  trace: TraceStep[];
+}
+
+export interface TraceStep {
+  title: string;
+  detail: string;
+  result: 'pass' | 'fail' | 'info' | 'triggered';
+}
+
+export interface Replay {
+  matches: boolean;
+  differences: string[];
+  policy_version_stored: string | null;
+  policy_version_current: string;
+}
+
+export type DecisionOutcome = 'approve' | 'counter_offer' | 'request_info' | 'reject' | 'retry_checks';
+
+export interface AnalystDecision {
+  outcome: DecisionOutcome;
+  comment: string;
+  client_message?: string;
+  amount?: number;
+  term_months?: number;
+  rate?: number;
+  reasons?: string[];
+  tips?: string[];
+  task_kind?: 'document' | 'question';
+  task_title?: string;
+  task_description?: string;
+}
+
+export interface FeedItem {
+  id: string;
+  published_at: string;
+  title: string;
+  summary: string;
+  reasons: string[];
+  is_synthetic: boolean;
+}
+
+export interface PolicySummary {
+  max_dsr: number;
+  min_coverage: number;
+  counts: Record<string, number>;
+  approval_share: number;
+  offered_total: number;
+}
+
+export interface PolicySimulation {
+  applications: number;
+  current: PolicySummary;
+  simulated: PolicySummary;
+  changed: {
+    id: number;
+    number: string | null;
+    company: string;
+    product: string;
+    status: string;
+    requested: number;
+    outcome_now: string;
+    outcome_then: string;
+    offered_now: number;
+    offered_then: number;
+  }[];
 }

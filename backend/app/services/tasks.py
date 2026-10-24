@@ -8,8 +8,9 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db import get_by_id
 from app.domain.statuses import Actor, Status
-from app.errors import BusinessValidationError, Conflict, NotFound
+from app.errors import BusinessValidationError, Conflict, Forbidden, NotFound
 from app.models import Application, ClientTask, Document, User, utcnow
 from app.pipeline.queue import enqueue
 from app.services import storage
@@ -32,7 +33,7 @@ def list_documents(db: Session, app: Application) -> list[Document]:
 
 
 def _own_task(db: Session, app: Application, task_id: int) -> ClientTask:
-    task = db.get(ClientTask, task_id)
+    task = get_by_id(db, ClientTask, task_id)
     if task is None or task.application_id != app.id:
         raise NotFound("Запрос не найден")
     if task.status != "open":
@@ -58,10 +59,40 @@ def _resolve(db: Session, app: Application, task: ClientTask, user: User, answer
     task.status = "done"
     task.answer = answer
     task.resolved_at = utcnow()
+    # Версия заявки растёт: истечение срока запроса не перезапишет только что данный ответ.
+    app.updated_at = utcnow()
     record_event(db, app, "task_answered", Actor.CLIENT, actor_id=user.id, payload={"task": task.title})
 
 
+BEFORE_ISSUE = "before_issue"  # задача-условие выдачи: закрывается при подписании, до перевода денег
+
+
+def is_issue_condition(task: ClientTask) -> bool:
+    return (task.payload or {}).get("condition") == BEFORE_ISSUE
+
+
+def open_issue_conditions(db: Session, app: Application) -> list[ClientTask]:
+    tasks = db.scalars(select(ClientTask).where(ClientTask.application_id == app.id, ClientTask.status == "open"))
+    return [t for t in tasks if is_issue_condition(t)]
+
+
+def _accepts_answers(app: Application, task: ClientTask | None) -> bool:
+    """Ответ принимается на запрос банка (нужна информация) и на условия выдачи (подписание)."""
+    if app.status == Status.NEEDS_INFO.value:
+        return True
+    return app.status == Status.SIGNING.value and task is not None and is_issue_condition(task)
+
+
 def _resume_if_complete(db: Session, app: Application, user: User) -> None:
+    if app.status == Status.SIGNING.value:
+        # Последнее условие выдачи закрыто, а договор уже подписан — конвейер переводит деньги.
+        from app.services.applications import latest_offer
+
+        offer = latest_offer(db, app)
+        if offer is not None and offer.status == "signed" and not open_issue_conditions(db, app):
+            record_event(db, app, "issue_conditions_met", Actor.CLIENT, actor_id=user.id)
+            enqueue(db, "pipeline.disburse", app.id)
+        return
     if app.status != Status.NEEDS_INFO.value:
         return
     open_left = db.scalar(
@@ -74,9 +105,16 @@ def _resume_if_complete(db: Session, app: Application, user: User) -> None:
 
 def answer_task(db: Session, user: User, app: Application, task_id: int, answer: str) -> ClientTask:
     _require_owner(app, user)
-    if app.status != Status.NEEDS_INFO.value:
-        raise Conflict("Сейчас банк ничего не запрашивает по этой заявке")
     task = _own_task(db, app, task_id)
+    if not _accepts_answers(app, task):
+        raise Conflict("Сейчас банк ничего не запрашивает по этой заявке")
+    if is_issue_condition(task) and task.kind == "question":
+        from app.services.applications import user_may_sign
+
+        if not user_may_sign(user, app):
+            raise Forbidden("Подтвердить поручительство может только руководитель компании")
+    if not answer.strip():
+        raise BusinessValidationError(errors=[{"field": "answer", "message": "Напишите ответ"}])
     if task.kind == "document":
         raise BusinessValidationError("Для этого запроса нужно загрузить документ")
     field = (task.payload or {}).get("field")
@@ -100,9 +138,9 @@ def upload_document(
     _require_owner(app, user)
     if kind not in DOCUMENT_KINDS:
         raise BusinessValidationError(errors=[{"field": "kind", "message": "Неизвестный тип документа"}])
-    if app.status not in (Status.DRAFT.value, Status.NEEDS_INFO.value):
-        raise Conflict("Документы можно приложить к черновику или по запросу банка")
     task = _own_task(db, app, task_id) if task_id is not None else None
+    if app.status != Status.DRAFT.value and not _accepts_answers(app, task):
+        raise Conflict("Документы можно приложить к черновику, по запросу банка или к условиям выдачи")
     key, size = storage.save(upload, app.company_id)
     doc = Document(
         company_id=app.company_id,

@@ -122,11 +122,36 @@ STATUS_INFO: dict[Status, StatusInfo] = {
         0, "neutral", terminal=True,
     ),
     S.EXPIRED: StatusInfo(
-        "Срок предложения истёк",
-        "Предложение больше не действует. Подайте новую заявку — данные компании подставятся автоматически.",
+        "Срок истёк",
+        "Заявка закрыта: истёк срок предложения банка или срок ответа на запрос. Подайте новую заявку — данные "
+        "компании подставятся автоматически.",
         4, "neutral", terminal=True,
     ),
 }
+
+# После подписи договора статус остаётся «Подписание договора» до выдачи, но подсказка меняется: подписывать
+# уже нечего — клиент закрывает условия выдачи или ждёт перевода денег.
+SIGNED_AWAITING_CONDITIONS = StatusInfo(
+    "Подписание договора",
+    "Договор подписан. Закройте условия выдачи ниже — после этого банк переведёт деньги.",
+    5, "warning", action_required=True,
+)
+SIGNED_AWAITING_ISSUE = StatusInfo(
+    "Подписание договора",
+    "Договор подписан. Переводим деньги на расчётный счёт компании — от вас ничего не нужно.",
+    5, "warning",
+)
+# Овердрафт не перечисляется на счёт, а открывается лимитом — тексты про «деньги зачислены» к нему не подходят.
+SIGNED_AWAITING_LIMIT = StatusInfo(
+    "Подписание договора",
+    "Договор подписан. Открываем лимит овердрафта на расчётном счёте компании — от вас ничего не нужно.",
+    5, "warning",
+)
+LIMIT_OPENED = StatusInfo(
+    "Лимит открыт",
+    "Овердрафт подключён: лимит доступен на расчётном счёте компании.",
+    6, "success", terminal=True,
+)
 
 _C, _A, _SYS = Actor.CLIENT, Actor.ANALYST, Actor.SYSTEM
 
@@ -141,6 +166,8 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.ENRICHMENT, S.SCORING): frozenset({_SYS}),
     # Внешний источник так и не ответил — заявка не теряется, её разбирает специалист.
     (S.ENRICHMENT, S.MANUAL_REVIEW): frozenset({_SYS}),
+    # Шаг проверки так и не выполнился — заявку разбирает специалист, а не «зависает» в конвейере.
+    (S.VALIDATION, S.MANUAL_REVIEW): frozenset({_SYS}),
     (S.SCORING, S.APPROVED): frozenset({_SYS}),
     (S.SCORING, S.COUNTER_OFFER): frozenset({_SYS}),
     (S.SCORING, S.MANUAL_REVIEW): frozenset({_SYS}),
@@ -150,11 +177,15 @@ _EXPLICIT: dict[tuple[Status, Status], frozenset[Actor]] = {
     (S.MANUAL_REVIEW, S.COUNTER_OFFER): frozenset({_A}),
     (S.MANUAL_REVIEW, S.REJECTED): frozenset({_A}),
     (S.MANUAL_REVIEW, S.NEEDS_INFO): frozenset({_A}),
+    # Источник не ответил: аналитик отправляет заявку на повторную проверку, а не решает без данных.
+    (S.MANUAL_REVIEW, S.ENRICHMENT): frozenset({_A}),
     (S.APPROVED, S.SIGNING): frozenset({_C}),
     (S.APPROVED, S.EXPIRED): frozenset({_SYS}),
     (S.COUNTER_OFFER, S.SIGNING): frozenset({_C}),
     (S.COUNTER_OFFER, S.EXPIRED): frozenset({_SYS}),
     (S.SIGNING, S.ISSUED): frozenset({_SYS}),
+    # Договор не подписан до конца срока предложения.
+    (S.SIGNING, S.EXPIRED): frozenset({_SYS}),
 }
 
 

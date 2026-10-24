@@ -1,9 +1,9 @@
 """Контракты API (pydantic). Из них FastAPI собирает OpenAPI-спецификацию (/api/openapi.json)."""
 
 from datetime import date, datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.products import Purpose
 
@@ -46,6 +46,7 @@ class MetaOut(BaseModel):
     stages: list[str]
     statuses: list[StatusInfoOut]
     purposes: list[PurposeOut]
+    llm_explanation: bool = Field(description="Включено пояснение решения простыми словами (языковая модель)")
 
 
 # --- Пользователи и компании -----------------------------------------------------------------
@@ -258,6 +259,20 @@ class DecisionOut(BaseModel):
     tips: list[str]
 
 
+class ExplanationOut(BaseModel):
+    """Пояснение автоматического решения простыми словами. Необязательная функция: по умолчанию выключена."""
+
+    status: Literal["pending", "ready", "none"] = Field(
+        description="pending — пояснение готовится; ready — готово; none — пояснения нет: функция выключена, "
+        "решение его не предполагает или оно не получилось"
+    )
+    text: str | None = Field(
+        default=None,
+        description="Текст пояснения, только при ready: первое предложение пишет банк, продолжение — языковая модель",
+    )
+    generated_at: UtcDatetime | None = Field(default=None, description="Когда пояснение готово, только при ready")
+
+
 class ApplicationOut(BaseModel):
     id: int
     number: str | None
@@ -275,6 +290,7 @@ class ApplicationOut(BaseModel):
     decision: DecisionOut | None
     open_tasks: int
     loan_id: int | None
+    awaiting_signer: bool = Field(default=False, description="Предложение передано руководителю на подпись")
     created_at: UtcDatetime
     updated_at: UtcDatetime
     submitted_at: UtcDatetime | None
@@ -291,6 +307,7 @@ class EventOut(BaseModel):
     from_status: str | None
     to_status: str | None
     comment: str | None
+    internal_comment: str | None = Field(default=None, description="Обоснование аналитика — только для банка")
 
 
 class TaskOut(Out):
@@ -375,13 +392,19 @@ class ContractOut(BaseModel):
     signed: bool
     signed_at: UtcDatetime | None
     signed_by: str | None
+    terms_hash: str = Field(description="SHA-256 условий договора и графика — подпись привязана к нему")
+    issue_delayed: bool = Field(description="АБС не ответила — выдача повторяется автоматически")
 
 
 class SigningCodeOut(BaseModel):
     challenge_id: int
     expires_at: UtcDatetime
     attempts_left: int
-    delivery: str = Field(default="in_app", description="Код приходит в уведомления кабинета")
+    delivery: str = Field(default="in_app", description="Код показывается в окне подписания в кабинете")
+    demo_code: str = Field(
+        description="Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет "
+        "один раз и не хранится в открытом виде"
+    )
 
 
 class SignConfirmIn(BaseModel):
@@ -435,3 +458,154 @@ class NotificationOut(Out):
     link: str | None
     created_at: UtcDatetime
     read_at: UtcDatetime | None
+
+
+# --- Кабинет аналитика -----------------------------------------------------------------------
+
+
+class FactorOut(BaseModel):
+    code: str
+    title: str
+    value: str
+    points: int
+    client_text: str
+    tip: str | None = None
+
+
+class StopCheckOut(BaseModel):
+    title: str
+    passed: bool
+
+
+class TermsOut(BaseModel):
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+    dsr: float | None = Field(description="Доля выручки на все кредитные платежи при этих условиях")
+    coverage: float | None = Field(default=None, description="Во сколько раз прибыль по ФНС покрывает новый платёж")
+
+
+class RevenueOut(BaseModel):
+    declared_monthly: int | None = Field(description="Заявлено клиентом в анкете")
+    confirmed_monthly: int | None = Field(description="Принято банком: по данным ФНС или подтверждено выпиской")
+    source: str | None = Field(description="fns | statement")
+    gap_pct: float | None = Field(description="Насколько заявленная выручка выше принятой, %")
+
+
+class TraceStepOut(BaseModel):
+    title: str
+    detail: str
+    result: str = Field(description="pass | fail | info | triggered")
+
+
+class AssessmentOut(BaseModel):
+    """Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."""
+
+    review_reason: str | None = Field(
+        description="manual_product | grade | source_failure | pipeline_failure | other; пусто, если заявка не у специалиста"
+    )
+    review_reason_title: str | None
+    scored: bool
+    failed_sources: list[str]
+    method: str | None = None
+    model_version: str | None = None
+    score: int | None = None
+    grade: str | None = None
+    probability_default: float | None = None
+    factors: list[FactorOut] = []
+    stop_checks: list[StopCheckOut] = []
+    revenue: RevenueOut | None = None
+    existing_payments: int | None = Field(
+        default=None,
+        description="Учтённые платежи по действующим кредитам в месяц: БКИ и кредиты этого банка или заявленные, если больше",
+    )
+    declared_debt_payments: int | None = Field(default=None, description="Платежи по кредитам, заявленные в анкете")
+    monthly_profit: int | None = Field(default=None, description="Прибыль в месяц по данным ФНС")
+    requested: TermsOut
+    recommendation: TermsOut | None = None
+    min_rate: float | None = Field(default=None, description="Минимальная ставка для грейда")
+    max_dsr: float
+    min_coverage: float = Field(description="Минимальное покрытие платежа прибылью (DSCR)")
+    policy_version: str = Field(description="Версия правил кредитного решения")
+    authority_limit: int = Field(description="Максимальная сумма, которую аналитик одобряет сам")
+    revenue_limit: int | None = Field(default=None, description="Лимит по выручке для грейда")
+    repayment: str = Field(description="annuity | interest_only")
+    product_limits: dict
+    can_decide: bool
+    trace: list[TraceStepOut] = Field(default=[], description="Как конвейер принял решение: правила по порядку")
+
+
+class AnalystDecisionIn(BaseModel):
+    outcome: Literal["approve", "counter_offer", "request_info", "reject", "retry_checks"]
+    comment: str = Field(min_length=10, max_length=2000, description="Обоснование для журнала аудита, клиент его не видит")
+    client_message: str | None = Field(default=None, max_length=1000, description="Что увидит клиент")
+    amount: int | None = Field(default=None, gt=0, le=1_000_000_000)
+    term_months: int | None = Field(default=None, ge=1, le=120)
+    rate: float | None = Field(default=None, gt=0, lt=100)
+    reasons: list[Annotated[str, Field(max_length=300)]] = Field(default=[], max_length=5, description="Причины отказа для клиента")
+    tips: list[Annotated[str, Field(max_length=300)]] = Field(default=[], max_length=5)
+
+    @field_validator("comment")
+    @classmethod
+    def _comment_has_content(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 10:
+            raise ValueError("Опишите обоснование решения — не короче 10 символов")
+        return value
+    task_kind: Literal["document", "question"] = "document"
+    task_title: str | None = Field(default=None, max_length=255)
+    task_description: str | None = Field(default=None, max_length=1000)
+
+
+# --- Лента новостей --------------------------------------------------------------------------
+
+
+class FeedItemOut(BaseModel):
+    id: str
+    published_at: datetime
+    title: str
+    summary: str
+    reasons: list[str] = Field(description="Почему новость показана этому клиенту")
+    is_synthetic: bool = Field(description="Новость синтетическая — источник смоделирован")
+
+
+class ReplayOut(BaseModel):
+    """Воспроизведение решения конвейера на сохранённом снимке признаков текущими правилами."""
+
+    matches: bool
+    differences: list[str]
+    stored: dict | None
+    replayed: dict
+    policy_version_stored: str | None
+    policy_version_current: str
+
+
+# --- Симулятор политики --------------------------------------------------------------------
+
+
+class PolicySimulationIn(BaseModel):
+    max_dsr: float = Field(ge=0.1, le=0.9, description="Максимальная доля выручки на все кредитные платежи")
+    min_coverage: float = Field(ge=0.5, le=3.0, description="Минимальное покрытие нового платежа прибылью")
+
+
+class SimulatedApplicationOut(BaseModel):
+    id: int
+    number: str | None
+    company: str
+    product: str
+    status: str = Field(description="Текущий статус заявки — для сравнения с пересчётом")
+    requested: int
+    outcome_now: str
+    outcome_then: str
+    offered_now: int
+    offered_then: int
+
+
+class PolicySimulationOut(BaseModel):
+    """Что изменилось бы при других порогах политики. Заявки не меняются."""
+
+    applications: int = Field(description="Сколько заявок с сохранённой оценкой пересчитано")
+    current: dict
+    simulated: dict
+    changed: list[SimulatedApplicationOut]

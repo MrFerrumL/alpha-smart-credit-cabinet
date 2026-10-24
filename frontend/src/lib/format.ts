@@ -1,15 +1,40 @@
-const rub = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+// Числа как в банковском интерфейсе: разряды и единицы — через неразрывный пробел (U+00A0), десятичная часть —
+// через запятую; строка не рвётся внутри суммы или срока. Узкий U+202F в Onest — 0,14 em: в тексте до 20 px его
+// почти не видно («329024 ₽»), поэтому он только у крупных цифр (moneyBig).
+export const NBSP = ' ';
+export const THIN = ' ';
+
+const intFmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+const SPACES = /[\s  ]/g;
+
+/** Целое с разрядами: 3 000 000. */
+export function int(value: number, sep: string = NBSP): string {
+  return intFmt.format(Math.round(value)).replace(SPACES, sep);
+}
+
+/** Десятичное с запятой: 0,82; 22,9. */
+export function decimal(value: number, digits = 1): string {
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: digits }).replace(SPACES, NBSP);
+}
 
 export function money(value: number): string {
-  return `${rub.format(value)} ₽`;
+  return `${int(value)}${NBSP}₽`;
+}
+
+/** Сумма для крупных цифр (20 px и больше): разряды — узким пробелом, иначе они слишком широкие. */
+export function moneyBig(value: number): string {
+  return `${int(value, THIN)}${NBSP}₽`;
 }
 
 export function moneyShort(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
-  }
-  if (value >= 1_000) return `${rub.format(Math.round(value / 1_000))} тыс. ₽`;
+  if (value >= 1_000_000) return `${decimal(value / 1_000_000)}${NBSP}млн${NBSP}₽`;
+  if (value >= 1_000) return `${int(value / 1_000)}${NBSP}тыс.${NBSP}₽`;
   return money(value);
+}
+
+/** Диапазон сумм словами: «от 300 тыс. до 10 млн ₽» — знак рубля один раз, в конце. */
+export function amountRange(min: number, max: number): string {
+  return `от${NBSP}${moneyShort(min).replace(`${NBSP}₽`, '')} до${NBSP}${moneyShort(max)}`;
 }
 
 export function plural(n: number, forms: [string, string, string]): string {
@@ -21,11 +46,32 @@ export function plural(n: number, forms: [string, string, string]): string {
 }
 
 export function months(n: number): string {
-  return `${n} ${plural(n, ['месяц', 'месяца', 'месяцев'])}`;
+  return `${n}${NBSP}${plural(n, ['месяц', 'месяца', 'месяцев'])}`;
+}
+
+/** Срок коротко: 16 мес. */
+export function monthsShort(n: number): string {
+  return `${n}${NBSP}мес.`;
 }
 
 export function rate(value: number): string {
-  return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%`;
+  return `${decimal(value)}%`;
+}
+
+/** Доля в процентах: 0,239 → 23,9%. */
+export function percent(share: number, digits = 1): string {
+  return `${decimal(share * 100, digits)}%`;
+}
+
+/** Длительность коротко: 1 ч 43 мин, 25 мин, 2 дн 4 ч. */
+export function duration(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days > 0) return `${days}${NBSP}дн${hours ? `${NBSP}${hours}${NBSP}ч` : ''}`;
+  if (hours > 0) return `${hours}${NBSP}ч${mins ? `${NBSP}${mins}${NBSP}мин` : ''}`;
+  return `${mins}${NBSP}мин`;
 }
 
 const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
@@ -36,13 +82,49 @@ const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
 });
 
 const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonthFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+const shortDateFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+// День и месяц не разрываются переносом: «23 октября».
+const glueDay = (s: string) => s.replace(/^(\d{1,2}) /, `$1${NBSP}`);
 
 export function dateTime(iso: string): string {
-  return dateTimeFmt.format(new Date(iso));
+  return glueDay(dateTimeFmt.format(new Date(iso)).replace(' в ', `${NBSP}в${NBSP}`));
 }
 
 export function date(iso: string): string {
-  return dateFmt.format(new Date(iso));
+  return glueDay(dateFmt.format(new Date(iso)).replace(/\s*г\.$/, ''));
+}
+
+/** 30 октября — без года, для сроков в пределах ближайших недель. */
+export function dayMonth(iso: string): string {
+  return glueDay(dayMonthFmt.format(new Date(iso)));
+}
+
+/** 23.11.2026 — для таблиц. */
+export function shortDate(iso: string): string {
+  return shortDateFmt.format(new Date(iso));
+}
+
+/** Подпись месяца на оси графика: «ноя», с годом — «ноя 2026». */
+export function monthLabel(iso: string, withYear: boolean): string {
+  const d = new Date(iso);
+  const m = MONTHS_SHORT[d.getMonth()];
+  return withYear ? `${m}${NBSP}${d.getFullYear()}` : m;
+}
+
+/**
+ * Типографика для текстов с сервера: строка не начинается с тире, диапазон «1–2» не рвётся, число не отрывается
+ * от единицы («3 млн ₽», «12 месяцев») и от своих разрядов («150 000»). Тире приклеивается к слову слева
+ * неразрывным пробелом, у диапазона — «словосоединителем» U+2060.
+ */
+export function typo(text: string): string {
+  return text
+    .replace(/ — /g, `${NBSP}— `)
+    .replace(/(\d)–(\d)/g, '$1⁠–⁠$2')
+    .replace(/(\d) (?=\d{3}(?!\d))/g, `$1${NBSP}`)
+    .replace(/(\d) (млн|млрд|тыс\.|₽|%|мес\.|месяц|месяца|месяцев|дн|дня|дней|лет|года|год)/g, `$1${NBSP}$2`)
+    .replace(/№ (?=\d)/g, `№${NBSP}`);
 }
 
 export function yearsSince(iso: string): number {

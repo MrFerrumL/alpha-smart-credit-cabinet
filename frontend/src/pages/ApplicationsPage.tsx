@@ -1,65 +1,157 @@
-import { Button, Group, SegmentedControl, Skeleton, Stack, Text, Title } from '@mantine/core';
-import { IconFileText, IconPlus } from '@tabler/icons-react';
+import { Button, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useApplications } from '../api/hooks';
-import { ApplicationCard } from '../components/ApplicationCard';
-import { EmptyState } from '../components/ui';
+import { useApplications, useMeta } from '../api/hooks';
+import type { Application } from '../api/types';
+import { AppRow } from '../components/AppRow';
+import { AppStatusCard } from '../components/AppStatusCard';
+import { Empty, LoadError } from '../components/States';
+import { money } from '../lib/format';
 
-type Filter = 'active' | 'finished' | 'all';
+type Filter = 'all' | 'active' | 'closed';
+
+const FILTERS: { value: Filter; label: string; match: (a: Application) => boolean }[] = [
+  { value: 'all', label: 'Все', match: () => true },
+  { value: 'active', label: 'В работе', match: (a) => !a.status.terminal },
+  { value: 'closed', label: 'Закрытые', match: (a) => a.status.terminal },
+];
+
+// Сколько обычно длится этап — для подсказки «как идёт заявка».
+const STAGE_TIME = ['вы заполняете анкету', 'пара минут', 'ЕГРЮЛ, ФНС и БКИ — сам банк', 'до 15 минут', 'придёт уведомление', 'кодом в кабинете', 'несколько секунд после подписи'];
+
+/** Сводка по заявкам компании: что ждёт клиента, что проверяет банк, сколько выдано. */
+function Summary({ apps }: { apps: Application[] }) {
+  const waiting = apps.filter((a) => a.status.action_required).length;
+  const bank = apps.filter((a) => !a.status.terminal && !a.status.action_required && a.status.code !== 'draft').length;
+  const issued = apps.filter((a) => a.status.code === 'issued');
+  const issuedSum = issued.reduce((s, a) => s + (a.offer?.amount ?? a.amount), 0);
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Сводка</Title>
+      <dl className="potok-pairs">
+        <div>
+          <dt>Ждут вашего действия</dt>
+          <dd>{waiting}</dd>
+        </div>
+        <div>
+          <dt>Банк проверяет</dt>
+          <dd>{bank}</dd>
+        </div>
+        <div>
+          <dt>Выдано</dt>
+          <dd>{issued.length ? `${issued.length} на ${money(issuedSum)}` : 'пока нет'}</dd>
+        </div>
+      </dl>
+      <Button component={Link} to="/match" variant="default" size="md" fullWidth mt="md">
+        Подобрать кредит
+      </Button>
+    </section>
+  );
+}
+
+function HowItGoes() {
+  const meta = useMeta();
+  const stages = meta.data?.stages ?? [];
+  if (!stages.length) return null;
+  return (
+    <section className="potok-panel">
+      <Title order={3}>Как идёт заявка</Title>
+      <ul className="potok-timeline potok-timeline-plan">
+        {stages.map((s, i) => (
+          <li key={s}>
+            {s}
+            <span>{STAGE_TIME[i]}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export function ApplicationsPage() {
   const apps = useApplications();
-  const [filter, setFilter] = useState<Filter>('active');
-  const list = (apps.data ?? []).filter((a) =>
-    filter === 'all' ? true : filter === 'active' ? !a.status.terminal : a.status.terminal,
-  );
+  const list = apps.data ?? [];
+  const [filter, setFilter] = useState<Filter>('all');
+  const match = FILTERS.find((f) => f.value === filter)!.match;
+  const shown = list.filter(match);
+  // Идущие — компонентом статуса, свежие сверху; закрытые — строками.
+  const active = shown.filter((a) => !a.status.terminal).sort((a, b) => Number(b.status.action_required) - Number(a.status.action_required) || b.id - a.id);
+  const closed = shown.filter((a) => a.status.terminal);
 
   return (
-    <Stack gap="xl">
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Мои заявки</Title>
-          <Text c="dimmed" mt={4}>
-            Статус каждой заявки обновляется автоматически
-          </Text>
-        </div>
-        <Button component={Link} to="/match" leftSection={<IconPlus size={18} />}>
-          Новая заявка
-        </Button>
-      </Group>
-      <SegmentedControl
-        value={filter}
-        onChange={(v) => setFilter(v as Filter)}
-        data={[
-          { value: 'active', label: 'В работе' },
-          { value: 'finished', label: 'Завершённые' },
-          { value: 'all', label: 'Все' },
-        ]}
-        w="fit-content"
-        radius="md"
-      />
-      {apps.isLoading ? (
-        <Skeleton h={128} radius="lg" />
-      ) : list.length === 0 ? (
-        <EmptyState
-          icon={IconFileText}
-          title="Здесь пока пусто"
-          text="Подберите продукт и оформите заявку — она появится в этом списке."
-          action={
-            <Button component={Link} to="/match">
-              Подобрать кредит
-            </Button>
-          }
-        />
-      ) : (
+    <Stack gap="lg">
+      <div>
+        <Title order={1}>Мои заявки</Title>
+        <Text c="dimmed" mt={4}>
+          Статус каждой заявки обновляется сам
+        </Text>
+      </div>
+      <div className="potok-below">
         <Stack gap="md">
-          {list.map((a) => (
-            <ApplicationCard key={a.id} app={a} />
-          ))}
+          <div className="potok-q-filters" role="group" aria-label="Фильтр заявок">
+            {FILTERS.map((f) => (
+              <button key={f.value} type="button" className="potok-q-filter" aria-pressed={f.value === filter} onClick={() => setFilter(f.value)}>
+                <span>{f.label}</span>
+                <span className="potok-q-count" data-zero={!list.filter(f.match).length}>
+                  {list.filter(f.match).length}
+                </span>
+              </button>
+            ))}
+          </div>
+          {apps.isLoading ? (
+            <Skeleton h={220} radius={24} />
+          ) : apps.isError ? (
+            <LoadError error={apps.error} what="заявки" />
+          ) : !list.length ? (
+            <section className="potok-panel">
+              <Empty
+                art="folder"
+                title="Заявок пока нет"
+                text="Подберите продукт под задачу — платёж будет виден сразу, а заявка появится здесь."
+                action={
+                  <Button component={Link} to="/match" size="lg">
+                    Подобрать кредит
+                  </Button>
+                }
+              />
+            </section>
+          ) : !shown.length ? (
+            <section className="potok-panel">
+              <Empty
+                art="folder"
+                title={filter === 'active' ? 'Заявок в работе нет' : 'Закрытых заявок нет'}
+                text={filter === 'active' ? 'Выданные, отклонённые и отозванные — в «Закрытых».' : 'Текущие заявки — в «В работе».'}
+                action={
+                  <Button variant="default" size="md" onClick={() => setFilter('all')}>
+                    Показать все
+                  </Button>
+                }
+              />
+            </section>
+          ) : (
+            <>
+              {active.map((a) => (
+                <AppStatusCard key={a.id} app={a} />
+              ))}
+              {closed.length > 0 && (
+                <section className="potok-panel">
+                  <Title order={3}>Закрытые</Title>
+                  <ul className="potok-rows">
+                    {closed.map((a) => (
+                      <AppRow key={a.id} app={a} />
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </>
+          )}
         </Stack>
-      )}
+        <Stack gap="lg">
+          {list.length > 0 && <Summary apps={list} />}
+          <HowItGoes />
+        </Stack>
+      </div>
     </Stack>
   );
 }

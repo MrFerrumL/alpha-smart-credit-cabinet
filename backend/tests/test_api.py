@@ -1,3 +1,5 @@
+import re
+
 from tests.conftest import auth
 
 
@@ -46,15 +48,20 @@ def test_meta_and_product_matching(client):
     assert calc["total"] == calc["amount"] + calc["overpayment"]
 
 
-def test_company_lookup_uses_registry(client):
+def test_company_lookup_uses_registry(client, mocks):
     headers = auth(client, "new@demo.local")
     card = client.get("/api/companies/lookup", params={"inn": "0077060066"}, headers=headers).json()
     assert card["short_name"] == "ООО «Закат»"
     assert card["status"] == "liquidating"
     wrong = client.get("/api/companies/lookup", params={"inn": "0077060067"}, headers=headers)
     assert wrong.status_code == 422
-    generated = client.get("/api/companies/lookup", params={"inn": "7707083893"}, headers=headers)
+    generated = client.get("/api/companies/lookup", params={"inn": "0078012403"}, headers=headers)
     assert generated.status_code == 200
+    # ИНН реальной организации эмулятор не знает: вместо вымышленной выписки — «не найдена».
+    real = client.get("/api/companies/lookup", params={"inn": "7707083893"}, headers=headers)
+    assert real.status_code == 404
+    assert real.json()["code"] == "not_found" and "не найдена" in real.json()["detail"]
+    assert all(mocks.get(f"/{source}/7707083893").status_code == 404 for source in ("egrul", "fns", "bki"))
 
 
 def test_company_lookup_survives_source_outage(client, mocks):
@@ -73,7 +80,9 @@ def test_new_client_links_company_by_inn(client):
     linked = client.post("/api/companies/link", json={"inn": "0077070071"}, headers=headers)
     assert linked.status_code == 200, linked.text
     assert linked.json()["short_name"] == "ООО «Новые горизонты»"
-    assert client.get("/api/auth/me", headers=headers).json()["company"]["inn"] == "0077070071"
+    me = client.get("/api/auth/me", headers=headers).json()
+    assert me["company"]["inn"] == "0077070071"
+    assert me["can_sign"] is True  # руководитель по ЕГРЮЛ
     again = client.post("/api/companies/link", json={"inn": "0077070071"}, headers=headers)
     assert again.status_code == 409
 
@@ -110,6 +119,8 @@ def test_application_lifecycle_and_access(client):
 
     cancelled = client.post(f"/api/applications/{draft['id']}/cancel", json={"comment": "Передумали"}, headers=owner)
     assert cancelled.json()["status"]["code"] == "cancelled"
+    # Таймлайн отозванной заявки стоит на этапе, где её отозвали («Проверка данных»), а не на «Заявке».
+    assert cancelled.json()["status"]["stage"] == 1
     assert client.post(f"/api/applications/{draft['id']}/cancel", headers=owner).status_code == 409
 
     events = client.get(f"/api/applications/{draft['id']}/events", headers=owner).json()
@@ -135,3 +146,38 @@ def test_analyst_cannot_create_applications(client):
         headers=analyst,
     )
     assert response.status_code == 403
+
+
+def test_schema_errors_are_explained_in_russian(client):
+    def errors(response, field):
+        assert response.status_code == 422, response.text
+        body = response.json()
+        assert body["code"] == "validation_error"
+        messages = {e["field"]: e["message"] for e in body["errors"]}
+        assert not any(re.search("[A-Za-z]", m) for m in messages.values()), messages
+        return messages[field]
+
+    login = client.post("/api/auth/login", json={"email": "ab", "password": "x"})
+    assert errors(login, "email") == "Почта — не короче 3 символов"
+
+    owner = auth(client, "bakery@demo.local")
+    draft = _draft(client, owner)
+    url = f"/api/applications/{draft['id']}"
+    employees = client.patch(url, json={"form": {"finance": {"employees": 1_000_000}}}, headers=owner)
+    assert errors(employees, "form.finance.employees") == "Сотрудников — не больше 100 000"
+    # Так браузер отправляет 22-значную выручку: число больше MAX_SAFE_INTEGER уходит в экспоненциальной записи.
+    huge = client.patch(
+        url, content='{"form":{"finance":{"monthly_revenue":1e+21}}}', headers=owner | {"Content-Type": "application/json"}
+    )
+    assert errors(huge, "form.finance.monthly_revenue") == "Выручка в месяц — слишком большое число"
+    name = client.patch(url, json={"form": {"contact_name": "А" * 256}}, headers=owner)
+    assert errors(name, "form.contact_name") == "Контактное лицо — не длиннее 255 символов"
+
+    analyst = auth(client, "analyst@demo.local")
+    decision = client.post(
+        f"{url}/decision",
+        json={"outcome": "reject", "comment": "Обоснование решения", "reasons": ["П" * 301], "rate": 100},
+        headers=analyst,
+    )
+    assert errors(decision, "reasons.0") == "Причина отказа — не длиннее 300 символов"
+    assert errors(decision, "rate") == "Ставка — меньше 100"

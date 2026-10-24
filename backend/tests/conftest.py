@@ -6,8 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "mocks"))
 
+# По умолчанию — временный SQLite. В CI тесты идут на PostgreSQL со схемой, созданной миграциями.
 _db_file = Path(tempfile.mkdtemp()) / "test.db"
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_file.as_posix()}"
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///{_db_file.as_posix()}"
 os.environ["SEED_ON_START"] = "false"
 os.environ["MOCK_LATENCY_MS"] = "0"
 os.environ["PIPELINE_STEP_DELAY_S"] = "0"

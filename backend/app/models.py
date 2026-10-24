@@ -79,7 +79,8 @@ class Application(Base):
     # Итог конвейера: исход, причины и подсказки для клиента (см. app.scoring.decision).
     decision: Mapped[dict | None] = mapped_column(JsonType)
 
-    submit_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # Ключ идемпотентности отправки: повтор с тем же ключом возвращает уже отправленную заявку.
+    submit_key: Mapped[str | None] = mapped_column(String(64))
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -184,7 +185,7 @@ class ClientTask(Base):
     # document: {"document_kind": ...}; field: {"field": "finance.monthly_revenue", "input": "money"}
     payload: Mapped[dict | None] = mapped_column(JsonType)
     description: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(16), default="open")  # open | done
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open | done | expired
     answer: Mapped[str | None] = mapped_column(Text)
     created_by_type: Mapped[str] = mapped_column(String(16))  # system | analyst
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -227,8 +228,9 @@ class Job(Base):
 class SigningChallenge(Base):
     """Одноразовый код для подписания договора простой электронной подписью.
 
-    Код доставляется в уведомления кабинета (SMS по условиям задачи не используется), в БД хранится
-    только его HMAC. Новый запрос кода делает предыдущий недействительным.
+    Код показывается в окне подписания в кабинете (SMS по условиям задачи не используется) и в открытом
+    виде нигде не хранится: в БД — только HMAC кода вместе с хешем условий договора. Новый запрос кода делает
+    предыдущий недействительным.
     """
 
     __tablename__ = "signing_challenges"
@@ -272,9 +274,38 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(32))  # status | signing_code | info
+    kind: Mapped[str] = mapped_column(String(32))  # status | signing_code | signature_requested | info
     title: Mapped[str] = mapped_column(String(255))
     body: Mapped[str | None] = mapped_column(Text)
     link: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DecisionExplanation(Base):
+    """Пояснение автоматического решения простыми словами (LLM). Своя таблица — она же очередь генерации:
+    строку заявки фоновая генерация не трогает никогда (у заявки оптимистическая блокировка)."""
+
+    __tablename__ = "decision_explanations"
+    __table_args__ = (Index("ix_decision_explanations_status_id", "status", "id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
+    # Ключ актуальности: событие решения, к которому относится пояснение. Новое решение — новое событие.
+    decision_event_id: Mapped[int] = mapped_column(ForeignKey("application_events.id"), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | running | ready | failed | skipped
+    # Аудит: что ушло в модель, версия промпта и модель.
+    facts: Mapped[dict | None] = mapped_column(JsonType)
+    prompt_version: Mapped[str | None] = mapped_column(String(32))
+    model: Mapped[str | None] = mapped_column(String(128))
+    text: Mapped[str | None] = mapped_column(Text)  # только прошедший проверку текст, целиком
+    # timeout | connect | http_503 | invalid:<правило> | moved_on …
+    error: Mapped[str | None] = mapped_column(String(64))
+    # Не прошедший проверку ответ, до 2000 знаков; наружу не отдаётся.
+    raw_response: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    decision_event: Mapped[ApplicationEvent] = relationship()

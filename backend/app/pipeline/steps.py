@@ -5,16 +5,17 @@ import logging
 from collections.abc import Callable
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.domain.products import PRODUCTS
-from app.domain.statuses import Actor, Status
+from app.domain.products import PRODUCTS, Purpose
+from app.domain.statuses import LIMIT_OPENED, Actor, Status
+from app.explanation import jobs as explanation_jobs
 from app.models import Application, CheckResult, ClientTask, Document, Loan, Offer, ScoringResult, utcnow
 from app.pipeline.queue import enqueue
 from app.scoring import rules
-from app.scoring.decision import Decision, decide
+from app.scoring.decision import POLICY_VERSION, Decision, decide, explain, snapshot
 from app.scoring.features import build_features
 from app.services.integrations import ExternalSources, NotInSource, SourceUnavailable
 from app.services.state_machine import apply_transition, record_event
@@ -133,10 +134,14 @@ def enrich_exhausted(db: Session, app: Application, error: str) -> None:
     failed = [SOURCE_TITLES[s] for s, c in _checks(db, app).items() if c.status != "ok"]
     reason = f"Не удалось получить данные: {', '.join(failed) or 'внешний источник'}. Заявку проверит специалист."
     apply_transition(db, app, Status.MANUAL_REVIEW, Actor.SYSTEM, comment=reason, payload={"error": error})
-    app.decision = {"outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": []}
+    app.decision = {
+        "outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": [], "review_reason": "source_failure"
+    }
 
 
-def _apply_decision(db: Session, app: Application, decision: Decision, result: rules.ScoreResult) -> None:
+def _apply_decision(
+    db: Session, app: Application, decision: Decision, result: rules.ScoreResult, trace: list[dict]
+) -> None:
     settings = get_settings()
     if decision.offer:
         o = decision.offer
@@ -170,16 +175,29 @@ def _apply_decision(db: Session, app: Application, decision: Decision, result: r
         "tips": decision.tips,
         "stop_factors": decision.stop_factors,
         "recommendation": decision.recommendation,
+        "review_reason": decision.review_reason,
+        "policy_version": POLICY_VERSION,
+        "trace": trace,
+        "pipeline": snapshot(decision, result),
         "grade": result.grade,
         "score": result.score,
     }
-    apply_transition(
+    event = apply_transition(
         db,
         app,
         decision.outcome,
         Actor.SYSTEM,
         payload={"grade": result.grade, "score": result.score, "reasons": decision.reasons},
     )
+    explanation_jobs.schedule(db, app, event)  # пояснение простыми словами: только если функция включена
+
+
+def _own_loans(db: Session, app: Application) -> tuple[int, int]:
+    """Платежи и долг по кредитам, которые этот банк уже выдал компании (погашение не моделируется)."""
+    rows = db.execute(
+        select(Loan.monthly_payment, Loan.amount).where(Loan.company_id == app.company_id, Loan.status == "active")
+    ).all()
+    return sum(int(r.monthly_payment) for r in rows), sum(int(r.amount) for r in rows)
 
 
 def score(db: Session, app: Application, _: ExternalSources) -> None:
@@ -189,6 +207,7 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         select(Document.id).where(Document.application_id == app.id, Document.kind == "bank_statement").limit(1)
     ) is not None
     finance = (app.form or {}).get("finance") or {}
+    own_payments, own_debt = _own_loans(db, app)
     features = build_features(
         egrul=checks["egrul"].data,
         fns=checks["fns"].data,
@@ -198,6 +217,9 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         product=product,
         amount=int(app.amount),
         term_months=app.term_months,
+        own_payments=own_payments,
+        own_debt=own_debt,
+        declared_debt_payments=finance.get("debt_payments"),
     )
     result = rules.score(features)
     db.add(
@@ -213,8 +235,9 @@ def score(db: Session, app: Application, _: ExternalSources) -> None:
         )
     )
     record_event(db, app, "scored", Actor.SYSTEM, payload={"grade": result.grade, "score": result.score})
-    decision = decide(features, result, product, int(app.amount), app.term_months)
-    _apply_decision(db, app, decision, result)
+    decision = decide(features, result, product, int(app.amount), app.term_months, Purpose(app.purpose))
+    trace = explain(features, result, product, int(app.amount), app.term_months, decision)
+    _apply_decision(db, app, decision, result, trace)
 
 
 def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
@@ -224,6 +247,11 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
     offer = db.scalar(select(Offer).where(Offer.application_id == app.id, Offer.status == "signed").limit(1))
     if offer is None:
         return
+    open_conditions = db.scalars(
+        select(ClientTask).where(ClientTask.application_id == app.id, ClientTask.status == "open")
+    )
+    if any((t.payload or {}).get("condition") == "before_issue" for t in open_conditions):
+        return  # условия выдачи не закрыты: выдачу запустит закрытие последнего условия
     try:
         payment = sources.disburse(
             contract_number=offer.contract_number, inn=app.company.inn, amount=int(offer.amount)
@@ -252,30 +280,100 @@ def disburse(db: Session, app: Application, sources: ExternalSources) -> None:
                 payment_ref=payment["payment_id"],
             )
         )
+    limit = PRODUCTS[offer.product_code].repayment == "interest_only"
     apply_transition(
         db, app, Status.ISSUED, Actor.SYSTEM, event="issued",
-        payload={"payment_id": payment["payment_id"], "amount": int(offer.amount)},
+        payload={"payment_id": payment["payment_id"], "amount": int(offer.amount), "limit": limit},
+        info=LIMIT_OPENED if limit else None,
     )
+
+
+def step_exhausted(db: Session, app: Application, error: str) -> None:
+    """Проверка или оценка так и не выполнились (ошибка в данных или коде): заявка уходит специалисту
+    с пометкой, а не остаётся навсегда в «Проверяем данные» или «Оцениваем»."""
+    reason = "Автоматическая обработка не завершилась — заявку проверит специалист."
+    apply_transition(db, app, Status.MANUAL_REVIEW, Actor.SYSTEM, comment=reason, payload={"error": error})
+    app.decision = {"outcome": Status.MANUAL_REVIEW.value, "reasons": [reason], "tips": [],
+                    "review_reason": "pipeline_failure"}
+
+
+def disburse_exhausted(db: Session, app: Application, error: str) -> None:
+    """АБС долго не отвечает: договор уже подписан, поэтому выдача не отменяется, а продолжает повторяться
+    с длинной паузой. Идемпотентность по номеру договора не даст выдать деньги дважды. Если же шаг падает
+    по другой причине (ошибка в данных или коде), бесконечно повторять его бессмысленно — сбой фиксируется
+    в журнале и разбирается вручную."""
+    if not error.startswith("abs:"):
+        record_event(db, app, "pipeline_failed", Actor.SYSTEM, payload={"step": "pipeline.disburse", "error": error})
+        return
+    record_event(db, app, "disbursement_delayed", Actor.SYSTEM, payload={"error": error})
+    enqueue(db, "pipeline.disburse", app.id, delay_s=get_settings().disburse_retry_s)
 
 
 def expire_offers(db: Session) -> int:
-    """Закрывает предложения, срок которых истёк, — заявка переходит в «Срок предложения истёк»."""
+    """Закрывает предложения, срок которых истёк: и не принятые, и принятые, но не подписанные. Заявка
+    переходит в «Срок истёк». Сбой на одной заявке (например, клиент как раз принял
+    предложение) не мешает остальным."""
     now = utcnow()
     query = (
-        select(Offer, Application)
+        select(Offer.id, Application.id)
         .join(Application, Application.id == Offer.application_id)
         .where(
-            Offer.status == "active",
             Offer.valid_until < now,
-            Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+            or_(
+                (Offer.status == "active")
+                & Application.status.in_((Status.APPROVED.value, Status.COUNTER_OFFER.value)),
+                (Offer.status == "accepted") & (Application.status == Status.SIGNING.value),
+            ),
         )
     )
     expired = 0
-    for offer, app in db.execute(query).all():
-        offer.status = "expired"
-        apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM)
-        expired += 1
-    db.commit()
+    for offer_id, app_id in db.execute(query).all():
+        try:
+            offer, app = db.get(Offer, offer_id), db.get(Application, app_id)
+            # Между выборкой и загрузкой клиент мог принять или подписать предложение — тогда не трогаем.
+            pending = (offer.status == "active" and app.status in (Status.APPROVED.value, Status.COUNTER_OFFER.value)) or (
+                offer.status == "accepted" and app.status == Status.SIGNING.value
+            )
+            if not pending:
+                db.rollback()
+                continue
+            offer.status = "expired"
+            apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM)
+            db.commit()
+            expired += 1
+        except Exception:  # noqa: BLE001 — гонка с действием клиента: заявку пропускаем до следующего прохода
+            db.rollback()
+            log.warning("offer expiry skipped", extra={"status": f"application {app_id}"})
+    return expired
+
+
+def expire_requests(db: Session) -> int:
+    """Закрывает заявки, по которым клиент так и не ответил на запрос банка за `NEEDS_INFO_TTL_DAYS`."""
+    deadline = utcnow() - timedelta(days=get_settings().needs_info_ttl_days)
+    stale = (
+        select(ClientTask.application_id)
+        .join(Application, Application.id == ClientTask.application_id)
+        .where(Application.status == Status.NEEDS_INFO.value, ClientTask.status == "open",
+               ClientTask.created_at < deadline)
+        .distinct()
+    )
+    expired = 0
+    for app_id in db.scalars(stale).all():
+        try:
+            app = db.get(Application, app_id)
+            if app.status != Status.NEEDS_INFO.value:
+                db.rollback()
+                continue
+            for task in db.scalars(select(ClientTask).where(ClientTask.application_id == app_id,
+                                                             ClientTask.status == "open")):
+                task.status = "expired"
+            apply_transition(db, app, Status.EXPIRED, Actor.SYSTEM,
+                             comment="Банк не получил ответ на запрос вовремя — заявка закрыта")
+            db.commit()
+            expired += 1
+        except Exception:  # noqa: BLE001 — гонка с ответом клиента: заявку пропускаем до следующего прохода
+            db.rollback()
+            log.warning("request expiry skipped", extra={"status": f"application {app_id}"})
     return expired
 
 
@@ -292,5 +390,8 @@ STEPS: dict[str, tuple[Status, Step]] = {
 
 # Что делать, если шаг так и не удалось выполнить за все попытки.
 ON_EXHAUSTED: dict[str, Callable[[Session, Application, str], None]] = {
+    "pipeline.validate": step_exhausted,
     "pipeline.enrich": enrich_exhausted,
+    "pipeline.score": step_exhausted,
+    "pipeline.disburse": disburse_exhausted,
 }

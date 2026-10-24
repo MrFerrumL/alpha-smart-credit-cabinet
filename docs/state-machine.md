@@ -1,7 +1,7 @@
 # Диаграмма состояний заявки
 
 > Файл собран из кода: `backend/app/domain/statuses.py` — единственный источник правды о жизненном цикле заявки.
-> Пересобрать диаграмму: `python -m app.domain.statuses`. Тест `test_mermaid_diagram_lists_every_transition`
+> Пересобрать диаграмму: `cd backend && python -m scripts.export_state_diagram` (CI проверяет её с `--check`). Тест `test_mermaid_diagram_lists_every_transition`
 > проверяет, что каждый переход из кода попадает в диаграмму.
 
 ```mermaid
@@ -15,6 +15,7 @@ stateDiagram-v2
     needs_info --> expired: system
     enrichment --> scoring: system
     enrichment --> manual_review: system
+    validation --> manual_review: system
     scoring --> approved: system
     scoring --> counter_offer: system
     scoring --> manual_review: system
@@ -24,11 +25,13 @@ stateDiagram-v2
     manual_review --> counter_offer: analyst
     manual_review --> rejected: analyst
     manual_review --> needs_info: analyst
+    manual_review --> enrichment: analyst
     approved --> signing: client
     approved --> expired: system
     counter_offer --> signing: client
     counter_offer --> expired: system
     signing --> issued: system
+    signing --> expired: system
     draft --> cancelled: client
     submitted --> cancelled: client
     validation --> cancelled: client
@@ -51,10 +54,14 @@ stateDiagram-v2
 Переходы с актором «система» выполняет фоновый конвейер (`python -m app.worker`):
 `submitted → validation → enrichment → scoring → решение`, а после подписи договора — выдачу
 `signing → issued` через АБС. Если внешний источник так и не ответил, заявка из `enrichment` уходит
-специалисту (`manual_review`), а не теряется. Предложения с истёкшим сроком воркер переводит в `expired`.
+специалисту (`manual_review`), а не теряется; так же из `validation` и `scoring`, если шаг не удался после
+всех повторов. В `expired` воркер переводит заявки с истёкшим предложением (`approved`, `counter_offer`,
+неподписанный договор в `signing`) и с запросом банка без ответа 14 дней (`needs_info`).
 
 Клиент переводит заявку из `approved`/`counter_offer` в `signing`, приняв предложение; подпись договора кодом
-не меняет статус, а ставит в очередь выдачу. После подписи отозвать заявку нельзя.
+не меняет статус, а ставит в очередь выдачу. До подписи договора заявку можно отозвать, после подписи — нет: деньги уже в пути.
+После подписи меняется только подсказка статуса: «Договор подписан. Закройте условия выдачи ниже…», если по
+продукту остались открытые условия выдачи, иначе «Договор подписан. Переводим деньги…» (действие клиента не нужно).
 
 ## Статусы
 
@@ -71,9 +78,9 @@ stateDiagram-v2
 | `counter_offer` | Есть предложение | Решение | да | — | Банк готов выдать кредит на других условиях. Сравните их с запрошенными и решите, подходят ли они. |
 | `rejected` | Отказ | Решение | — | да | Сейчас банк не может выдать кредит на этих условиях. Посмотрите, что можно сделать, и попробуйте другой вариант. |
 | `signing` | Подписание договора | Подписание | да | — | Ознакомьтесь с договором и подпишите его кодом прямо в кабинете. |
-| `issued` | Деньги зачислены | Выдача | — | да | Кредит выдан, деньги уже на расчётном счёте компании. |
-| `cancelled` | Заявка отозвана | Заявка | — | да | Заявка закрыта по вашему решению. Новую можно подать в любой момент. |
-| `expired` | Срок предложения истёк | Решение | — | да | Предложение больше не действует. Подайте новую заявку — данные компании подставятся автоматически. |
+| `issued` | Деньги зачислены (у овердрафта — «Лимит открыт») | Выдача | — | да | Кредит выдан, деньги уже на расчётном счёте компании (у овердрафта — лимит доступен на счёте). |
+| `cancelled` | Заявка отозвана | этап, на котором заявку отозвали (черновик — Заявка) | — | да | Заявка закрыта по вашему решению. Новую можно подать в любой момент. |
+| `expired` | Срок истёк | Решение | — | да | Заявка закрыта: истёк срок предложения банка или срок ответа на запрос. Подайте новую заявку — данные компании подставятся автоматически. |
 
 ## Переходы
 
@@ -87,6 +94,7 @@ stateDiagram-v2
 | `needs_info` | `expired` | система |
 | `enrichment` | `scoring` | система |
 | `enrichment` | `manual_review` | система |
+| `validation` | `manual_review` | система |
 | `scoring` | `approved` | система |
 | `scoring` | `counter_offer` | система |
 | `scoring` | `manual_review` | система |
@@ -96,11 +104,13 @@ stateDiagram-v2
 | `manual_review` | `counter_offer` | аналитик |
 | `manual_review` | `rejected` | аналитик |
 | `manual_review` | `needs_info` | аналитик |
+| `manual_review` | `enrichment` | аналитик |
 | `approved` | `signing` | клиент |
 | `approved` | `expired` | система |
 | `counter_offer` | `signing` | клиент |
 | `counter_offer` | `expired` | система |
 | `signing` | `issued` | система |
+| `signing` | `expired` | система |
 | `draft` | `cancelled` | клиент |
 | `submitted` | `cancelled` | клиент |
 | `validation` | `cancelled` | клиент |

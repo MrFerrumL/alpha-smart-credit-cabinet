@@ -1,12 +1,14 @@
-import { AppShell, Avatar, Burger, Button, Container, Group, NavLink, Stack, Text } from '@mantine/core';
-import { useDisclosure, useMediaQuery } from '@mantine/hooks';
+import { Menu, Text, UnstyledButton } from '@mantine/core';
 import {
+  IconAdjustments,
+  IconChevronDown,
   IconCreditCard,
   IconFileText,
   IconHome2,
   IconListCheck,
   IconLogout,
-  IconSparkles,
+  IconSearch,
+  IconUser,
   type Icon,
 } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -19,90 +21,103 @@ import { Logo } from './ui';
 interface NavItem {
   to: string;
   label: string;
+  short: string;
   icon: Icon;
 }
 
 const CLIENT_NAV: NavItem[] = [
-  { to: '/', label: 'Главная', icon: IconHome2 },
-  { to: '/match', label: 'Подобрать кредит', icon: IconSparkles },
-  { to: '/applications', label: 'Мои заявки', icon: IconFileText },
-  { to: '/loans', label: 'Мои кредиты', icon: IconCreditCard },
+  { to: '/', label: 'Главная', short: 'Главная', icon: IconHome2 },
+  { to: '/match', label: 'Подобрать кредит', short: 'Подбор', icon: IconSearch },
+  { to: '/applications', label: 'Мои заявки', short: 'Заявки', icon: IconFileText },
+  { to: '/loans', label: 'Мои кредиты', short: 'Кредиты', icon: IconCreditCard },
 ];
 
-const ANALYST_NAV: NavItem[] = [{ to: '/queue', label: 'Очередь заявок', icon: IconListCheck }];
+const ANALYST_NAV: NavItem[] = [
+  { to: '/queue', label: 'Очередь заявок', short: 'Очередь', icon: IconListCheck },
+  { to: '/policy', label: 'Кредитная политика', short: 'Политика', icon: IconAdjustments },
+];
 
-export function Layout() {
+/** Меню профиля: кто вошёл и выход. */
+function ProfileMenu() {
   const { user, signOut } = useAuth();
-  const [opened, { toggle, close }] = useDisclosure();
-  const mobile = useMediaQuery('(max-width: 48em)');
+  if (!user) return null;
+  return (
+    <Menu position="bottom-end" width={260}>
+      <Menu.Target>
+        <UnstyledButton className="potok-profile" aria-label={`Профиль: ${user.full_name}`}>
+          <span className="potok-avatar">{initials(user.full_name)}</span>
+          <span className="potok-profile-name">{user.full_name}</span>
+          <IconChevronDown size={16} className="potok-profile-name" />
+        </UnstyledButton>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <div className="potok-profile-card">
+          <Text fw={600}>{user.full_name}</Text>
+          <Text fz="sm" c="dimmed">
+            {user.position}
+          </Text>
+          {user.company && (
+            <Text fz="sm" c="dimmed">
+              {user.company.short_name}
+            </Text>
+          )}
+        </div>
+        <Menu.Divider />
+        <Menu.Item component={Link} to="/profile" leftSection={<IconUser size={18} />}>
+          Профиль
+        </Menu.Item>
+        <Menu.Item leftSection={<IconLogout size={18} />} onClick={signOut}>
+          Выйти
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+/** Каркас кабинета: шапка в две строки (знак, компания, уведомления, профиль; вкладки разделов), на телефоне —
+ *  нижняя панель вкладок. В анкете нижней панели нет: там закреплены кнопки шага и сводка заявки. */
+export function Layout() {
+  const { user } = useAuth();
   const { pathname } = useLocation();
   const nav = user?.role === 'analyst' ? ANALYST_NAV : CLIENT_NAV;
-
+  const inWizard = /^\/applications\/\d+\/edit$/.test(pathname);
   const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
 
   return (
-    <AppShell
-      header={{ height: 60, collapsed: !mobile }}
-      navbar={{ width: 272, breakpoint: 'sm', collapsed: { mobile: !opened } }}
-      padding={0}
-    >
-      <AppShell.Header px="md">
-        <Group h="100%" justify="space-between">
-          <Logo />
-          <Group gap="xs">
-            {mobile && <NotificationsBell />}
-            <Burger opened={opened} onClick={toggle} size="sm" aria-label="Меню" />
-          </Group>
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Navbar p="md" style={{ borderRight: '1px solid var(--app-line)' }}>
-        <Group visibleFrom="sm" px="xs" pt="xs" pb="lg" justify="space-between" wrap="nowrap">
-          <Logo />
-          {!mobile && <NotificationsBell />}
-        </Group>
-        <Stack gap={4} style={{ flex: 1 }}>
+    <div className="potok-shell" data-tabbar={!inWizard}>
+      <header className="potok-header">
+        <div className="potok-wrap potok-top">
+          <Link to={user?.role === 'analyst' ? '/queue' : '/'} className="potok-brand">
+            <Logo />
+          </Link>
+          <span className="potok-org">{user?.company ? user.company.short_name : user?.role === 'analyst' ? 'Кабинет аналитика' : null}</span>
+          <span className="potok-spacer" />
+          <NotificationsBell />
+          <ProfileMenu />
+        </div>
+        <nav className="potok-wrap potok-tabs" aria-label="Разделы">
           {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              component={Link}
-              to={item.to}
-              label={item.label}
-              leftSection={<item.icon size={20} stroke={1.8} />}
-              active={isActive(item.to)}
-              onClick={close}
-              className="nav-link"
-              variant="light"
-            />
+            <Link key={item.to} to={item.to} aria-current={isActive(item.to) ? 'page' : undefined}>
+              {item.label}
+            </Link>
           ))}
-        </Stack>
-        {user && (
-          <Stack gap="sm" pt="md" style={{ borderTop: '1px solid var(--app-line)' }}>
-            <Group gap="sm" wrap="nowrap">
-              <Avatar color="brand" radius="xl">
-                {initials(user.full_name)}
-              </Avatar>
-              <div style={{ minWidth: 0 }}>
-                <Text fw={700} fz="sm" truncate>
-                  {user.full_name}
-                </Text>
-                <Text fz="xs" c="dimmed" truncate>
-                  {user.company ? user.company.short_name : user.position}
-                </Text>
-              </div>
-            </Group>
-            <Button variant="subtle" color="gray" leftSection={<IconLogout size={18} />} onClick={signOut} justify="flex-start">
-              Выйти
-            </Button>
-          </Stack>
-        )}
-      </AppShell.Navbar>
+        </nav>
+      </header>
 
-      <AppShell.Main>
-        <Container size={1180} px={{ base: 'md', md: 'xl' }} py={{ base: 'lg', md: 40 }}>
-          <Outlet />
-        </Container>
-      </AppShell.Main>
-    </AppShell>
+      <main className="potok-wrap potok-page">
+        <Outlet />
+      </main>
+
+      {!inWizard && (
+        <nav className="potok-tabbar" aria-label="Нижняя панель разделов" style={{ gridTemplateColumns: `repeat(${nav.length}, 1fr)` }}>
+          {nav.map((item) => (
+            <Link key={item.to} to={item.to} aria-current={isActive(item.to) ? 'page' : undefined}>
+              <item.icon size={22} stroke={1.7} />
+              <span>{item.short}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+    </div>
   );
 }

@@ -26,7 +26,8 @@ services:
     environment:
       MOCK_LATENCY_MS: ${MOCK_LATENCY_MS:-400}
     ports:
-      - "8001:8001"
+      # Эмулятор с управлением сбоями (/admin/faults) — только с этой машины.
+      - "127.0.0.1:8001:8001"
     restart: unless-stopped
 
   backend:
@@ -39,6 +40,12 @@ services:
       SEED_ON_START: ${SEED_ON_START:-true}
       ENVIRONMENT: ${ENVIRONMENT:-demo}
       UPLOAD_DIR: /data/uploads
+      # Пояснение решения простыми словами (необязательно, по умолчанию выключено). Backend отдаёт флаг в /api/meta
+      # и готовый текст, а пишет текст воркер — поэтому и здесь те же адрес и модель: функция включена, только если
+      # они заданы.
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
     volumes:
       - uploads:/data/uploads
     depends_on:
@@ -47,7 +54,8 @@ services:
       mocks:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # API и Swagger — только с этой машины; кабинет ходит в API через nginx.
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
 
   # Фоновый конвейер: проверка → ЕГРЮЛ/ФНС/БКИ → оценка → решение.
@@ -61,11 +69,62 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-in-production}
       PIPELINE_STEP_DELAY_S: ${PIPELINE_STEP_DELAY_S:-1.5}
       SEED_ON_START: "false"
+      WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
+      # Пояснение решения: отдельный поток воркера ходит в OpenAI-совместимый API. Ключ нужен только внешнему
+      # провайдеру, локальной модели — нет.
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+    # Воркер жив, если его цикл обновлял файл «пульса» в последнюю минуту (зависший шаг тоже будет виден).
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/worker-heartbeat') < 60 else 1)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
     depends_on:
       backend:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Необязательная локальная модель для пояснения решения: включается профилем llm (COMPOSE_PROFILES=llm) вместе с
+  # LLM_ENABLED=true. Без профиля сервис не создаётся. Работает на процессоре; с видеокартой быстрее запустить Ollama
+  # на самом ПК и указать LLM_BASE_URL=http://host.docker.internal:11434/v1 (см. README).
+  ollama:
+    image: ollama/ollama:0.40.2
+    profiles: ["llm"]
+    init: true
+    # Модель качается при первом запуске, если её ещё нет в томе, и сразу загружается в память: healthcheck станет
+    # «здоров», когда модель готова отвечать. Без интернета при первом запуске pull упадёт, и up --wait — тоже.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        rm -f /tmp/ready
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama show "$$LLM_MODEL" >/dev/null 2>&1 || ollama pull "$$LLM_MODEL"
+        ollama run "$$LLM_MODEL" "ок" >/dev/null
+        touch /tmp/ready
+        wait
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "2048"
+    # Порт наружу не публикуется: воркер ходит к модели по сети compose, а у пользователя может быть свой Ollama на 11434.
+    volumes:
+      - ollama:/root/.ollama
+    # Модель 7B в Q4 занимает около 5 ГБ памяти; при нехватке упадёт только этот сервис, а не база.
+    mem_limit: 7g
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/ready"]
+      interval: 10s
+      timeout: 3s
+      start_period: 1800s
+      retries: 3
     restart: unless-stopped
 
   frontend:
@@ -80,3 +139,6 @@ services:
 volumes:
   pgdata:
   uploads:
+  # Модель локального профиля (около 4,7 ГБ). Удаляет её docker compose --profile llm down -v (down -v без профиля
+  # её не трогает); при следующем запуске — новая загрузка.
+  ollama:

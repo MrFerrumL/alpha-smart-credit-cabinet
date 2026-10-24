@@ -1,10 +1,11 @@
 """Применение переходов статуса к заявке с записью в журнал аудита."""
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.domain.statuses import STATUS_INFO, Actor, Status, can_transition
+from app.domain.statuses import STATUS_INFO, Actor, Status, StatusInfo, can_transition
 from app.errors import InvalidTransition
-from app.models import Application, ApplicationEvent, utcnow
+from app.models import Application, ApplicationEvent, ClientTask, utcnow
 from app.services.notifications import notify_company
 
 DECISION_STATUSES = frozenset({Status.APPROVED, Status.COUNTER_OFFER, Status.REJECTED})
@@ -33,7 +34,9 @@ def apply_transition(
     event: str = "status_changed",
     comment: str | None = None,
     payload: dict | None = None,
+    info: StatusInfo | None = None,
 ) -> ApplicationEvent:
+    """info — текст статуса для уведомления клиенту, если он зависит от заявки (например, у овердрафта)."""
     src = Status(application.status)
     if not can_transition(src, to, actor):
         raise InvalidTransition(
@@ -56,8 +59,15 @@ def apply_transition(
         payload=payload or {},
     )
     db.add(ev)
+    if src == Status.SIGNING and to in (Status.CANCELLED, Status.EXPIRED):
+        # Заявка ушла с подписания — незакрытые условия выдачи больше не нужны.
+        db.execute(
+            update(ClientTask)
+            .where(ClientTask.application_id == application.id, ClientTask.status == "open")
+            .values(status="expired")
+        )
     if actor != Actor.CLIENT and to in NOTIFY_CLIENT:
-        info = STATUS_INFO[to]
+        info = info or STATUS_INFO[to]
         notify_company(
             db,
             application.company_id,

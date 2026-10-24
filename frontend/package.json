@@ -1,7 +1,7 @@
 {
   "name": "alpha-credit-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fontsource-variable/manrope": "^5.1.0",
+    "@fontsource/geologica": "5.3.0",
+    "@fontsource/onest": "5.3.1",
     "@mantine/core": "^8.1.0",
     "@mantine/hooks": "^8.1.0",
     "@mantine/notifications": "^8.1.0",

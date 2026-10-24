@@ -3,6 +3,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { api, ApiError, requestId } from './client';
 import type {
+  PolicySimulation,
+  Replay,
+  FeedItem,
+  AnalystDecision,
+  Assessment,
   AppNotification,
   Application,
   ApplicationEvent,
@@ -11,6 +16,7 @@ import type {
   Company,
   CompanyLookup,
   Contract,
+  DecisionExplanation,
   DemoAccount,
   Financials,
   Loan,
@@ -39,6 +45,7 @@ export const keys = {
   applications: (status?: string) => ['applications', status ?? 'all'] as const,
   application: (id: number) => ['application', id] as const,
   events: (id: number) => ['application', id, 'events'] as const,
+  explanation: (id: number, decidedAt: string | null) => ['application', id, 'explanation', decidedAt] as const,
 };
 
 export function useMeta() {
@@ -47,6 +54,12 @@ export function useMeta() {
 
 export function useProducts() {
   return useQuery({ queryKey: keys.products, queryFn: () => api<Product[]>('/products'), staleTime: Infinity });
+}
+
+/** У овердрафта каждый месяц платятся только проценты, а основной долг возвращается в конце срока. */
+export function useInterestOnly(code: string | undefined): boolean {
+  const products = useProducts();
+  return products.data?.find((p) => p.code === code)?.repayment === 'interest_only';
 }
 
 export function useDemoAccounts() {
@@ -77,11 +90,12 @@ function isMoving(app: Application | undefined) {
   return !!app && !app.status.terminal && app.status.code !== 'draft' && !app.status.action_required;
 }
 
-export function useApplications(status?: string) {
+/** live — опрашивать всегда (очередь аналитика: новые заявки появляются без перезагрузки). */
+export function useApplications(status?: string, live = false) {
   return useQuery({
     queryKey: keys.applications(status),
     queryFn: () => api<Application[]>(status ? `/applications?status=${status}` : '/applications'),
-    refetchInterval: (query) => (query.state.data?.some(isMoving) ? ACTIVE_POLL_MS : false),
+    refetchInterval: (query) => (live || query.state.data?.some(isMoving) ? ACTIVE_POLL_MS : false),
   });
 }
 
@@ -94,11 +108,39 @@ export function useApplication(id: number) {
   });
 }
 
+/**
+ * Пока запрос с новым ключом (сменился статус заявки) загружается, показываем прежние данные той же заявки:
+ * иначе блок на мгновение пропадает, и, например, недописанный ответ на условие выдачи теряется.
+ */
+function sameApplication<T>(id: number) {
+  return (previous: T | undefined, query?: { queryKey: readonly unknown[] }) =>
+    query?.queryKey[1] === id ? previous : undefined;
+}
+
 export function useEvents(id: number, app?: Application) {
   return useQuery({
     queryKey: [...keys.events(id), app?.status.code],
     queryFn: () => api<ApplicationEvent[]>(`/applications/${id}/events`),
     enabled: !!app,
+    placeholderData: sameApplication<ApplicationEvent[]>(id),
+  });
+}
+
+const EXPLAINED_STATUSES = ['approved', 'counter_offer', 'rejected'];
+const EXPLANATION_POLL_MS = 2500;
+
+/**
+ * Пояснение решения простыми словами. Запрос уходит, только если функция включена на сервере (meta.llm_explanation)
+ * и по заявке есть решение: одобрение, контрпредложение или отказ. Пока текст готовится (pending) — опрос.
+ */
+export function useDecisionExplanation(app: Application) {
+  const meta = useMeta();
+  return useQuery({
+    queryKey: keys.explanation(app.id, app.decided_at),
+    queryFn: () => api<DecisionExplanation>(`/applications/${app.id}/explanation`),
+    enabled: meta.data?.llm_explanation === true && EXPLAINED_STATUSES.includes(app.status.code),
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? EXPLANATION_POLL_MS : false),
+    retry: false,
   });
 }
 
@@ -112,13 +154,26 @@ export function useCreateApplication() {
   });
 }
 
+// Один ключ идемпотентности на заявку: повтор после сетевой ошибки отправляет тот же ключ, и сервер вернёт
+// уже отправленную заявку вместо 409. Одновременные запросы дополнительно отсекает блокировка версии заявки.
+const submitKeys = new Map<number, string>();
+
+function submitKey(id: number): string {
+  let key = submitKeys.get(id);
+  if (!key) {
+    key = requestId();
+    submitKeys.set(id, key);
+  }
+  return key;
+}
+
 function useApplicationAction(action: 'submit' | 'cancel') {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, comment }: { id: number; comment?: string }) =>
       api<Application>(`/applications/${id}/${action}`, {
         method: 'POST',
-        headers: action === 'submit' ? { 'Idempotency-Key': requestId() } : undefined,
+        headers: action === 'submit' ? { 'Idempotency-Key': submitKey(id) } : undefined,
         json: action === 'cancel' ? { comment: comment ?? null } : undefined,
       }),
     onSuccess: (app) => {
@@ -151,6 +206,7 @@ export function useTasks(id: number, app?: Application) {
     queryKey: ['application', id, 'tasks', app?.status.code, app?.open_tasks],
     queryFn: () => api<ClientTask[]>(`/applications/${id}/tasks`),
     enabled: !!app && app.status.code !== 'draft',
+    placeholderData: sameApplication<ClientTask[]>(id),
   });
 }
 
@@ -167,6 +223,7 @@ export function useChecks(id: number, app?: Application) {
     queryKey: ['application', id, 'checks', app?.status.code],
     queryFn: () => api<SourceCheck[]>(`/applications/${id}/checks`),
     enabled: !!app && app.status.code !== 'draft' && app.status.code !== 'submitted',
+    placeholderData: sameApplication<SourceCheck[]>(id),
   });
 }
 
@@ -250,6 +307,9 @@ function useApplicationMutation<TVars>(id: number, request: (vars: TVars) => Pro
 export const useAcceptOffer = (id: number) =>
   useApplicationMutation<void>(id, () => api<Application>(`/applications/${id}/offer/accept`, { method: 'POST' }));
 
+export const useHandoffOffer = (id: number) =>
+  useApplicationMutation<void>(id, () => api<Application>(`/applications/${id}/offer/handoff`, { method: 'POST' }));
+
 export const useDeclineOffer = (id: number) =>
   useApplicationMutation<{ comment?: string }>(id, ({ comment }) =>
     api<Application>(`/applications/${id}/offer/decline`, { method: 'POST', json: { comment: comment ?? null } }),
@@ -267,7 +327,7 @@ export function useRequestSigningCode(id: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api<SigningCode>(`/applications/${id}/signing/code`, { method: 'POST' }),
-    // Код приходит в уведомления кабинета — сразу подтягиваем их, не дожидаясь опроса.
+    // Код показывается в окне подписания; в уведомлениях — только напоминание, что код готов.
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
     onError: notifyError,
   });
@@ -291,8 +351,8 @@ export function useLoans(enabled = true) {
   return useQuery({ queryKey: ['loans'], queryFn: () => api<Loan[]>('/loans'), enabled });
 }
 
-export function useLoan(id: number) {
-  return useQuery({ queryKey: ['loans', id], queryFn: () => api<LoanDetail>(`/loans/${id}`) });
+export function useLoan(id: number, enabled = true) {
+  return useQuery({ queryKey: ['loans', id], queryFn: () => api<LoanDetail>(`/loans/${id}`), enabled });
 }
 
 export function useNotifications(enabled: boolean) {
@@ -309,5 +369,43 @@ export function useReadAllNotifications() {
   return useMutation({
     mutationFn: () => api<void>('/notifications/read-all', { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// --- Кабинет аналитика ---------------------------------------------------------------------
+
+export function useAssessment(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['application', id, 'assessment'],
+    queryFn: () => api<Assessment>(`/applications/${id}/assessment`),
+    enabled,
+  });
+}
+
+export function useAnalystDecision(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AnalystDecision) => api<Application>(`/applications/${id}/decision`, { method: 'POST', json: body }),
+    onSuccess: (app) => {
+      qc.setQueryData(keys.application(app.id), app);
+      qc.invalidateQueries({ queryKey: ['application', id] });
+      qc.invalidateQueries({ queryKey: ['applications'] });
+    },
+  });
+}
+
+/** Лента новостей; version — снимок статусов заявок, чтобы лента пересчитывалась при их смене. */
+export function useFeed(version: string) {
+  return useQuery({ queryKey: ['feed', version], queryFn: () => api<FeedItem[]>('/feed'), placeholderData: keepPreviousData });
+}
+
+export function useReplay(id: number) {
+  return useMutation({ mutationFn: () => api<Replay>(`/applications/${id}/assessment/replay`, { method: 'POST' }) });
+}
+
+export function usePolicySimulation() {
+  return useMutation({
+    mutationFn: (body: { max_dsr: number; min_coverage: number }) =>
+      api<PolicySimulation>('/policy/simulate', { method: 'POST', json: body }),
   });
 }

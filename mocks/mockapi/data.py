@@ -6,6 +6,8 @@
 
 ACTIVE = {"code": "active", "title": "Действующая"}
 LIQUIDATING = {"code": "liquidating", "title": "Находится в стадии ликвидации"}
+REORGANIZING = {"code": "reorganizing", "title": "Находится в процессе реорганизации"}
+BANKRUPT = {"code": "bankrupt", "title": "В отношении компании введена процедура банкротства"}
 
 
 def _fns(year=2025, *, regime, employees, revenue, expenses, taxes_paid, tax_debt=0, mass_address=False,
@@ -198,5 +200,30 @@ COMPANIES: dict[str, dict] = {
         },
         "fns": _fns(regime="УСН", employees=18, revenue=30_000_000, expenses=24_000_000, taxes_paid=1_200_000),
         "bki": {"loans": [], "inquiries_90d": 1},
+    },
+    # Сценарий: контрпредложение другим продуктом — действующие платежи съедают почти половину выручки,
+    # «Экспресс-оборот» не проходит даже на минимальную сумму, а у овердрафта минимум ниже, и 150 тыс. проходят.
+    "0077090092": {
+        "egrul": {
+            "full_name": "Общество с ограниченной ответственностью «Городская химчистка»",
+            "short_name": "ООО «Городская химчистка»",
+            "legal_form": "ООО",
+            "ogrn": "1007700900096",
+            "kpp": "007709001",
+            "registered_at": "2015-01-15",
+            "status": ACTIVE,
+            "okved": {"code": "96.01", "name": "Стирка и химическая чистка текстильных и меховых изделий"},
+            "okved_extra": [],
+            "address": "г. Москва, ул. Прачечная, д. 5",
+            "director": {"name": "Тихонова Лариса Петровна", "position": "Генеральный директор", "since": "2015-01-15"},
+            "founders": [{"name": "Тихонова Лариса Петровна", "share": 100}],
+            "capital": 100_000,
+        },
+        "fns": _fns(regime="УСН", employees=9, revenue=12_000_000, expenses=9_600_000, taxes_paid=360_000),
+        "bki": {
+            "loans": [_loan("Банк Развитие", "Кредит на пополнение оборотных средств", 11_640_000, 5_820_000, 485_000,
+                            "2023-01-01")],
+            "inquiries_90d": 1,
+        },
     },
 }

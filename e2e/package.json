@@ -1,0 +1,18 @@
+{
+  "name": "potok-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Сквозные проверки поднятого стенда: коллекция запросов (newman) и сценарии демо-персон в браузере (Playwright)",
+  "scripts": {
+    "api": "newman run ../docs/postman_collection.json --folder \"Сквозной сценарий: от заявки до выдачи\" --reporters cli",
+    "ui": "playwright test",
+    "ui:llm": "playwright test -c playwright.llm.config.ts",
+    "demo": "playwright test -c playwright.demo.config.ts",
+    "submission-pdf": "node scripts/submission-pdf.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "marked": "18.1.0",
+    "newman": "6.2.3"
+  }
+}

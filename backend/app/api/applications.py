@@ -6,12 +6,16 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_client
+from app.api.deps import get_current_user, get_stream_user, require_analyst, require_client
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
+from app.explanation import jobs as explanation_jobs
 from app.models import ApplicationEvent, CheckResult, ClientTask, Document, User
 from app.pipeline.steps import SOURCE_TITLES, SOURCES
 from app.schemas import (
+    AnalystDecisionIn,
+    AssessmentOut,
+    ReplayOut,
     ApplicationCreate,
     ApplicationOut,
     ApplicationUpdate,
@@ -20,6 +24,7 @@ from app.schemas import (
     ContractOut,
     DocumentOut,
     EventOut,
+    ExplanationOut,
     SignConfirmIn,
     SigningCodeOut,
     StreamSnapshot,
@@ -27,6 +32,7 @@ from app.schemas import (
     TaskOut,
 )
 from app.services import applications as svc
+from app.services import decisions as decisions_svc
 from app.services import signing as signing_svc
 from app.services import tasks as tasks_svc
 
@@ -97,7 +103,55 @@ def application_events(
     application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[EventOut]:
     app = svc.get_for_user(db, user, application_id)
-    return [svc.event_out(ev) for ev in app.events]
+    return [svc.event_out(ev, for_bank=user.role == "analyst") for ev in app.events]
+
+
+@router.get(
+    "/{application_id}/explanation",
+    response_model=ExplanationOut,
+    summary="Пояснение решения простыми словами (если функция включена)",
+)
+def application_explanation(
+    application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ExplanationOut:
+    return explanation_jobs.for_client(db, svc.get_for_user(db, user, application_id))
+
+
+@router.get(
+    "/{application_id}/assessment",
+    response_model=AssessmentOut,
+    summary="Карточка аналитика: почему заявка у специалиста, оценка, стоп-факторы, рекомендация",
+)
+def application_assessment(
+    application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
+) -> AssessmentOut:
+    return decisions_svc.assessment(db, user, svc.get_for_user(db, user, application_id))
+
+
+@router.post(
+    "/{application_id}/assessment/replay",
+    response_model=ReplayOut,
+    summary="Воспроизвести решение конвейера на сохранённых признаках (ничего не меняет)",
+)
+def replay_decision(
+    application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
+) -> ReplayOut:
+    return decisions_svc.replay(db, svc.get_for_user(db, user, application_id))
+
+
+@router.post(
+    "/{application_id}/decision",
+    response_model=ApplicationOut,
+    summary="Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
+)
+def analyst_decision(
+    application_id: int,
+    data: AnalystDecisionIn,
+    user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    return svc.to_out(decisions_svc.decide(db, user, app, data), user, db)
 
 
 @router.get("/{application_id}/tasks", response_model=list[TaskOut], summary="Запросы банка по заявке")
@@ -191,7 +245,7 @@ def _snapshot(user: User, application_id: int) -> dict:
     response_description="Поток событий `update` с данными StreamSnapshot; комментарий-пинг раз в 15 секунд",
 )
 async def application_stream(
-    application_id: int, request: Request, user: User = Depends(get_current_user)
+    application_id: int, request: Request, user: User = Depends(get_stream_user)
 ) -> StreamingResponse:
     # Доступ проверяется до начала потока, чтобы чужая заявка давала обычный 404.
     first = await asyncio.to_thread(_snapshot, user, application_id)
@@ -234,6 +288,18 @@ def accept_offer(
     return svc.to_out(app, user, db)
 
 
+@router.post(
+    "/{application_id}/offer/handoff",
+    response_model=ApplicationOut,
+    summary="Передать предложение руководителю на подпись (для сотрудника без права подписи)",
+)
+def handoff_offer(
+    application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
+) -> ApplicationOut:
+    app = svc.get_for_user(db, user, application_id)
+    return svc.to_out(signing_svc.handoff_to_signer(db, user, app), user, db)
+
+
 @router.post("/{application_id}/offer/decline", response_model=ApplicationOut, summary="Отказаться от предложения")
 def decline_offer(
     application_id: int,
@@ -256,15 +322,16 @@ def get_contract(
 @router.post(
     "/{application_id}/signing/code",
     response_model=SigningCodeOut,
-    summary="Запросить код для подписания (приходит в уведомления кабинета)",
+    summary="Запросить код для подписания (показывается в окне подписания)",
 )
 def request_signing_code(
     application_id: int, user: User = Depends(require_client), db: Session = Depends(get_db)
 ) -> SigningCodeOut:
     app = svc.get_for_user(db, user, application_id)
-    challenge = signing_svc.request_code(db, user, app)
+    challenge, code = signing_svc.request_code(db, user, app)
     return SigningCodeOut(
-        challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left
+        challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left,
+        demo_code=code,
     )
 
 

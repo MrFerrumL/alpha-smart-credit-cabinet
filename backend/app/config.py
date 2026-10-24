@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,12 +28,21 @@ class Settings(BaseSettings):
     pipeline_retry_base_s: float = 2.0
     pipeline_max_attempts: int = 5
     worker_poll_interval_s: float = 0.5
+    # Файл «пульса» воркера: обновляется на каждом проходе цикла, по нему healthcheck видит, что воркер жив.
+    worker_heartbeat_file: str | None = None
     offer_valid_days: int = 7
+    # Сумма, которую кредитный аналитик одобряет сам; выше — решение кредитного комитета.
+    analyst_authority_limit: int = 30_000_000
     housekeeping_interval_s: float = 60.0  # как часто воркер закрывает просроченные предложения
+    # Сколько дней банк ждёт ответа на свой запрос, прежде чем закрыть заявку.
+    needs_info_ttl_days: int = 14
 
     # Подписание договора одноразовым кодом из уведомлений кабинета.
     signing_code_ttl_s: int = 300
     signing_max_attempts: int = 3
+    signing_codes_per_hour: int = 5
+    # Выдача не «сдаётся»: после исчерпания повторов задача ставится заново с этой паузой.
+    disburse_retry_s: float = 60.0
     bank_name: str = "АО «Банк» (демо)"
 
     # Документы клиентов. В Docker — отдельный том.
@@ -43,7 +53,18 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     seed_on_start: bool = True
 
+    # Необязательное пояснение решения простыми словами (LLM, OpenAI-совместимый API). По умолчанию выключено.
+    llm_enabled: bool = False
+    llm_base_url: str = "http://localhost:11434/v1"
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model: str = "qwen2.5:7b-instruct-q4_K_M"
+
     log_level: str = "INFO"
+
+    @property
+    def llm_active(self) -> bool:
+        """Функция работает, только если включена и заданы адрес и модель. Одно свойство для API и воркера."""
+        return self.llm_enabled and bool(self.llm_base_url.strip()) and bool(self.llm_model.strip())
 
 
 @lru_cache
