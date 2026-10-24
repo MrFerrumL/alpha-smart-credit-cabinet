@@ -407,9 +407,12 @@ docker compose up --build -d --wait --wait-timeout 1800
 ### Как выключить
 
 Уберите из `.env` `LLM_ENABLED=true` и `COMPOSE_PROFILES=llm` (или поставьте `LLM_ENABLED=false`) и выполните
-`docker compose up -d --wait`; контейнер Ollama профиля остановит `docker compose --profile llm down`. Модель
-профиля хранится в томе `alpha-credit_ollama`: `docker compose down -v` удаляет её вместе с базой (при следующем
-включении — новая загрузка), удалить только её — `docker volume rm alpha-credit_ollama`. Модель в Ollama на ПК —
+`docker compose up -d --wait`. Контейнер Ollama профиля после этого продолжает работать: `up` и `down` без профиля
+его не трогают. Остановить только его — `docker compose --profile llm stop ollama`;
+`docker compose --profile llm down` снимает весь стенд. Модель профиля хранится в томе `alpha-credit_ollama`. Без
+профиля `docker compose down -v` не удаляет ни контейнер Ollama, ни этот том; удалить их вместе с базой —
+`docker compose --profile llm down -v` (при следующем включении — новая загрузка). Удалить только модель —
+`docker compose --profile llm rm -sf ollama`, затем `docker volume rm alpha-credit_ollama`. Модель в Ollama на ПК —
 `ollama rm qwen2.5:7b-instruct-q4_K_M`.
 
 ### Замер
@@ -519,7 +522,8 @@ npm run ui:llm  # пояснение решения — на стенде с LLM
 | Диск Docker после сборки | образы вместе с промежуточными слоями сборки — 2,4 ГБ, кэш сборки — 0,15 ГБ, данные — 0,05 ГБ |
 
 На Windows и macOS к этому добавляется виртуальная машина Docker Desktop, обычно 1–2 ГБ. На ПК с 8 ГБ памяти
-остаётся запас, поэтому ограничения памяти контейнерам не заданы.
+остаётся запас, поэтому у сервисов основного стенда (db, mocks, backend, worker, frontend) ограничений памяти нет.
+`mem_limit: 7g` задан только у необязательного сервиса `ollama` (профиль `llm`).
 
 Проверка по этому README на ноутбуке: Windows 11, Docker Desktop на WSL 2 с лимитом памяти 6 ГБ, Docker без образов и
 кэша. `docker compose up --build` до готовности всех сервисов — 4 мин 9 с. Пик памяти контейнеров — 346 МиБ по сумме
