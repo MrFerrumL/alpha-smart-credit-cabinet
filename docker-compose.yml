@@ -64,7 +64,6 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-credit}:${POSTGRES_PASSWORD:-credit}@db:5432/${POSTGRES_DB:-credit}
       MOCKS_URL: http://mocks:8001
-      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-in-production}
       PIPELINE_STEP_DELAY_S: ${PIPELINE_STEP_DELAY_S:-1.5}
       SEED_ON_START: "false"
       WORKER_HEARTBEAT_FILE: /tmp/worker-heartbeat
@@ -80,6 +79,8 @@ services:
       timeout: 3s
       start_period: 15s
       retries: 3
+    # При остановке воркер доделывает текущий шаг (самый долгий — около 30 с), а не обрывается на середине.
+    stop_grace_period: 45s
     depends_on:
       backend:
         condition: service_healthy
@@ -128,7 +129,8 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "8080:80"
+      # Кабинет — только с этой машины; FRONTEND_BIND=0.0.0.0 открывает его в сеть.
+      - "${FRONTEND_BIND:-127.0.0.1}:8080:80"
     restart: unless-stopped
 
 volumes:
