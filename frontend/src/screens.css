@@ -2316,6 +2316,28 @@ a.potok-note-title:hover {
     gap: 16px;
   }
 
+  /* Строка заявки: чип статуса — под названием, а не сжимает его; стрелка — по центру обеих строк. */
+  .potok-app-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'main go' 'chip go';
+    gap: 8px 12px;
+  }
+
+  .potok-app-row .potok-row-main {
+    grid-area: main;
+  }
+
+  .potok-app-row .potok-chip {
+    grid-area: chip;
+    justify-self: start;
+  }
+
+  .potok-app-row .potok-row-go {
+    grid-area: go;
+    align-self: center;
+  }
+
   .potok-analyst-side,
   .potok-sticky {
     position: static;
