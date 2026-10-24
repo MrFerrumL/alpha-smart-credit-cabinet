@@ -6,11 +6,12 @@ import type { FeedItem } from '../api/types';
 import { dayMonth, typo } from '../lib/format';
 
 /**
- * Короткая метка «почему показано»: отрасль, форма, регион или продукты. Статья — не сообщение о заявке, поэтому
- * метки «Ваша заявка» нет: новость, показанная только по этапу заявки, получает нейтральную тему «Кредиты».
- * Полный список причин — в подсказке.
+ * Короткая метка «почему показано»: этап заявки, отрасль, форма, регион или продукты. Новость, которую подняла
+ * заявка клиента, — «По вашей заявке»; полный список причин — строкой под заголовком.
  */
 function tag(reasons: string[]): { label: string; app: boolean } | null {
+  // Причина по этапу заявки приходит как «Сейчас …» (см. _STATUS_TITLES в backend/app/services/feed.py).
+  if (reasons.some((r) => r.startsWith('Сейчас '))) return { label: 'По вашей заявке', app: true };
   const sector = reasons.find((r) => r.startsWith('Для вашей отрасли: '));
   if (sector) {
     const name = sector.slice('Для вашей отрасли: '.length);
@@ -20,15 +21,16 @@ function tag(reasons: string[]): { label: string; app: boolean } | null {
   if (reasons.includes('Для вашего региона')) return { label: 'Ваш регион', app: false };
   if (reasons.includes('По продуктам, которые вы оформляете')) return { label: 'Ваши продукты', app: false };
   if (reasons.includes('Полезно всем предпринимателям')) return { label: 'Всем', app: false };
-  // Причина по этапу заявки приходит как «Сейчас …» (см. _STATUS_TITLES в backend/app/services/feed.py).
-  if (reasons.some((r) => r.startsWith('Сейчас '))) return { label: 'Кредиты', app: false };
   return null;
 }
+
+/** «Для вашей отрасли: производство · по продуктам, которые вы оформляете». */
+const why = (reasons: string[]) => reasons.map((r, i) => (i ? r.charAt(0).toLowerCase() + r.slice(1) : r)).join(' · ');
 
 function News({ item }: { item: FeedItem }) {
   const t = tag(item.reasons);
   return (
-    <li title={item.reasons.join('; ')}>
+    <li>
       <div className="potok-news-meta">
         {t && (
           <span className="potok-tag" data-tone={t.app ? 'app' : undefined}>
@@ -40,6 +42,7 @@ function News({ item }: { item: FeedItem }) {
       <div className="potok-news-title" data-testid="news-title">
         {typo(item.title.replace(' (синтетическая новость)', ''))}
       </div>
+      {item.reasons.length > 0 && <div className="potok-news-why">{typo(why(item.reasons))}</div>}
       <div className="potok-news-summary">{typo(item.summary)}</div>
     </li>
   );

@@ -550,6 +550,13 @@
   font: 500 16px/1.4 var(--font-ui);
 }
 
+/* Почему новость в ленте — видимой строкой: подсказка при наведении на телефоне недоступна. */
+.potok-news-why {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
 .potok-news-summary {
   margin-top: 4px;
   overflow: hidden;
