@@ -10,6 +10,10 @@ from app.config import get_settings
 
 _ALGORITHM = "HS256"
 _PBKDF2_ITERATIONS = 200_000
+# Хеш, с которым не совпадёт ни один пароль; проверка по нему длится столько же, сколько настоящая.
+DUMMY_PASSWORD_HASH = "pbkdf2_sha256${}${}${}".format(
+    _PBKDF2_ITERATIONS, base64.b64encode(bytes(16)).decode(), base64.b64encode(bytes(32)).decode()
+)
 
 
 def hash_password(password: str) -> str:

@@ -37,6 +37,27 @@ def test_password_login(client):
     assert bad.status_code == 401
 
 
+def test_unknown_email_costs_the_same_password_check(client, monkeypatch):
+    from app.api import auth as auth_api
+    from app.security import DUMMY_PASSWORD_HASH, hash_password, verify_password
+
+    checked = []
+
+    def spy(password: str, stored: str) -> bool:
+        checked.append(stored)
+        return verify_password(password, stored)
+
+    monkeypatch.setattr(auth_api, "verify_password", spy)
+    unknown = client.post("/api/auth/login", json={"email": "nobody@demo.local", "password": "demo1234"})
+    wrong = client.post("/api/auth/login", json={"email": "bakery@demo.local", "password": "wrong"})
+    assert unknown.status_code == wrong.status_code == 401
+    assert unknown.json()["detail"] == wrong.json()["detail"]
+    assert checked[0] == DUMMY_PASSWORD_HASH and len(checked) == 2
+    # Та же схема и то же число итераций, что у настоящих хешей, — и с ним не совпадает никакой пароль.
+    assert DUMMY_PASSWORD_HASH.split("$")[:2] == hash_password("x").split("$")[:2]
+    assert not verify_password("", DUMMY_PASSWORD_HASH)
+
+
 def test_meta_and_product_matching(client):
     meta = client.get("/api/meta").json()
     assert len(meta["stages"]) == 7
