@@ -401,9 +401,9 @@ class SigningCodeOut(BaseModel):
     expires_at: UtcDatetime
     attempts_left: int
     delivery: str = Field(default="in_app", description="Код показывается в окне подписания в кабинете")
-    demo_code: str = Field(
-        description="Одноразовый код. Электронная подпись смоделирована: вместо SMS код отдаётся в кабинет "
-        "один раз и не хранится в открытом виде"
+    demo_code: str | None = Field(
+        description="Одноразовый код — только в демо-режиме, иначе null. Электронная подпись смоделирована: "
+        "вместо SMS код отдаётся в кабинет один раз и не хранится в открытом виде"
     )
 
 

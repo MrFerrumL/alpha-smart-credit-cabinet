@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_stream_user, require_analyst, require_client
+from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
 from app.explanation import jobs as explanation_jobs
@@ -328,7 +329,7 @@ def request_signing_code(
     challenge, code = signing_svc.request_code(db, user, app)
     return SigningCodeOut(
         challenge_id=challenge.id, expires_at=challenge.expires_at, attempts_left=challenge.attempts_left,
-        demo_code=code,
+        demo_code=code if get_settings().demo_mode else None,
     )
 
 

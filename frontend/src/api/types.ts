@@ -306,7 +306,7 @@ export interface SigningCode {
   expires_at: string;
   attempts_left: number;
   delivery: 'in_app';
-  demo_code: string;
+  demo_code: string | null;
 }
 
 export interface Loan {

@@ -33,7 +33,8 @@ async def lifespan(_: FastAPI):
     configure_logging(settings.log_level)
     if settings.environment not in ("local", "test") and "change-me" in settings.secret_key:
         log.warning("SECRET_KEY не задан — используется демо-значение. Для любого внешнего окружения задайте свой.")
-    if settings.seed_on_start:
+    # Демо-учётки с общим паролем нужны только демо-стенду.
+    if settings.seed_on_start and settings.demo_mode:
         if inspect(engine).has_table("users"):
             with SessionLocal() as db:
                 seed(db)
@@ -43,6 +44,8 @@ async def lifespan(_: FastAPI):
 
 
 def create_app() -> FastAPI:
+    # Вне демо-режима Swagger и спецификация не публикуются; scripts/export_openapi берёт её из app.openapi().
+    demo = get_settings().demo_mode
     app = FastAPI(
         title="Кредитный конвейер для МСБ — core API",
         version="1.0.0",
@@ -52,9 +55,9 @@ def create_app() -> FastAPI:
             "`{status, code, title, detail, errors?}`."
         ),
         openapi_tags=TAGS,
-        docs_url="/api/docs",
+        docs_url="/api/docs" if demo else None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if demo else None,
         lifespan=lifespan,
     )
     app.add_middleware(RequestContextMiddleware)
