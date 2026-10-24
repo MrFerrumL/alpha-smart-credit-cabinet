@@ -288,6 +288,7 @@
 .potok-facts dd {
   margin: 2px 0 0;
   font-weight: 600;
+  overflow-wrap: break-word;
 }
 
 .potok-live {

@@ -55,7 +55,11 @@ export function ProfilePage() {
             <dl className="potok-kv">
               <div>
                 <dt>Почта</dt>
-                <dd>{user.email}</dd>
+                {/* Перенос после «@»: в две колонки на телефоне почта целиком не помещается. */}
+                <dd>
+                  {user.email.split('@')[0]}@<wbr />
+                  {user.email.split('@').slice(1).join('@')}
+                </dd>
               </div>
               <div>
                 <dt>Роль</dt>
