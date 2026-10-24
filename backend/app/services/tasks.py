@@ -5,7 +5,7 @@
 """
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_by_id
@@ -24,6 +24,7 @@ DOCUMENT_KINDS = {
     "collateral": "Документы по залогу",
     "other": "Другой документ",
 }
+MAX_DOCUMENTS = 20  # на одну заявку
 
 
 def list_tasks(db: Session, app: Application) -> list[ClientTask]:
@@ -141,22 +142,29 @@ def upload_document(
     task = _own_task(db, app, task_id) if task_id is not None else None
     if app.status != Status.DRAFT.value and not _accepts_answers(app, task):
         raise Conflict("Документы можно приложить к черновику, по запросу банка или к условиям выдачи")
+    db.refresh(app, with_for_update=True)  # параллельные загрузки не обойдут лимит документов
+    if db.scalar(select(func.count(Document.id)).where(Document.application_id == app.id)) >= MAX_DOCUMENTS:
+        raise Conflict(f"К заявке можно приложить не больше {MAX_DOCUMENTS} документов")
     key, size = storage.save(upload, app.company_id)
-    doc = Document(
-        company_id=app.company_id,
-        application_id=app.id,
-        kind=kind,
-        filename=(upload.filename or "document")[:255],
-        content_type=(upload.content_type or "application/octet-stream")[:128],
-        size_bytes=size,
-        storage_key=key,
-        uploaded_by_id=user.id,
-    )
-    db.add(doc)
-    record_event(db, app, "document_uploaded", Actor.CLIENT, actor_id=user.id, payload={"filename": doc.filename})
-    if task is not None:
-        _resolve(db, app, task, user, doc.filename)
-    db.flush()
-    _resume_if_complete(db, app, user)
-    db.commit()
+    try:
+        doc = Document(
+            company_id=app.company_id,
+            application_id=app.id,
+            kind=kind,
+            filename=(upload.filename or "document")[:255],
+            content_type=(upload.content_type or "application/octet-stream")[:128],
+            size_bytes=size,
+            storage_key=key,
+            uploaded_by_id=user.id,
+        )
+        db.add(doc)
+        record_event(db, app, "document_uploaded", Actor.CLIENT, actor_id=user.id, payload={"filename": doc.filename})
+        if task is not None:
+            _resolve(db, app, task, user, doc.filename)
+        db.flush()
+        _resume_if_complete(db, app, user)
+        db.commit()
+    except Exception:
+        storage.delete(key)  # записи о документе в БД нет — файл без неё никому не нужен
+        raise
     return doc
