@@ -437,6 +437,8 @@ export interface FeedItem {
   summary: string;
   reasons: string[];
   is_synthetic: boolean;
+  /** Заявка, этап которой поднял новость (главная заявка клиента); у остальных новостей — null. */
+  application_id: number | null;
 }
 
 export interface PolicySummary {

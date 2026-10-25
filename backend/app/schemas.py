@@ -582,6 +582,10 @@ class FeedItemOut(BaseModel):
     summary: str
     reasons: list[str] = Field(description="Почему новость показана этому клиенту")
     is_synthetic: bool = Field(description="Новость синтетическая — источник смоделирован")
+    application_id: int | None = Field(
+        None,
+        description="Заявка, этап которой поднял новость в ленте (главная заявка клиента); у остальных новостей — null",
+    )
 
 
 class ReplayOut(BaseModel):

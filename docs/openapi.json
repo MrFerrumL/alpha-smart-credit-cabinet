@@ -3556,6 +3556,18 @@
             "type": "boolean",
             "title": "Is Synthetic",
             "description": "Новость синтетическая — источник смоделирован"
+          },
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id",
+            "description": "Заявка, этап которой поднял новость в ленте (главная заявка клиента); у остальных новостей — null"
           }
         },
         "type": "object",

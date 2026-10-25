@@ -503,7 +503,14 @@
   text-align: right;
 }
 
-/* Лента: метка и дата строкой, заголовок не длиннее двух строк, пересказ — одна строка. */
+/* Лента: под заголовком — по чему она подобрана; у новости метка и дата строкой, заголовок не длиннее двух строк,
+   пересказ — до трёх. */
+.potok-news-for {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
 .potok-news ul {
   margin: 8px 0 0;
   padding: 0;
@@ -559,12 +566,44 @@
 }
 
 .potok-news-summary {
-  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-top: 6px;
   font-size: 14px;
+  line-height: 20px;
   color: var(--potok-steel);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.potok-news-summary[data-open] {
+  display: block;
+  overflow: visible;
+}
+
+/* «Читать полностью» — текстовой кнопкой под пересказом, только если он не уместился в три строки. */
+.potok-news-more {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--potok-ink);
+  font: 500 14px/20px var(--font-ui);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+/* Ссылка из новости этапа на главную заявку — спокойной ссылкой: красная кнопка шага уже в карточке заявки. */
+.potok-news-act {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.potok-news-state {
+  margin: 8px 0 0;
+  color: var(--potok-steel);
 }
 
 .potok-news-foot {
