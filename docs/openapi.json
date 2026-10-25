@@ -1935,6 +1935,63 @@
           }
         ]
       }
+    },
+    "/api/system/jobs": {
+      "get": {
+        "tags": [
+          "Состояние системы"
+        ],
+        "summary": "Последние повторы и сбои шагов конвейера",
+        "description": "Шаг, номер заявки, источник и причина простыми словами — без ИНН и текстов ошибок.",
+        "operationId": "recent_jobs_api_system_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Сколько задач показать, свежие — сверху",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Сколько задач показать, свежие — сверху"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SystemJobOut"
+                  },
+                  "title": "Response Recent Jobs Api System Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5101,6 +5158,126 @@
         ],
         "title": "StopCheckOut"
       },
+      "SystemJobOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id"
+          },
+          "application_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Number",
+            "description": "Номер заявки для ссылки на неё"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "Шаг конвейера: pipeline.enrich, pipeline.disburse …"
+          },
+          "step": {
+            "type": "string",
+            "title": "Step",
+            "description": "Шаг простыми словами"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "description": "pending — ждёт повтора; running — повтор идёт; done — получилось; failed — попытки исчерпаны"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "description": "Сколько попыток уже было"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "title": "Max Attempts",
+            "description": "Сколько попыток даётся шагу"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "egrul",
+                  "fns",
+                  "bki",
+                  "abs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Внешний источник, из-за которого был повтор"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Что случилось — коротко, без технических подробностей"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At",
+            "description": "Когда следующая попытка — у задачи, которая ждёт повтора"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "application_id",
+          "application_number",
+          "kind",
+          "step",
+          "status",
+          "attempts",
+          "max_attempts",
+          "source",
+          "reason",
+          "next_attempt_at",
+          "updated_at"
+        ],
+        "title": "SystemJobOut",
+        "description": "Задача конвейера, которая не выполнилась с первой попытки. Без ИНН, данных компании и текстов исключений."
+      },
       "TaskAnswerIn": {
         "properties": {
           "answer": {
@@ -5432,6 +5609,10 @@
     {
       "name": "Уведомления",
       "description": "Уведомления внутри кабинета — вместо SMS и почты"
+    },
+    {
+      "name": "Состояние системы",
+      "description": "Повторы и сбои шагов конвейера — для сотрудников банка"
     },
     {
       "name": "Служебное",

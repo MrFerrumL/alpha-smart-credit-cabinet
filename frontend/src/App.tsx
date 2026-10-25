@@ -17,6 +17,7 @@ import { MatchPage } from './pages/MatchPage';
 import { PolicyPage } from './pages/PolicyPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { QueuePage } from './pages/QueuePage';
+import { SystemPage } from './pages/SystemPage';
 
 /** Без входа — на страницу входа; запрошенная страница уходит с ней и откроется после входа. */
 function RequireAuth() {
@@ -86,6 +87,7 @@ function AppRoutes() {
           <Route element={<RequireRole role="analyst" />}>
             <Route path="queue" element={<QueuePage />} />
             <Route path="policy" element={<PolicyPage />} />
+            <Route path="system" element={<SystemPage />} />
           </Route>
           <Route path="profile" element={<ProfilePage />} />
           <Route path="applications/:id" element={<ApplicationPage />} />

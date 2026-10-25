@@ -671,3 +671,27 @@ class PolicySimulationOut(BaseModel):
     current: dict
     simulated: dict
     changed: list[SimulatedApplicationOut]
+
+
+# --- Состояние системы ---------------------------------------------------------------------
+
+
+class SystemJobOut(BaseModel):
+    """Задача конвейера, которая не выполнилась с первой попытки. Без ИНН, данных компании и текстов исключений."""
+
+    id: int
+    application_id: int | None
+    application_number: str | None = Field(description="Номер заявки для ссылки на неё")
+    kind: str = Field(description="Шаг конвейера: pipeline.enrich, pipeline.disburse …")
+    step: str = Field(description="Шаг простыми словами")
+    status: Literal["pending", "running", "done", "failed"] = Field(
+        description="pending — ждёт повтора; running — повтор идёт; done — получилось; failed — попытки исчерпаны"
+    )
+    attempts: int = Field(description="Сколько попыток уже было")
+    max_attempts: int = Field(description="Сколько попыток даётся шагу")
+    source: Literal["egrul", "fns", "bki", "abs"] | None = Field(
+        description="Внешний источник, из-за которого был повтор"
+    )
+    reason: str = Field(description="Что случилось — коротко, без технических подробностей")
+    next_attempt_at: UtcDatetime | None = Field(description="Когда следующая попытка — у задачи, которая ждёт повтора")
+    updated_at: UtcDatetime

@@ -149,6 +149,7 @@ CLIENT_ON_ANALYST = [
     ("POST", "/api/applications/1/assessment/replay"),
     ("POST", "/api/applications/1/decision"),
     ("POST", "/api/policy/simulate"),
+    ("GET", "/api/system/jobs"),
 ]
 ANALYST_ON_CLIENT = [
     ("POST", "/api/applications/1/submit"),
@@ -158,7 +159,7 @@ ANALYST_ON_CLIENT = [
 
 
 @pytest.mark.parametrize(("method", "path"), CLIENT_ON_ANALYST, ids=[f"{m} {p}" for m, p in CLIENT_ON_ANALYST])
-def test_client_gets_403_on_assessment_decision_and_policy(client, tokens, method, path):
+def test_client_gets_403_on_assessment_decision_policy_and_system(client, tokens, method, path):
     assert client.request(method, path, headers=tokens["client"]).status_code == 403
 
 

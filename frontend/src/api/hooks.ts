@@ -1,12 +1,14 @@
 import { notifications } from '@mantine/notifications';
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { api, ApiError, requestId } from './client';
+import { api, ApiError, health, requestId } from './client';
 import type {
   PolicySimulation,
   Replay,
   FeedItem,
   AnalystDecision,
+  HealthDeps,
+  SystemJob,
   Assessment,
   AppNotification,
   Application,
@@ -458,5 +460,22 @@ export function usePolicySimulation() {
   return useMutation({
     mutationFn: (body: { max_dsr: number; min_coverage: number }) =>
       api<PolicySimulation>('/policy/simulate', { method: 'POST', json: body }),
+  });
+}
+
+// --- Состояние системы ---------------------------------------------------------------------
+
+/** Страница «Состояние системы» обновляется сама с этим шагом. */
+export const SYSTEM_POLL_MS = 5000;
+
+export function useHealthDeps() {
+  return useQuery({ queryKey: ['system', 'deps'], queryFn: () => health<HealthDeps>('/deps'), refetchInterval: SYSTEM_POLL_MS });
+}
+
+export function useSystemJobs(limit = 10) {
+  return useQuery({
+    queryKey: ['system', 'jobs', limit],
+    queryFn: () => api<SystemJob[]>(`/system/jobs?limit=${limit}`),
+    refetchInterval: SYSTEM_POLL_MS,
   });
 }

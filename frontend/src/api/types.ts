@@ -499,3 +499,35 @@ export interface PolicySimulation {
     offered_then: number;
   }[];
 }
+
+// --- Состояние системы ---------------------------------------------------------------------
+
+export type SourceCode = 'egrul' | 'fns' | 'bki' | 'abs';
+
+/** GET /health/deps: версия, очередь конвейера и внешние источники. queue — null, если база данных не ответила. */
+export interface HealthDeps {
+  version: string;
+  queue: {
+    pending: number;
+    running: number;
+    oldest_ready_age_s: number;
+    failed_last_hour: number;
+  } | null;
+  sources: Record<SourceCode, 'ok' | 'paused'>;
+}
+
+/** GET /api/system/jobs: шаг конвейера, который не выполнился с первой попытки. */
+export interface SystemJob {
+  id: number;
+  application_id: number | null;
+  application_number: string | null;
+  kind: string;
+  step: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  attempts: number;
+  max_attempts: number;
+  source: SourceCode | null;
+  reason: string;
+  next_attempt_at: string | null;
+  updated_at: string;
+}

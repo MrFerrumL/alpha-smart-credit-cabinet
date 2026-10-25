@@ -1600,6 +1600,135 @@ a.potok-note-title:hover {
   background: var(--potok-canvas);
 }
 
+/* --- Состояние системы ---------------------------------------------------------------------------- */
+/* Слева — источники и очередь, справа — повторы и сбои: колонки примерно одной высоты. */
+.potok-sys {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--potok-gap);
+  align-items: start;
+}
+
+.potok-sys-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--potok-ink);
+  font-weight: 500;
+}
+
+.potok-sys-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-sys-list > li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-sys-source,
+.potok-sys-job {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 14px 0;
+}
+
+/* Источник: состояние всегда справа от названия, текст под названием переносится. */
+.potok-sys-source {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.potok-sys-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.potok-sys-job .potok-sys-main {
+  flex-basis: 280px;
+}
+
+.potok-sys-job-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+
+.potok-sys-job-side time {
+  font-size: 13px;
+  color: var(--potok-steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.potok-sys-note {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-queue {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
+  margin: 16px 0 0;
+}
+
+.potok-sys-queue dt {
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-queue dd {
+  margin: 4px 0 0;
+  font: 600 32px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-sys-sk {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.potok-sys .potok-inline-note {
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .potok-sys {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Строка повтора: состояние и время — под текстом, в одну линию. */
+  .potok-sys-job-side {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .potok-sys-queue dd {
+    font-size: 26px;
+  }
+}
+
 /* --- Уведомления (панель под колокольчиком) ------------------------------------------------------- */
 .potok-ntf-head {
   padding: 16px 20px 4px;

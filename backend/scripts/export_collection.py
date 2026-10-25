@@ -77,6 +77,7 @@ LOGIN_HINTS: dict[tuple[str, str], str] = {
     ("get", "/api/applications/{application_id}/assessment"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/applications/{application_id}/assessment/replay"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/policy/simulate"): "Нужен токен аналитика (`analyst@demo.local`).",
+    ("get", "/api/system/jobs"): "Нужен токен аналитика (`analyst@demo.local`).",
 }
 
 # Что делает каждая из ручек сквозного сценария: (метод, путь) должны быть в спецификации.
