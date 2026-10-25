@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import inspect
 
+from app import __version__
 from app.api import applications, auth, companies, feed, health, loans, meta, notifications, policy, products
 from app.config import Settings, get_settings
 from app.db import SessionLocal, engine
@@ -56,7 +57,7 @@ def create_app() -> FastAPI:
     demo = get_settings().demo_mode
     app = FastAPI(
         title="Кредитный конвейер для МСБ — core API",
-        version="1.0.0",
+        version=__version__,
         description=(
             "Ядро цифрового кредитного конвейера: заявки, их статусы и переходы, каталог продуктов, "
             "интеграции с внешними источниками. Ошибки возвращаются в едином формате "

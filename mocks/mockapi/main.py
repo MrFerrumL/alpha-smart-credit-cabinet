@@ -5,15 +5,17 @@
 Ещё здесь фейковая языковая модель (/llm/v1/chat/completions) — для тестов и CI вместо настоящей.
 """
 
+import logging
 import os
 import random
 import threading
 import time
 import uuid
 from datetime import date, datetime, timezone
-from typing import Literal
+from typing import Annotated, Literal
+from urllib.parse import unquote
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from mockapi.data import COMPANIES
@@ -28,6 +30,23 @@ app = FastAPI(
     description="ЕГРЮЛ/ЕГРИП, бюро кредитных историй и ФНС «Прозрачный бизнес» на синтетических данных.",
 )
 app.include_router(llm_router)
+
+# Своей настройки логов у эмулятора нет: пишем через логгер uvicorn, он выводит INFO.
+log = logging.getLogger("uvicorn.error")
+
+
+@app.middleware("http")
+async def request_id(request: Request, call_next):
+    """Сквозной X-Request-ID от backend: эмулятор пишет его в лог и возвращает в ответе, поэтому запрос к
+    источнику находится по тому же ID, что и в логах backend."""
+    rid = request.headers.get("x-request-id", "")[:64]
+    response = await call_next(request)
+    if rid:
+        response.headers["X-Request-ID"] = rid
+        # Шаблон пути, а не сам путь: в пути ИНН клиента.
+        route = getattr(request.scope.get("route"), "path", request.url.path)
+        log.info("%s %s %s request_id=%s", request.method, route, response.status_code, rid)
+    return response
 
 
 # --- Внесение сбоев ---------------------------------------------------------------------------
@@ -170,13 +189,22 @@ _disbursements: dict[str, dict] = {}
 
 
 @app.post("/abs/disbursements", tags=["АБС"], summary="Перечислить сумму кредита на расчётный счёт клиента")
-def disburse(data: DisbursementIn) -> dict:
+def disburse(
+    data: DisbursementIn,
+    idempotency_key: Annotated[str | None, Header(max_length=256, description="Номер договора в URL-кодировке")] = None,
+) -> dict:
     _maybe_fail("abs")
     _latency()
+    # Ключ идемпотентности: повторный запрос возвращает уже проведённый платёж. Без заголовка — номер договора.
+    key = unquote(idempotency_key) if idempotency_key else data.contract_number
     with _lock:
-        # Номер договора — ключ идемпотентности: повторный запрос возвращает уже проведённый платёж.
-        existing = _disbursements.get(data.contract_number)
+        existing = _disbursements.get(key)
         if existing:
+            same = (existing["contract_number"], existing["inn"], existing["amount"]) == (
+                data.contract_number, data.inn, data.amount,
+            )
+            if not same:  # тот же ключ с другими реквизитами — это не повтор, а ошибка вызывающего
+                raise HTTPException(status_code=409, detail="Idempotency-Key already used with different parameters")
             return existing
         payment = {
             "payment_id": f"PAY-{uuid.uuid4().hex[:12].upper()}",
@@ -186,5 +214,5 @@ def disburse(data: DisbursementIn) -> dict:
             "status": "executed",
             "executed_at": datetime.now(timezone.utc).isoformat(),
         }
-        _disbursements[data.contract_number] = payment
+        _disbursements[key] = payment
         return payment

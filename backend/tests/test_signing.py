@@ -71,12 +71,13 @@ def test_full_path_from_offer_to_loan(client, mocks):
         headers=headers,
     ).json()
     assert signed["offer"]["status"] == "signed"
+    # Повтор того же подтверждения (ответ не дошёл до клиента) — не ошибка: договор подписан один раз.
     reused = client.post(
         f"/api/applications/{app_id}/signing/confirm",
         json={"challenge_id": challenge["challenge_id"], "code": code},
         headers=headers,
     )
-    assert reused.status_code == 409
+    assert reused.status_code == 200 and reused.json()["offer"]["status"] == "signed"
     events = client.get(f"/api/applications/{app_id}/events", headers=headers).json()
     terms_hash = client.get(f"/api/applications/{app_id}/contract", headers=headers).json()["terms_hash"]
     assert len(terms_hash) == 64

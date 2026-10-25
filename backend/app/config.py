@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     mocks_url: str = "http://localhost:8001"
     integration_timeout_s: float = 3.0
     integration_retries: int = 3
+    # Предохранитель источников: после стольких сбоев подряд источник не опрашивается breaker_cooldown_s
+    # секунд, затем один пробный запрос. Порог не ниже integration_retries + 1; 0 — предохранитель выключен.
+    breaker_threshold: int = 5
+    breaker_cooldown_s: float = 20.0
 
     # Конвейер: пауза между этапами (чтобы клиент видел, как заявка движется), повторы при сбоях.
     pipeline_step_delay_s: float = 1.5

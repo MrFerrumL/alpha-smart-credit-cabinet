@@ -3,7 +3,7 @@
   "info": {
     "title": "Кредитный конвейер для МСБ — core API",
     "description": "Ядро цифрового кредитного конвейера: заявки, их статусы и переходы, каталог продуктов, интеграции с внешними источниками. Ошибки возвращаются в едином формате `{status, code, title, detail, errors?}`.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "paths": {
     "/health/live": {
@@ -42,6 +42,27 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/deps": {
+      "get": {
+        "tags": [
+          "Служебное"
+        ],
+        "summary": "Очередь конвейера и внешние источники (всегда 200, на готовность не влияет)",
+        "operationId": "deps_health_deps_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepsOut"
+                }
               }
             }
           }
@@ -3244,6 +3265,44 @@
         ],
         "title": "DemoLoginIn"
       },
+      "DepsOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueueOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — база данных недоступна"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "paused"
+              ]
+            },
+            "type": "object",
+            "title": "Sources",
+            "description": "paused — источник не опрашивается после серии сбоев, конвейер повторит запрос сам"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "queue",
+          "sources"
+        ],
+        "title": "DepsOut"
+      },
       "DocumentOut": {
         "properties": {
           "id": {
@@ -4425,6 +4484,38 @@
           "icon"
         ],
         "title": "PurposeOut"
+      },
+      "QueueOut": {
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "title": "Pending",
+            "description": "Сколько задач ждут запуска, включая отложенные повторы"
+          },
+          "running": {
+            "type": "integer",
+            "title": "Running",
+            "description": "Сколько задач выполняется сейчас"
+          },
+          "oldest_ready_age_s": {
+            "type": "number",
+            "title": "Oldest Ready Age S",
+            "description": "Сколько ждёт самая старая задача, которой уже пора выполняться, с"
+          },
+          "failed_last_hour": {
+            "type": "integer",
+            "title": "Failed Last Hour",
+            "description": "Сколько задач завершились сбоем за последний час"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "running",
+          "oldest_ready_age_s",
+          "failed_last_hour"
+        ],
+        "title": "QueueOut"
       },
       "ReplayOut": {
         "properties": {

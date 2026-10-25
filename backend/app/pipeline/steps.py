@@ -115,7 +115,7 @@ def enrich(db: Session, app: Application, sources: ExternalSources) -> None:
                 existing.error = exc.reason
             else:
                 db.add(CheckResult(application_id=app.id, source=source, status="failed", error=exc.reason))
-            record_event(db, app, "check_retry", Actor.SYSTEM, payload={"source": source})
+            record_event(db, app, "check_retry", Actor.SYSTEM, payload={"source": source, "reason": exc.reason})
             db.commit()
             raise RetryLater(f"{source}: {exc.reason}") from exc
         if existing:

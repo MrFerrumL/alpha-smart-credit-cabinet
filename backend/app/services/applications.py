@@ -36,6 +36,7 @@ from app.schemas import (
     ProductRef,
     StatusInfoOut,
 )
+from app.services.integrations import CIRCUIT_OPEN
 from app.services.state_machine import apply_transition, record_event
 
 EVENT_TITLES = {
@@ -60,6 +61,13 @@ EVENT_TITLES = {
     "disbursement_retry": "Банковская система не ответила — повторяем перевод",
     "disbursement_delayed": "Перевод задерживается — банк повторит его автоматически",
     "issued": "Деньги зачислены на расчётный счёт",
+}
+
+# Повтор проверки, когда предохранитель источника открыт после серии сбоев (services/integrations.py).
+SOURCE_PAUSED_TITLES = {
+    "egrul": "ЕГРЮЛ недоступен — запросы приостановлены, повторим автоматически",
+    "fns": "ФНС «Прозрачный бизнес» недоступна — запросы приостановлены, повторим автоматически",
+    "bki": "Бюро кредитных историй недоступно — запросы приостановлены, повторим автоматически",
 }
 
 # Пока у заявки есть предложение банка (до выдачи): отзыв заявки здесь равен отказу от кредита.
@@ -198,6 +206,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
 def event_out(ev: ApplicationEvent, for_bank: bool = False) -> EventOut:
     if ev.event == "issued" and (ev.payload or {}).get("limit"):
         title = "Лимит овердрафта открыт на расчётном счёте"
+    elif ev.event == "check_retry" and (ev.payload or {}).get("reason") == CIRCUIT_OPEN:
+        title = SOURCE_PAUSED_TITLES.get(
+            ev.payload.get("source", ""), "Источник недоступен — запросы приостановлены, повторим автоматически"
+        )
     elif ev.event in EVENT_TITLES:
         payload = ev.payload or {}
         title = EVENT_TITLES[ev.event].format(
