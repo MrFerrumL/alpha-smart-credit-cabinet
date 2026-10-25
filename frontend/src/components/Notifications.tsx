@@ -46,12 +46,10 @@ export function NotificationsBell() {
     }
     const fresh = query.data.filter((n) => n.id > (seen.current ?? 0) && !n.read_at).reverse();
     for (const n of fresh) {
+      // Код подписи уже стоит в окне подписания — второй раз его на экране не показываем (он остаётся в списке).
+      if (n.kind === 'signing_code') continue;
       // Тост — тёмная плашка с текстом, без цветной метки и значка.
-      toasts.show({
-        title: clean(n.title),
-        message: n.body ? clean(n.body) : '',
-        autoClose: n.kind === 'signing_code' ? 15_000 : 6_000,
-      });
+      toasts.show({ title: clean(n.title), message: n.body ? clean(n.body) : '', autoClose: 6_000 });
     }
     seen.current = Math.max(seen.current, maxId);
   }, [query.data]);

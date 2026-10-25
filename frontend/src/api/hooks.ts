@@ -1,5 +1,5 @@
 import { notifications } from '@mantine/notifications';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { api, ApiError, requestId } from './client';
 import type {
@@ -37,6 +37,22 @@ export function notifyError(error: unknown) {
     title: e.title,
     message: e.errors?.length ? e.errors.map((x) => x.message).join('. ') : e.message,
   });
+}
+
+/** 409: экран отстал от сервера — перечитываем заявку и список, чтобы он показал актуальное состояние. */
+function refreshOnConflict(qc: QueryClient, error: unknown, id?: number) {
+  if (!(error instanceof ApiError) || error.status !== 409) return;
+  qc.invalidateQueries({ queryKey: id === undefined ? ['application'] : ['application', id] });
+  qc.invalidateQueries({ queryKey: ['applications'] });
+}
+
+/** Общий onError действий по заявке: показать ошибку и на 409 обновить экран. */
+function useActionError(id?: number) {
+  const qc = useQueryClient();
+  return (error: unknown, applicationId: number | undefined = id) => {
+    notifyError(error);
+    refreshOnConflict(qc, error, applicationId);
+  };
 }
 
 export const keys = {
@@ -146,11 +162,12 @@ export function useDecisionExplanation(app: Application) {
 
 export function useCreateApplication() {
   const qc = useQueryClient();
+  const failed = useActionError();
   return useMutation({
     mutationFn: (body: { product_code: string; purpose: Purpose; amount: number; term_months: number }) =>
       api<Application>('/applications', { method: 'POST', json: body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['applications'] }),
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
@@ -169,6 +186,7 @@ function submitKey(id: number): string {
 
 function useApplicationAction(action: 'submit' | 'cancel') {
   const qc = useQueryClient();
+  const failed = useActionError();
   return useMutation({
     mutationFn: ({ id, comment }: { id: number; comment?: string }) =>
       api<Application>(`/applications/${id}/${action}`, {
@@ -181,7 +199,7 @@ function useApplicationAction(action: 'submit' | 'cancel') {
       qc.invalidateQueries({ queryKey: ['applications'] });
       qc.invalidateQueries({ queryKey: keys.events(app.id) });
     },
-    onError: notifyError,
+    onError: (error, { id }) => failed(error, id),
   });
 }
 
@@ -247,11 +265,12 @@ export interface ApplicationUpdate {
 
 export function useUpdateApplication(id: number) {
   const qc = useQueryClient();
+  const failed = useActionError(id);
   return useMutation({
     mutationFn: (body: Partial<ApplicationUpdate>) =>
       api<Application>(`/applications/${id}`, { method: 'PATCH', json: body }),
     onSuccess: (app) => qc.setQueryData(keys.application(app.id), app),
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
@@ -265,6 +284,7 @@ function useInvalidateApplication(id: number) {
 
 export function useUploadDocument(id: number) {
   const invalidate = useInvalidateApplication(id);
+  const failed = useActionError(id);
   return useMutation({
     mutationFn: ({ file, kind, taskId }: { file: File; kind: string; taskId?: number }) => {
       const form = new FormData();
@@ -274,17 +294,18 @@ export function useUploadDocument(id: number) {
       return api<UploadedDocument>(`/applications/${id}/documents`, { method: 'POST', form });
     },
     onSuccess: invalidate,
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
 export function useAnswerTask(id: number) {
   const invalidate = useInvalidateApplication(id);
+  const failed = useActionError(id);
   return useMutation({
     mutationFn: ({ taskId, answer }: { taskId: number; answer: string }) =>
       api<ClientTask>(`/applications/${id}/tasks/${taskId}/answer`, { method: 'POST', json: { answer } }),
     onSuccess: invalidate,
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
@@ -292,6 +313,7 @@ export function useAnswerTask(id: number) {
 
 function useApplicationMutation<TVars>(id: number, request: (vars: TVars) => Promise<Application>) {
   const qc = useQueryClient();
+  const failed = useActionError(id);
   return useMutation({
     mutationFn: request,
     onSuccess: (app) => {
@@ -300,7 +322,7 @@ function useApplicationMutation<TVars>(id: number, request: (vars: TVars) => Pro
       qc.invalidateQueries({ queryKey: ['applications'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
     },
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
@@ -325,11 +347,12 @@ export function useContract(id: number, enabled: boolean) {
 
 export function useRequestSigningCode(id: number) {
   const qc = useQueryClient();
+  const failed = useActionError(id);
   return useMutation({
     mutationFn: () => api<SigningCode>(`/applications/${id}/signing/code`, { method: 'POST' }),
     // Код показывается в окне подписания; в уведомлениях — только напоминание, что код готов.
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-    onError: notifyError,
+    onError: (error) => failed(error),
   });
 }
 
@@ -342,6 +365,8 @@ export function useConfirmSigning(id: number) {
       qc.setQueryData(keys.application(app.id), app);
       qc.invalidateQueries({ queryKey: ['application', id] });
     },
+    // Текст ошибки показывает окно подписания; здесь только обновляем экран.
+    onError: (error) => refreshOnConflict(qc, error, id),
   });
 }
 
@@ -391,6 +416,8 @@ export function useAnalystDecision(id: number) {
       qc.invalidateQueries({ queryKey: ['application', id] });
       qc.invalidateQueries({ queryKey: ['applications'] });
     },
+    // Текст ошибки показывает панель решения; здесь только обновляем экран.
+    onError: (error) => refreshOnConflict(qc, error, id),
   });
 }
 

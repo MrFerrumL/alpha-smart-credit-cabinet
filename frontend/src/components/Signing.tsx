@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext';
 import { NBSP, date, dateTime, money, moneyBig, months, rate } from '../lib/format';
 import { nb } from '../lib/nobreak';
 import { BarsLegend, PaymentBars } from './PaymentBars';
+import { LoadError } from './States';
 import { StatusBlock } from './Status';
 
 function useCountdown(until: string | null): number {
@@ -171,9 +172,11 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
       <Title order={2} className="potok-say">
         {signed ? 'Договор подписан' : 'Договор готов к подписанию'}
       </Title>
-      <Text c="dimmed" mt={4}>
-        {c ? nb(`Кредитный договор №${NBSP}${c.number}`) : 'Готовим договор…'}
-      </Text>
+      {(c || !contract.isError) && (
+        <Text c="dimmed" mt={4}>
+          {c ? nb(`Кредитный договор №${NBSP}${c.number}`) : 'Готовим договор…'}
+        </Text>
+      )}
 
       {c && (
         <>
@@ -241,23 +244,31 @@ export function SigningCard({ app, extra }: { app: Application; extra?: ReactNod
                 : 'Перечисляем деньги на расчётный счёт компании — это займёт несколько секунд.'}
         </div>
       ) : canSign ? (
-        <>
-          <Checkbox
-            mt="lg"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.currentTarget.checked)}
-            label="Я ознакомился с договором и графиком платежей и согласен с условиями"
-          />
-          <div className="potok-cta">
-            <div className="potok-cta-main">
-              <Button size="lg" disabled={!agreed} onClick={() => setModalOpened(true)}>
-                Подписать кодом
-              </Button>
+        // Согласие и подпись — только когда договор загружен: подписывать то, чего клиент не видел, нельзя.
+        c ? (
+          <>
+            <Checkbox
+              mt="lg"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.currentTarget.checked)}
+              label="Я ознакомился с договором и графиком платежей и согласен с условиями"
+            />
+            <div className="potok-cta">
+              <div className="potok-cta-main">
+                <Button size="lg" disabled={!agreed} onClick={() => setModalOpened(true)}>
+                  Подписать кодом
+                </Button>
+              </div>
+              {extra}
             </div>
-            {extra}
-          </div>
-          <CodeModal app={app} opened={modalOpened} onClose={() => setModalOpened(false)} />
-        </>
+            <CodeModal app={app} opened={modalOpened} onClose={() => setModalOpened(false)} />
+          </>
+        ) : contract.isError ? (
+          <>
+            <LoadError error={contract.error} what="договор" onRetry={() => contract.refetch()} />
+            {extra && <div className="potok-cta">{extra}</div>}
+          </>
+        ) : null
       ) : (
         <>
           <div className="potok-inline-note">Подписать договор может только руководитель компании.</div>

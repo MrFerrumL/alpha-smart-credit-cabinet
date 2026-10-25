@@ -2408,6 +2408,27 @@ a.potok-note-title:hover {
     order: -1;
   }
 
+  /* Запрос банка: «Отозвать заявку» стоит после запроса и его кнопки, а не над ними. Обёртки статуса растворяются,
+     чтобы действие можно было переставить в конец блока. */
+  .potok-status-asking {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .potok-status-asking > .potok-status,
+  .potok-status-asking .potok-status-row {
+    display: contents;
+  }
+
+  .potok-status-asking .potok-status-row > :first-child {
+    margin-top: 16px;
+  }
+
+  .potok-status-asking .potok-status-actions {
+    order: 1;
+    margin-top: 16px;
+  }
+
   .potok-home .potok-news {
     order: 1;
   }

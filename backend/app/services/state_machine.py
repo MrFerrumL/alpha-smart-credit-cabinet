@@ -39,9 +39,7 @@ def apply_transition(
     """info — текст статуса для уведомления клиенту, если он зависит от заявки (например, у овердрафта)."""
     src = Status(application.status)
     if not can_transition(src, to, actor):
-        raise InvalidTransition(
-            f"Нельзя перевести заявку из статуса «{STATUS_INFO[src].title}» в «{STATUS_INFO[to].title}»."
-        )
+        raise InvalidTransition(f"Заявка уже в статусе «{STATUS_INFO[src].title}» — показали актуальное состояние")
     now = utcnow()
     application.status = to.value
     if to == Status.SUBMITTED:

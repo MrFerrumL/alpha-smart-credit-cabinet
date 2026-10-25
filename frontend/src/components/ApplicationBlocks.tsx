@@ -26,6 +26,14 @@ import { Chip } from './Status';
 
 // --- Решение банка -----------------------------------------------------------------------------
 
+/** Вид обеспечения в анкете (код → подпись). */
+export const COLLATERAL_TITLES: Record<string, string> = {
+  real_estate: 'Недвижимость',
+  vehicle: 'Транспорт',
+  equipment: 'Оборудование',
+  guarantee: 'Поручительство собственника',
+};
+
 /**
  * Условия, которые показываем по заявке. Пока предложение не принято — то, что клиент просил; после принятия
  * (подписание, выдача) — условия договора, а запрошенные остаются только справкой «вы просили».
@@ -131,6 +139,7 @@ function TaskItem({ app, task, readOnly, primary }: { app: Application; task: Cl
             allowNegative={false}
             allowDecimal={false}
             placeholder="Сумма"
+            aria-label={task.title}
             style={{ flex: 1, maxWidth: 280 }}
           />
           <Button
@@ -145,7 +154,13 @@ function TaskItem({ app, task, readOnly, primary }: { app: Application; task: Cl
       )}
       {canAnswer && task.kind === 'question' && (
         <Stack gap="xs" mt="md">
-          <Textarea value={String(value)} onChange={(e) => setValue(e.currentTarget.value)} autosize minRows={2} />
+          <Textarea
+            value={String(value)}
+            onChange={(e) => setValue(e.currentTarget.value)}
+            aria-label={task.title}
+            autosize
+            minRows={2}
+          />
           <Group>
             <Button
               variant={primary ? 'filled' : 'default'}

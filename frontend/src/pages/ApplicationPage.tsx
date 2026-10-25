@@ -16,7 +16,7 @@ import { useApplicationStream } from '../api/stream';
 import type { Application, ClientTask } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { AnalystCard } from '../components/AnalystPanel';
-import { ChecksCard, DocumentList, TasksCard, shownTerms } from '../components/ApplicationBlocks';
+import { COLLATERAL_TITLES, ChecksCard, DocumentList, TasksCard, shownTerms } from '../components/ApplicationBlocks';
 import { AutoExplanation, DecisionBlock, DecisionReasons, NextSteps } from '../components/Decision';
 import { IssuedCard, SigningCard } from '../components/Signing';
 import { History } from '../components/History';
@@ -24,40 +24,59 @@ import { MyCompany } from '../components/Side';
 import { DecisionSkeleton, LoadError } from '../components/States';
 import { nb } from '../lib/nobreak';
 import { StatusBlock, StatusChip } from '../components/Status';
-import { dateTime, money, months, typo } from '../lib/format';
+import { dateTime, money, months, monthsShort, typo } from '../lib/format';
+
+/** Заявка с предложением банка: отзыв равен отказу от него, и клиенту важно увидеть, что именно он теряет. */
+const OFFER_STAGE = ['approved', 'counter_offer', 'signing'];
 
 function CancelAction({ app }: { app: Application }) {
   const cancel = useCancelApplication();
   const [opened, setOpened] = useState(false);
   const [comment, setComment] = useState('');
   const draft = app.status.code === 'draft';
+  const offer = OFFER_STAGE.includes(app.status.code) ? app.offer : null;
   return (
     <>
       <Button variant="subtle" size="md" px={0} onClick={() => setOpened(true)}>
-        {draft ? 'Закрыть черновик' : 'Отозвать заявку'}
+        {draft ? 'Удалить черновик' : 'Отозвать заявку'}
       </Button>
-      <Modal opened={opened} onClose={() => setOpened(false)} title={<Text fw={600}>Отозвать заявку?</Text>}>
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
+        title={<Text fw={600}>{draft ? 'Удалить черновик?' : 'Отозвать заявку?'}</Text>}
+      >
         <Stack>
           <Text fz="sm" c="dimmed">
-            Заявка будет закрыта. Новую можно подать в любой момент — данные компании подставятся автоматически.
+            {draft ? (
+              'Черновик будет закрыт без отправки в банк. Новую заявку можно подать в любой момент — данные компании подставятся автоматически.'
+            ) : offer ? (
+              <>
+                Одобренное предложение банка — {money(offer.amount)} на {monthsShort(offer.term_months)} — перестанет
+                действовать. Чтобы получить кредит, понадобится новая заявка и новая проверка.
+              </>
+            ) : (
+              'Заявка будет закрыта. Новую можно подать в любой момент — данные компании подставятся автоматически.'
+            )}
           </Text>
-          <Textarea
-            label="Почему отзываете, необязательно"
-            placeholder="Например: нашли другое финансирование"
-            value={comment}
-            onChange={(e) => setComment(e.currentTarget.value)}
-            autosize
-            minRows={2}
-          />
+          {!draft && (
+            <Textarea
+              label="Почему отзываете, необязательно"
+              placeholder="Например: нашли другое финансирование"
+              value={comment}
+              onChange={(e) => setComment(e.currentTarget.value)}
+              autosize
+              minRows={2}
+            />
+          )}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setOpened(false)}>
-              Не отзывать
+              {draft ? 'Оставить' : 'Не отзывать'}
             </Button>
             <Button
               loading={cancel.isPending}
               onClick={() => cancel.mutate({ id: app.id, comment: comment || undefined }, { onSuccess: () => setOpened(false) })}
             >
-              Отозвать
+              {draft ? 'Удалить' : 'Отозвать'}
             </Button>
           </Group>
         </Stack>
@@ -77,8 +96,9 @@ function StatusSection({ app, live, tasks }: { app: Application; live: boolean; 
   const moving = !app.status.terminal && !app.status.action_required && app.status.code !== 'draft';
   const canCancel = app.allowed_actions.includes('cancel') && !app.allowed_actions.includes('decline_offer');
   const why = app.status.code === 'manual_review' ? (app.decision?.reasons ?? []) : [];
+  const asking = app.status.code === 'needs_info';
   return (
-    <section className="potok-decision">
+    <section className={asking ? 'potok-decision potok-status-asking' : 'potok-decision'}>
       <StatusBlock
         app={app}
         onPage
@@ -102,7 +122,7 @@ function StatusSection({ app, live, tasks }: { app: Application; live: boolean; 
           </div>
         )}
       </StatusBlock>
-      {app.status.code === 'needs_info' && <TasksCard app={app} tasks={tasks} embedded />}
+      {asking && <TasksCard app={app} tasks={tasks} embedded />}
     </section>
   );
 }
@@ -147,6 +167,43 @@ function AgreedTerms({ app }: { app: Application }) {
 }
 
 const CHECKING = ['submitted', 'validation', 'enrichment', 'scoring', 'manual_review', 'needs_info'];
+
+/** Пока банк проверяет заявку — то, что клиент просил: сумма, срок, оценка платежа и залог. */
+function RequestedTerms({ app }: { app: Application }) {
+  const products = useProducts();
+  const terms = shownTerms(app, products.data);
+  const collateral = app.form?.collateral;
+  if (!CHECKING.includes(app.status.code)) return null;
+  return (
+    // На телефоне стоит сразу за «Что дальше», а не в конце страницы.
+    <section className="potok-panel potok-phone-first">
+      <Title order={3}>Ваша заявка</Title>
+      <dl className="potok-pairs">
+        <div>
+          <dt>Сумма</dt>
+          <dd>{money(terms.amount)}</dd>
+        </div>
+        <div>
+          <dt>Срок</dt>
+          <dd>{months(terms.term)}</dd>
+        </div>
+        <div>
+          <dt>{terms.interestOnly ? 'Проценты в месяц' : 'Платёж в месяц'}</dt>
+          <dd>{terms.payment}</dd>
+        </div>
+        {collateral?.kind && (
+          <div>
+            <dt>Залог</dt>
+            <dd>
+              {COLLATERAL_TITLES[collateral.kind] ?? 'Указан'}
+              {collateral.value ? `, ${money(collateral.value)}` : ''}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </section>
+  );
+}
 
 export function ApplicationPage() {
   const { id } = useParams();
@@ -238,6 +295,7 @@ export function ApplicationPage() {
         </div>
         <div className="potok-col">
           <NextSteps app={app} />
+          <RequestedTerms app={app} />
           <AgreedTerms app={app} />
           {documents.data && documents.data.length > 0 && (
             <section className="potok-panel">
