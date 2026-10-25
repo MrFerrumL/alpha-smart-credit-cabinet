@@ -17,10 +17,13 @@ export function statusLabel(app: Pick<Application, 'status' | 'offer' | 'product
   return app.status.title;
 }
 
-/** Чип статуса: приглушённый фон, тёмный текст того же тона и точка. Текст не обрезается. */
-export function Chip({ tone, children, dot = true }: { tone: Tone; children: ReactNode; dot?: boolean }) {
+/**
+ * Чип статуса: приглушённый фон, тёмный текст того же тона и точка. Текст не обрезается; длинный (wrap) переносится
+ * на следующую строку, а не выходит за край узкой колонки.
+ */
+export function Chip({ tone, children, dot = true, wrap = false }: { tone: Tone; children: ReactNode; dot?: boolean; wrap?: boolean }) {
   return (
-    <span className="potok-chip" data-tone={CHIP_TONE[tone]} data-dot={dot}>
+    <span className="potok-chip" data-tone={CHIP_TONE[tone]} data-dot={dot} data-wrap={wrap || undefined}>
       {children}
     </span>
   );

@@ -24,7 +24,7 @@ import { MyCompany } from '../components/Side';
 import { DecisionSkeleton, LoadError } from '../components/States';
 import { nb } from '../lib/nobreak';
 import { StatusBlock, StatusChip } from '../components/Status';
-import { dateTime, money, months, monthsShort, typo } from '../lib/format';
+import { dateTime, lowerFirst, money, months, monthsShort, typo } from '../lib/format';
 
 /** Заявка с предложением банка: отзыв равен отказу от него, и клиенту важно увидеть, что именно он теряет. */
 const OFFER_STAGE = ['approved', 'counter_offer', 'signing'];
@@ -84,9 +84,6 @@ function CancelAction({ app }: { app: Application }) {
     </>
   );
 }
-
-/** «По этому продукту…» → «по этому продукту…»; аббревиатуры («БКИ не ответило») остаются как есть. */
-const lowerFirst = (s: string) => (/^.\p{Ll}/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 /**
  * Статус без решения: проверки, ожидание специалиста, запрос информации. Пока заявка ждёт, в одном блоке — где она,
@@ -239,7 +236,7 @@ export function ApplicationPage() {
       />
     );
   }
-  if (bank) return <AnalystCard app={app} back={back} events={events.data} />;
+  if (bank) return <AnalystCard app={app} back={back} events={events.data} tasks={tasks.data} documents={documents.data} />;
 
   const code = app.status.code;
   const decided = ['approved', 'counter_offer', 'rejected'].includes(code) && !!app.decision;

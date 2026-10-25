@@ -386,6 +386,17 @@ body {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
+  flex: none;
+}
+
+/* Длинный чип (расхождение, состояние предложения) переносится, а не выходит за край узкой колонки. */
+.potok-chip[data-wrap='true'] {
+  height: auto;
+  min-height: 28px;
+  padding-block: 6px;
+  line-height: 1.3;
+  white-space: normal;
+  flex: initial;
 }
 
 .potok-chip[data-tone='plain']::before {

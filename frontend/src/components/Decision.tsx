@@ -485,9 +485,16 @@ const HARD_STOP_TIPS = [
   'Другой продукт или меньшая сумма решение не изменят: ограничение касается компании, а не условий кредита',
 ];
 
-const OUTCOME: Record<string, string> = {
+/** Заголовки решения на экране клиента; их же показывает предпросмотр «Клиент увидит» в карточке аналитика. */
+export const OUTCOME: Record<string, string> = {
   approved: 'Банк готов выдать кредит',
   counter_offer: 'Банк готов выдать на других условиях',
+};
+
+export const REASONS_TITLE: Record<string, string> = {
+  approved: 'Почему одобрено',
+  counter_offer: 'Почему условия другие',
+  rejected: 'Почему банк отказал',
 };
 
 /** Блок решения — один на экране: статус, исход, сумма и платёж, сравнение, график, действие. */
@@ -538,7 +545,7 @@ export function DecisionBlock({ app }: { app: Application }) {
         </div>
         <div className="potok-lists">
           <section>
-            <Title order={3}>Почему банк отказал</Title>
+            <Title order={3}>{REASONS_TITLE.rejected}</Title>
             <ul aria-label="Причины отказа">
               {app.decision.reasons.map((r) => (
                 <li key={r}>{typo(r)}</li>
@@ -582,7 +589,7 @@ export function DecisionReasons({ app }: { app: Application }) {
   const d = app.decision;
   if (!d || !d.reasons.length) return null;
   const title =
-    app.status.code === 'approved' ? 'Почему одобрено' : app.status.code === 'counter_offer' ? 'Почему условия другие' : null;
+    app.status.code === 'approved' || app.status.code === 'counter_offer' ? REASONS_TITLE[app.status.code] : null;
   if (!title) return null;
   return (
     <section className="potok-panel">

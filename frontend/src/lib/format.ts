@@ -118,6 +118,9 @@ export function monthLabel(iso: string, withYear: boolean): string {
  * от единицы («3 млн ₽», «12 месяцев») и от своих разрядов («150 000»). Тире приклеивается к слову слева
  * неразрывным пробелом, у диапазона — «словосоединителем» U+2060.
  */
+/** Строчная первая буква после двоеточия («Почему у вас: по этому продукту…»); аббревиатуры (БКИ, ФНС) не трогаем. */
+export const lowerFirst = (s: string) => (/^.\p{Ll}/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+
 export function typo(text: string): string {
   return text
     .replace(/ — /g, `${NBSP}— `)
