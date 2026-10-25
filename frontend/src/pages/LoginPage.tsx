@@ -1,5 +1,5 @@
 import { Button, Combobox, PasswordInput, Text, TextInput, Title, useCombobox } from '@mantine/core';
-import { useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate, type Location } from 'react-router';
 
 import { api } from '../api/client';
@@ -8,7 +8,7 @@ import type { DemoAccount, Tone, TokenResponse, User } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Chip } from '../components/Status';
 import { Logo } from '../components/ui';
-import { typo } from '../lib/format';
+import { NBSP, typo } from '../lib/format';
 
 // Пароль всех тестовых учёток — он же написан в README; реальных учёток в демо нет.
 const DEMO_PASSWORD = 'demo1234';
@@ -111,6 +111,76 @@ function EmailField({
   );
 }
 
+/** Кусок строки маршрута: текст или профиль — имя, которое подставляет учётку в форму. */
+type RoutePart = string | { email: string; name: string };
+
+const OLGA = { email: 'bakery@demo.local', name: 'Ольга Северова' };
+const MARIA = { email: 'analyst@demo.local', name: 'Мария Кредитова' };
+
+/** Маршрут проверки — те же шесть шагов, что в README, раздел «Проверка за 10 минут»: кем войти и что будет. */
+const ROUTE: { title: string; parts: RoutePart[] }[] = [
+  { title: 'Одобрение и выдача', parts: [OLGA, ' (пекарня): 3 млн на 12 мес., подпись кодом, деньги на счёте'] },
+  {
+    title: 'Другие условия',
+    parts: [
+      { email: 'sklad@demo.local', name: 'Дмитрий Орлов' },
+      ': 10 млн → банк даёт 4,5 млн на 16 мес. и показывает, сколько одобрит на каждом сроке',
+    ],
+  },
+  {
+    title: 'Решение аналитика',
+    parts: [{ email: 'vector@demo.local', name: 'Игорь Волков' }, ' подаёт 25 млн под залог, затем ', MARIA, ' решает по заявке'],
+  },
+  {
+    title: 'Отказ и запрос документов',
+    parts: [
+      { email: 'start@demo.local', name: 'Павел Быстров' },
+      ' получит отказ с причинами, ',
+      { email: 'smirnova@demo.local', name: 'Анна Смирнова' },
+      ' — запрос выписки',
+    ],
+  },
+  { title: 'Сбой бюро', parts: ['команда из README, раздел «Сбой источника»: заявка пекарни дойдёт до решения после повтора запроса'] },
+  { title: 'Кредитная политика', parts: [MARIA, ', симулятор порогов: видно, у каких заявок изменился бы исход'] },
+];
+
+/**
+ * «Как проверить за 10 минут» — под формой входа, только в демо-режиме. Имя в шаге подставляет почту и пароль так же,
+ * как выбор профиля в списке «Почта»; входит пользователь сам, кнопкой «Войти».
+ */
+function CheckRoute({ accounts, onPick }: { accounts: DemoAccount[]; onPick: (a: DemoAccount) => void }) {
+  const id = useId();
+  const byEmail = new Map(accounts.map((a) => [a.email, a]));
+  const part = (p: RoutePart, i: number) => {
+    if (typeof p === 'string') return typo(p);
+    const a = byEmail.get(p.email);
+    if (!a) return <span key={i}>{p.name}</span>;
+    return (
+      <button key={i} type="button" className="potok-login-who" aria-label={`Выбрать профиль ${a.full_name}`} onClick={() => onPick(a)}>
+        {a.full_name}
+      </button>
+    );
+  };
+  return (
+    <section className="potok-login-route" aria-labelledby={id}>
+      <Title order={2} size="h4" id={id} className="potok-login-route-h">
+        Как проверить за 10 минут
+      </Title>
+      <p className="potok-login-route-lead">{typo('Нажмите на имя — почта и пароль подставятся в форму.')}</p>
+      <ol className="potok-login-steps">
+        {ROUTE.map((step) => (
+          <li key={step.title}>
+            <span className="potok-login-step-t">{step.title}</span>
+            {`${NBSP}— `}
+            {step.parts.map(part)}
+          </li>
+        ))}
+      </ol>
+      <p className="potok-login-route-tip">Клиента и банк удобно открыть в двух вкладках: у каждой вкладки свой вход</p>
+    </section>
+  );
+}
+
 /**
  * Декоративная линия входа — белая лента на «Тумане» за заголовком: одна петля, затем вниз между текстом и формой,
  * не задевая форму. Рисуется один раз при открытии; на телефоне — одна дуга над формой, без движения.
@@ -185,7 +255,7 @@ export function LoginPage() {
 
   return (
     <div className="potok-login-page">
-      <main className="potok-login">
+      <main className={demo.length > 0 ? 'potok-login potok-login-routed' : 'potok-login'}>
         <LoginLine />
         <section className="potok-login-promo">
           <Logo size={32} />
@@ -202,24 +272,27 @@ export function LoginPage() {
             <li>Договор подписывается кодом в кабинете</li>
           </ul>
         </section>
-        <section className="potok-panel potok-login-form">
-          <Title order={2} className="potok-login-h">
-            Вход в кабинет
-          </Title>
-          <form onSubmit={submit}>
-            <EmailField value={email} onChange={setEmail} accounts={demo} onPick={pick} />
-            <PasswordInput
-              mt="md"
-              label="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-              autoComplete="current-password"
-            />
-            <Button ref={submitRef} type="submit" size="lg" fullWidth mt="lg" loading={pending} disabled={!email.trim()}>
-              Войти
-            </Button>
-          </form>
-        </section>
+        <div className="potok-login-side">
+          <section className="potok-panel potok-login-form">
+            <Title order={2} className="potok-login-h">
+              Вход в кабинет
+            </Title>
+            <form onSubmit={submit}>
+              <EmailField value={email} onChange={setEmail} accounts={demo} onPick={pick} />
+              <PasswordInput
+                mt="md"
+                label="Пароль"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                autoComplete="current-password"
+              />
+              <Button ref={submitRef} type="submit" size="lg" fullWidth mt="lg" loading={pending} disabled={!email.trim()}>
+                Войти
+              </Button>
+            </form>
+          </section>
+          {demo.length > 0 && <CheckRoute accounts={demo} onPick={pick} />}
+        </div>
         <p className="potok-login-note">Прототип для Альфа-Хакатона 2026. Все компании и люди вымышлены, данные синтетические.</p>
       </main>
     </div>

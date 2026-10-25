@@ -1851,8 +1851,13 @@ a.potok-note-title:hover {
   background: var(--potok-ink);
 }
 
-.potok-login-form {
+/* Правая колонка: форма входа, под ней в демо-режиме — маршрут проверки. */
+.potok-login-side {
   grid-area: form;
+  min-width: 0;
+}
+
+.potok-login-form {
   padding: 32px;
 }
 
@@ -1865,6 +1870,80 @@ a.potok-note-title:hover {
   margin: 0;
   font-size: 13px;
   color: var(--potok-steel);
+}
+
+/* Маршрут проверки — вторичный текст на холсте под формой: без карточки, иконок и цветных плашек. */
+.potok-login-route {
+  margin-top: 32px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--potok-steel);
+}
+
+.potok-login-route-h {
+  color: var(--potok-ink);
+}
+
+.potok-login-route-lead {
+  margin: 4px 0 0;
+}
+
+.potok-login-steps {
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+
+.potok-login-steps li + li {
+  margin-top: 8px;
+}
+
+.potok-login-steps li::marker {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--potok-ink);
+}
+
+.potok-login-step-t {
+  font-weight: 500;
+  color: var(--potok-ink);
+}
+
+/* Имя профиля — кнопка в строке текста, выглядит как ссылка. */
+.potok-login-who {
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--potok-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.potok-login-who:hover {
+  text-decoration-thickness: 2px;
+}
+
+.potok-login-route-tip {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* С маршрутом правая колонка выше промо: подпись о прототипе встаёт под промо, к низу колонки, — экран не растёт
+   на её строку и левый край не пустеет. */
+@media (min-width: 721px) {
+  .potok-login-routed {
+    grid-template-areas: 'promo form' 'note form';
+  }
+
+  .potok-login-routed .potok-login-note {
+    align-self: end;
+    max-width: 44ch;
+  }
 }
 
 .potok-personas {
@@ -2724,6 +2803,10 @@ a.potok-note-title:hover {
 
   .potok-login-form {
     padding: 20px 16px;
+  }
+
+  .potok-login-route {
+    margin-top: 24px;
   }
 
   .potok-contract {
