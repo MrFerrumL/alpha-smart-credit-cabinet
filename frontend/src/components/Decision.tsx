@@ -1,14 +1,23 @@
-import { Button, Collapse, Group, Loader, Modal, Stack, Table, Text, Textarea, Title } from '@mantine/core';
+import { Button, Collapse, Group, Loader, Modal, Radio, Stack, Table, Text, Textarea, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { useId, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
-import { useAcceptOffer, useDecisionExplanation, useDeclineOffer, useHandoffOffer, useProducts } from '../api/hooks';
-import type { Application, Product } from '../api/types';
+import {
+  useAcceptOffer,
+  useApprovalMap,
+  useCreateApplication,
+  useDecisionExplanation,
+  useDeclineOffer,
+  useHandoffOffer,
+  useProducts,
+} from '../api/hooks';
+import type { Application, ApprovalMap, ApprovalTerm, Product } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { schedule, type ScheduleRowCalc } from '../lib/finance';
 import { NBSP, dayMonth, money, moneyBig, months, monthsShort, rate, typo } from '../lib/format';
 import { nb } from '../lib/nobreak';
+import { ChoiceMark } from './Choice';
 import { BarsLegend, PaymentBars } from './PaymentBars';
 import { StatusBlock } from './Status';
 
@@ -124,6 +133,189 @@ function Compare({ app, offered }: { app: Application; offered?: Product }) {
         ))}
       </Table.Tbody>
     </Table>
+  );
+}
+
+/** «≈ 343 000 ₽»: платёж на карте — ориентир до тысяч (у небольших сумм — до десятков). */
+function approx(value: number): number {
+  return value >= 10_000 ? Math.round(value / 1000) * 1000 : Math.round(value / 10) * 10;
+}
+
+const sentence = (text: string) => (/[.!?…]$/.test(text) ? text : `${text}.`);
+
+/** Строка карты: срок, сумма до границы, платёж, отметки; полоса — сумма относительно лучшего срока на карте. */
+function ApprovalRow({ term, best, interestOnly }: { term: ApprovalTerm; best: number; interestOnly: boolean }) {
+  const marks = [term.requested && 'вы просили', term.offered && 'предложение банка'].filter(Boolean) as string[];
+  const tags = marks.length > 0 && (
+    <>
+      {' '}
+      <span className="potok-amap-tags">
+        {marks.map((m) => (
+          <span key={m} className="potok-tag">
+            {m}
+          </span>
+        ))}
+      </span>
+    </>
+  );
+  if (term.amount === null || term.monthly_payment === null) {
+    // Не проходит ни на какую сумму — не вариант выбора: строка тихая, без отметки, стрелки её пропускают.
+    return (
+      <div className="potok-amap-row potok-amap-off">
+        <span className="potok-choice-text">
+          <span className="potok-choice-title">{monthsShort(term.term_months)} — не пройдёт</span>
+          {tags}
+        </span>
+      </div>
+    );
+  }
+  const pay = `≈${NBSP}${money(approx(term.monthly_payment))} ${interestOnly ? 'процентов в месяц' : 'в месяц'}`;
+  if (term.offered) {
+    // Эти условия банк уже предлагает выше — новая заявка на них была бы дублем, поэтому строка не для выбора.
+    return (
+      <div className="potok-amap-row potok-amap-current">
+        <span className="potok-choice-text">
+          <span className="potok-amap-line">
+            <span className="potok-choice-title">
+              {monthsShort(term.term_months)} — до {money(term.amount)}
+            </span>{' '}
+            <span className="potok-amap-pay">
+              <span className="potok-amap-dot">· </span>
+              {pay}
+            </span>
+          </span>
+          {tags}
+          <span className="potok-amap-bar" aria-hidden="true">
+            <span style={{ width: `${Math.max(4, Math.round((term.amount / best) * 100))}%` }} />
+          </span>
+          <span className="potok-note">Эти условия — в предложении выше</span>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <Radio.Card value={String(term.term_months)} className="potok-choice potok-amap-row">
+      <span className="potok-choice-text">
+        <span className="potok-amap-line">
+          <span className="potok-choice-title">
+            {monthsShort(term.term_months)} — до {money(term.amount)}
+          </span>{' '}
+          <span className="potok-amap-pay">
+            <span className="potok-amap-dot">· </span>
+            {pay}
+          </span>
+        </span>
+        {tags}
+        <span className="potok-amap-bar" aria-hidden="true">
+          <span style={{ width: `${Math.max(4, Math.round((term.amount / best) * 100))}%` }} />
+        </span>
+      </span>
+      <ChoiceMark />
+    </Radio.Card>
+  );
+}
+
+/** Ни один срок не проходит: одной строкой почему и что банк предложит вместо этого продукта. */
+function ApprovalNone({ app, map }: { app: Application; map: ApprovalMap }) {
+  // Сервер объясняет по самому долгому сроку и минимальной сумме: раз не проходят они, не проходит ни один срок.
+  const only = map.terms.length === 1 ? map.terms[0].term_months : null;
+  const where = only !== null ? `на ${months(only)}` : 'ни на одном сроке';
+  const alt = map.alternative;
+  const offer = app.offer;
+  const isOffer =
+    !!alt && !!offer && alt.product_code === offer.product_code && alt.amount === offer.amount && alt.term_months === offer.term_months;
+  return (
+    <>
+      <Text className="potok-amap-none" mt={10}>
+        <b>{nb(`«${map.product_name}» не пройдёт ${where}.`)}</b> {map.explanation && nb(typo(sentence(map.explanation)))}
+      </Text>
+      {alt && (
+        <Text className="potok-note" mt={8}>
+          {nb(
+            typo(
+              isOffer
+                ? `Поэтому банк предлагает «${alt.product_name}» — его условия выше.`
+                : `По тем же правилам банк одобрит «${alt.product_name}»: ${money(alt.amount)} на ${months(alt.term_months)}.`,
+            ),
+          )}
+        </Text>
+      )}
+    </>
+  );
+}
+
+/**
+ * «Сколько банк одобрит на другом сроке» — граница одобрения по тому же продукту под решением банка. Суммы посчитаны
+ * теми же правилами скоринга и решения на тех же данных компании, поэтому это не прогноз: заявку на выбранные условия
+ * банк одобрит сразу, пока данные компании не изменились. Выбор строки — как в списке вариантов: красная рамка по
+ * всему контуру. «Оформить на этих условиях» — вторичная кнопка: главное действие экрана остаётся одно.
+ * Аналитику, при одобрении и при стоп-факторе панели нет (у стоп-фактора сервер возвращает пустую карту).
+ */
+function ApprovalMapPanel({ app }: { app: Application }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const create = useCreateApplication();
+  const headingId = useId();
+  const owner = user?.role === 'client' && user.company?.id === app.company.id;
+  const map = useApprovalMap(app, owner);
+  const [picked, setPicked] = useState<string | null>(null);
+  const data = map.data;
+  if (!owner || !data || data.terms.length === 0) return null;
+
+  const passing = data.terms.filter((t) => t.amount !== null);
+  const best = Math.max(0, ...passing.map((t) => t.amount ?? 0));
+  // Строку с условиями действующего предложения не выбирают: они уже выше, в решении банка.
+  const chosen = passing.find((t) => !t.offered && String(t.term_months) === picked) ?? null;
+  const start = () => {
+    if (!chosen || chosen.amount === null) return;
+    create.mutate(
+      {
+        product_code: data.product_code,
+        purpose: app.purpose,
+        amount: chosen.amount,
+        term_months: chosen.term_months,
+        // Анкета — из этой заявки, чтобы не заполнять её заново; согласие на запрос в БКИ даётся к каждой заявке.
+        form: { ...app.form, consent_bki: false },
+      },
+      { onSuccess: (created) => navigate(`/applications/${created.id}/edit`) },
+    );
+  };
+
+  return (
+    <section className="potok-amap" aria-labelledby={headingId}>
+      <Title order={3} id={headingId}>
+        Сколько банк одобрит на другом сроке
+      </Title>
+      {passing.length === 0 ? (
+        <ApprovalNone app={app} map={data} />
+      ) : (
+        <>
+          <Text className="potok-note" mt={6}>
+            Это не прогноз: суммы посчитаны по тем же правилам и данным, что и решение выше. Заявку на выбранные срок и
+            сумму банк одобрит сразу, если данные компании не изменятся.
+          </Text>
+          <Radio.Group value={picked} onChange={setPicked}>
+            <div className="potok-choices potok-amap-list" role="radiogroup" aria-label="Сколько банк одобрит на каждом сроке">
+              {data.terms.map((t) => (
+                <ApprovalRow key={t.term_months} term={t} best={best} interestOnly={data.repayment === 'interest_only'} />
+              ))}
+            </div>
+          </Radio.Group>
+          <div className="potok-amap-act">
+            <Button variant="default" size="md" disabled={!chosen} loading={create.isPending} onClick={start}>
+              Оформить на этих условиях
+            </Button>
+            <Text fz="sm" c="dimmed" aria-live="polite">
+              {chosen && chosen.amount !== null
+                ? `Новая заявка: ${money(chosen.amount)} на ${months(chosen.term_months)}. Анкета заполнится из этой${
+                    app.offer?.status === 'active' ? ', а нынешнее предложение останется в силе' : ''
+                  }.`
+                : 'Выберите срок — откроется новая заявка с этими суммой и сроком.'}
+            </Text>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -323,6 +515,7 @@ export function DecisionBlock({ app }: { app: Application }) {
         <Figures amount={offer.amount} term={offer.term_months} ratePct={offer.rate} payment={offer.monthly_payment} interestOnly={interestOnly} />
         <Cost rows={rows} amount={offer.amount} interestOnly={interestOnly} monthly={offer.monthly_payment} term={offer.term_months} />
         {code === 'counter_offer' && <Compare app={app} offered={offered} />}
+        {code === 'counter_offer' && <ApprovalMapPanel app={app} />}
         <OfferSchedule rows={rows} interestOnly={interestOnly} amount={offer.amount} />
         <OfferActions app={app} />
       </section>
@@ -361,6 +554,8 @@ export function DecisionBlock({ app }: { app: Application }) {
             </ul>
           </section>
         </div>
+        {/* Без стоп-фактора — сколько банк одобрит на каждом сроке: иногда меньшая сумма или другой срок проходят. */}
+        {!hardStop && <ApprovalMapPanel app={app} />}
         {/* При стоп-факторе предложить нечего: «На главную» — спокойная вторичная кнопка, не закреплённая внизу. */}
         <div className="potok-cta">
           {hardStop ? (

@@ -222,6 +222,39 @@ export interface Decision {
   tips: string[];
 }
 
+/** Одна строка границы одобрения: сколько банк одобрит по тому же продукту на этот срок. */
+export interface ApprovalTerm {
+  term_months: number;
+  /** Наибольшая сумма (не больше запрошенной), которую банк одобрит; null — не пройдёт ни на какую. */
+  amount: number | null;
+  rate: number | null;
+  monthly_payment: number | null;
+  requested: boolean;
+  offered: boolean;
+}
+
+/** Граница одобрения по сроку — теми же правилами, что и решение (GET /applications/{id}/approval-map). */
+export interface ApprovalMap {
+  product_code: string;
+  product_name: string;
+  repayment: 'annuity' | 'interest_only';
+  requested_amount: number;
+  requested_term: number;
+  offered_term: number | null;
+  /** Пусто — оценки нет, сработал стоп-фактор или решение только за специалистом: панель не показывается. */
+  terms: ApprovalTerm[];
+  /** Почему продукт не проходит ни на одном сроке — одной строкой. */
+  explanation: string | null;
+  alternative: {
+    product_code: string;
+    product_name: string;
+    amount: number;
+    term_months: number;
+    rate: number;
+    monthly_payment: number;
+  } | null;
+}
+
 /** Пояснение решения простыми словами, составленное языковой моделью (необязательная функция). */
 export interface DecisionExplanation {
   status: 'pending' | 'ready' | 'none';

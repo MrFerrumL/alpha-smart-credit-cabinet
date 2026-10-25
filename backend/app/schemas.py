@@ -599,6 +599,50 @@ class ReplayOut(BaseModel):
     policy_version_current: str
 
 
+# --- Граница одобрения по сроку ------------------------------------------------------------
+
+
+class ApprovalTermOut(BaseModel):
+    term_months: int
+    amount: int | None = Field(
+        description="Наибольшая сумма (не больше запрошенной), которую банк одобрит на этот срок; пусто — не пройдёт"
+    )
+    rate: float | None = Field(description="Ставка при этой сумме, % годовых")
+    monthly_payment: int | None = Field(description="Платёж в месяц при этой сумме; у овердрафта — только проценты")
+    requested: bool = Field(description="Срок из заявки")
+    offered: bool = Field(description="Срок нынешнего предложения банка по этому же продукту")
+
+
+class ApprovalAlternativeOut(BaseModel):
+    product_code: str
+    product_name: str
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+
+
+class ApprovalMapOut(BaseModel):
+    """Сколько банк одобрит по тому же продукту на каждом стандартном сроке. Считается теми же правилами скоринга
+    и решения на последнем снимке признаков, поэтому заявку на эти условия конвейер одобрит, пока данные компании
+    не изменились. Ничего не меняет."""
+
+    product_code: str
+    product_name: str
+    repayment: str = Field(description="annuity | interest_only")
+    requested_amount: int
+    requested_term: int
+    offered_term: int | None = Field(description="Срок предложения банка, если оно по этому же продукту")
+    terms: list[ApprovalTermOut] = Field(
+        description="По возрастанию срока; пусто — оценки нет, сработал стоп-фактор, решение принял специалист "
+        "или по правилам оно всегда за специалистом"
+    )
+    explanation: str | None = Field(description="Почему продукт не проходит ни на одном сроке — одной строкой")
+    alternative: ApprovalAlternativeOut | None = Field(
+        description="Другой продукт, который по тем же правилам предложит банк, если этот не проходит"
+    )
+
+
 # --- Симулятор политики --------------------------------------------------------------------
 
 

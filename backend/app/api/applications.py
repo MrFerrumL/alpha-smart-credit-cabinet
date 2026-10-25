@@ -15,6 +15,7 @@ from app.models import ApplicationEvent, ClientTask, Document, User
 from app.pipeline.steps import SOURCE_TITLES, SOURCES, checks_by_source
 from app.schemas import (
     AnalystDecisionIn,
+    ApprovalMapOut,
     AssessmentOut,
     ReplayOut,
     ApplicationCreate,
@@ -33,6 +34,7 @@ from app.schemas import (
     TaskOut,
 )
 from app.services import applications as svc
+from app.services import approval_map as approval_map_svc
 from app.services import decisions as decisions_svc
 from app.services import signing as signing_svc
 from app.services import tasks as tasks_svc
@@ -116,6 +118,17 @@ def application_explanation(
     application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> ExplanationOut:
     return explanation_jobs.for_client(db, svc.get_for_user(db, user, application_id))
+
+
+@router.get(
+    "/{application_id}/approval-map",
+    response_model=ApprovalMapOut,
+    summary="Сколько банк одобрит по тому же продукту на каждом сроке — по тем же правилам, ничего не меняет",
+)
+def application_approval_map(
+    application_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> ApprovalMapOut:
+    return approval_map_svc.approval_map(db, svc.get_for_user(db, user, application_id))
 
 
 @router.get(

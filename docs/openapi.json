@@ -908,6 +908,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/approval-map": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Сколько банк одобрит по тому же продукту на каждом сроке — по тем же правилам, ничего не меняет",
+        "operationId": "application_approval_map_api_applications__application_id__approval_map_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalMapOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/assessment": {
       "get": {
         "tags": [
@@ -2339,6 +2386,190 @@
         },
         "type": "object",
         "title": "ApplicationUpdate"
+      },
+      "ApprovalAlternativeOut": {
+        "properties": {
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_code",
+          "product_name",
+          "amount",
+          "term_months",
+          "rate",
+          "monthly_payment"
+        ],
+        "title": "ApprovalAlternativeOut"
+      },
+      "ApprovalMapOut": {
+        "properties": {
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "repayment": {
+            "type": "string",
+            "title": "Repayment",
+            "description": "annuity | interest_only"
+          },
+          "requested_amount": {
+            "type": "integer",
+            "title": "Requested Amount"
+          },
+          "requested_term": {
+            "type": "integer",
+            "title": "Requested Term"
+          },
+          "offered_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Term",
+            "description": "Срок предложения банка, если оно по этому же продукту"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/ApprovalTermOut"
+            },
+            "type": "array",
+            "title": "Terms",
+            "description": "По возрастанию срока; пусто — оценки нет, сработал стоп-фактор, решение принял специалист или по правилам оно всегда за специалистом"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation",
+            "description": "Почему продукт не проходит ни на одном сроке — одной строкой"
+          },
+          "alternative": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalAlternativeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Другой продукт, который по тем же правилам предложит банк, если этот не проходит"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_code",
+          "product_name",
+          "repayment",
+          "requested_amount",
+          "requested_term",
+          "offered_term",
+          "terms",
+          "explanation",
+          "alternative"
+        ],
+        "title": "ApprovalMapOut",
+        "description": "Сколько банк одобрит по тому же продукту на каждом стандартном сроке. Считается теми же правилами скоринга\nи решения на последнем снимке признаков, поэтому заявку на эти условия конвейер одобрит, пока данные компании\nне изменились. Ничего не меняет."
+      },
+      "ApprovalTermOut": {
+        "properties": {
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount",
+            "description": "Наибольшая сумма (не больше запрошенной), которую банк одобрит на этот срок; пусто — не пройдёт"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate",
+            "description": "Ставка при этой сумме, % годовых"
+          },
+          "monthly_payment": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Payment",
+            "description": "Платёж в месяц при этой сумме; у овердрафта — только проценты"
+          },
+          "requested": {
+            "type": "boolean",
+            "title": "Requested",
+            "description": "Срок из заявки"
+          },
+          "offered": {
+            "type": "boolean",
+            "title": "Offered",
+            "description": "Срок нынешнего предложения банка по этому же продукту"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term_months",
+          "amount",
+          "rate",
+          "monthly_payment",
+          "requested",
+          "offered"
+        ],
+        "title": "ApprovalTermOut"
       },
       "AssessmentOut": {
         "properties": {

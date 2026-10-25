@@ -111,6 +111,141 @@
   color: var(--potok-steel);
 }
 
+/*
+ * Граница одобрения по сроку — под сравнением с заявкой. Строки — тот же выбор, что и в списках вариантов (красная
+ * рамка по всему контуру у выбранной), только компактнее; строка, которая не проходит, — тихая, на холсте и без
+ * отметки. Полоса — сумма относительно лучшего срока на карте, графитом.
+ */
+.potok-amap {
+  margin-top: 32px;
+}
+
+.potok-amap-list {
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.potok-choice.potok-amap-row {
+  padding: 12px 20px;
+}
+
+.potok-amap-off {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  color: var(--potok-steel);
+}
+
+.potok-amap-off .potok-choice-title {
+  font-weight: 400;
+}
+
+/* Строка с условиями действующего предложения: видна на карте, но не для выбора — они уже в решении выше. */
+.potok-amap-current {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+}
+
+.potok-amap-current .potok-note {
+  display: block;
+  margin-top: 8px;
+}
+
+.potok-amap-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+}
+
+.potok-amap-pay {
+  font-size: 14px;
+  color: var(--potok-steel);
+  white-space: nowrap;
+}
+
+.potok-amap-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.potok-amap-bar {
+  display: block;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--potok-line);
+  overflow: hidden;
+}
+
+.potok-amap-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--potok-neutral-700);
+}
+
+.potok-amap-row[data-checked] .potok-amap-bar > span {
+  background: var(--potok-ink);
+}
+
+.potok-amap-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-top: 16px;
+}
+
+.potok-amap-act > .mantine-Text-root {
+  flex: 1 1 240px;
+  max-width: 60ch;
+}
+
+.potok-amap-none {
+  max-width: 72ch;
+}
+
+@media (max-width: 720px) {
+  .potok-amap {
+    margin-top: 24px;
+  }
+
+  .potok-choice.potok-amap-row,
+  .potok-amap-off,
+  .potok-amap-current {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  /* Платёж — второй строкой под суммой, без точки-разделителя в начале строки. */
+  .potok-amap-line {
+    flex-direction: column;
+  }
+
+  .potok-amap-dot {
+    display: none;
+  }
+
+  .potok-amap-act {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .potok-amap-act > .mantine-Text-root {
+    flex: none;
+  }
+}
+
 .potok-sched {
   margin-top: 32px;
 }

@@ -11,6 +11,7 @@ import type {
   AppNotification,
   Application,
   ApplicationEvent,
+  ApprovalMap,
   Calculation,
   ClientTask,
   Company,
@@ -162,12 +163,32 @@ export function useDecisionExplanation(app: Application) {
   });
 }
 
+/**
+ * Сколько банк одобрит по тому же продукту на каждом сроке. Решение по заявке уже принято и не меняется, поэтому
+ * карта запрашивается один раз на решение (ключ — время решения).
+ */
+export function useApprovalMap(app: Application, enabled: boolean) {
+  return useQuery({
+    queryKey: ['application', app.id, 'approval-map', app.decided_at],
+    queryFn: () => api<ApprovalMap>(`/applications/${app.id}/approval-map`),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
 export function useCreateApplication() {
   const qc = useQueryClient();
   const failed = useActionError();
   return useMutation({
-    mutationFn: (body: { product_code: string; purpose: Purpose; amount: number; term_months: number }) =>
-      api<Application>('/applications', { method: 'POST', json: body }),
+    mutationFn: (body: {
+      product_code: string;
+      purpose: Purpose;
+      amount: number;
+      term_months: number;
+      /** Анкета новой заявки — например, из прежней, чтобы не заполнять её заново. */
+      form?: Application['form'];
+    }) => api<Application>('/applications', { method: 'POST', json: body }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['applications'] }),
     onError: (error) => failed(error),
   });
