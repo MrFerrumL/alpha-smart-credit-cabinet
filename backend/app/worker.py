@@ -15,7 +15,7 @@ from sqlalchemy.exc import OperationalError
 from app.config import get_settings
 from app.db import SessionLocal
 from app.explanation.jobs import run_forever as run_explanations
-from app.observability import configure_logging
+from app.observability import bind_context, configure_logging
 from app.pipeline.queue import recover_stale
 from app.pipeline.runner import process_next
 from app.pipeline.steps import expire_offers, expire_requests
@@ -64,12 +64,14 @@ def main() -> None:
             heartbeat.touch()
         try:
             if time.monotonic() >= next_housekeeping:
-                with SessionLocal() as db:
-                    expired = expire_offers(db) + expire_requests(db)
-                    # Задачи упавшего соседнего воркера возвращаются в очередь и во время работы, не только на старте.
-                    recovered = recover_stale(db)
-                if expired or recovered:
-                    log.info("housekeeping", extra={"expired": expired, "recovered": recovered})
+                # Уборка не относится к запросу или задаче: её строки лога помечены своим id, а не «-».
+                with bind_context("housekeeping"):
+                    with SessionLocal() as db:
+                        expired = expire_offers(db) + expire_requests(db)
+                        # Задачи упавшего соседнего воркера возвращаются в очередь и во время работы.
+                        recovered = recover_stale(db)
+                    if expired or recovered:
+                        log.info("housekeeping", extra={"expired": expired, "recovered": recovered})
                 next_housekeeping = time.monotonic() + settings.housekeeping_interval_s
             worked = process_next(SessionLocal, sources)
         except OperationalError:

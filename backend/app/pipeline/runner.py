@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.domain.statuses import Actor
 from app.models import Application, Job, utcnow
+from app.observability import bind_context
 from app.pipeline.queue import claim_next
 from app.pipeline.steps import ON_EXHAUSTED, STEPS, RetryLater
 from app.services.integrations import ExternalSources
@@ -75,7 +76,8 @@ def process_next(session_factory: SessionFactory, sources: ExternalSources) -> b
         # Номер попытки — метка этого запуска: по нему видно, не забрал ли задачу другой запуск.
         job_id, kind, application_id, attempt = job.id, job.kind, job.application_id, job.attempts
 
-    with session_factory() as db:
+    # Все строки лога шага (и его ошибки) несут id задачи и попытки, а также заявку: по ним шаг находится в журнале.
+    with bind_context(f"job-{job_id}.{attempt}", application_id), session_factory() as db:
         app = db.get(Application, application_id)
         expected, step = STEPS[kind]
         if app is None or app.status != expected.value:

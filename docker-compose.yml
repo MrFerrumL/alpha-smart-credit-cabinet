@@ -54,6 +54,8 @@ services:
     ports:
       # API и Swagger — только с этой машины; кабинет ходит в API через nginx.
       - "127.0.0.1:8000:8000"
+    # uvicorn ждёт открытые запросы до 10 с (--timeout-graceful-shutdown в Dockerfile); запас на закрытие соединений.
+    stop_grace_period: 20s
     restart: unless-stopped
 
   # Фоновый конвейер: проверка → ЕГРЮЛ/ФНС/БКИ → оценка → решение.

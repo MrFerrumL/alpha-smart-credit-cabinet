@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.pipeline.runner import run_until_idle  # noqa: E402
+from app.security import ip_throttle, login_throttle  # noqa: E402
 from app.seed import seed  # noqa: E402
 from app.services.integrations import ExternalSources, get_sources  # noqa: E402
 from mockapi.main import app as mock_app  # noqa: E402
@@ -34,6 +35,16 @@ def database():
         seed(db)
     yield
     engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def fresh_login_throttle():
+    """Счётчики неудачных входов общие на процесс: без сброса неверные пароли одного теста закрыли бы вход другому."""
+    login_throttle.clear()
+    ip_throttle.clear()
+    yield
+    login_throttle.clear()
+    ip_throttle.clear()
 
 
 @pytest.fixture

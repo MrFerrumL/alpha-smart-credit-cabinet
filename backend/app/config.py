@@ -16,7 +16,13 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{(Path(__file__).resolve().parents[1] / 'local.db').as_posix()}"
 
     secret_key: str = "dev-only-secret-change-me-in-production"
-    token_ttl_minutes: int = 12 * 60
+    token_ttl_minutes: int = 8 * 60
+
+    # Защита входа по паролю: столько неудач для одной почты за окно закрывают вход на то же время (0 — выключено).
+    login_max_failures: int = 5
+    login_failure_window_s: int = 300
+    # Грубее: столько неудач с одного адреса (по любым почтам) за то же окно закрывают вход с него (0 — выключено).
+    login_ip_max_failures: int = 50
 
     mocks_url: str = "http://localhost:8001"
     integration_timeout_s: float = 3.0
