@@ -139,6 +139,15 @@ export async function sign(page: Page, onCodeShown?: () => Promise<void>, actor:
   await actor.type(page, (await code.innerText()).trim());
 }
 
+/** Клиент отказывается от предложения банка: заявка закрывается и не меняет этап компании для следующих тестов. */
+export async function declineOffer(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Отказаться от предложения' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Отказаться от предложения?' });
+  await dialog.getByRole('button', { name: 'Отказаться', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Отказаться от предложения' })).toBeHidden();
+}
+
 /** Выдача: «Деньги на счёте!», кредит с графиком на нужное число платежей. */
 export async function expectIssued(page: Page, amount: string, term: number): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Деньги на счёте!' })).toBeVisible({ timeout: 60_000 });

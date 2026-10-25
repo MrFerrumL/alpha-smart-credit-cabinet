@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { apply, login, money, PURPOSE } from './helpers';
+import { apply, declineOffer, login, money, PURPOSE } from './helpers';
 
 // Граница одобрения по сроку: под решением банка клиент видит, сколько банк одобрит по тому же продукту на каждом
 // сроке — по тем же правилам, что и решение, — и может сразу оформить новую заявку на выбранных условиях.
@@ -47,28 +47,26 @@ test('sklad: сколько банк одобрит на другом сроке
   await start.click();
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
   expect(page.url()).not.toContain(`/applications/${id}/`);
-  await expect(page.getByRole('heading', { name: 'Проверьте данные компании' })).toBeVisible();
-  await page.getByRole('button', { name: 'Далее' }).click();
-  await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
-  await expect(page.getByLabel('Сумма', { exact: true })).toHaveValue(/^4\s500\s000/);
-  await expect(page.getByLabel('Срок', { exact: true })).toHaveValue('24');
-  // Анкета заполнена из прежней заявки: выручку вводить заново не нужно.
-  const next = page.getByRole('button', { name: 'Далее' });
-  await next.click();
-  await expect(page.getByRole('heading', { name: 'Финансы компании' })).toBeVisible();
-  await expect(page.getByLabel('Выручка в месяц')).not.toHaveValue('');
+  // Анкета перенесена из прежней заявки целиком, поэтому открывается сразу проверка перед отправкой:
+  // условия — выбранные на карте, выручку вводить заново не нужно.
+  await expect(page.getByRole('heading', { name: 'Всё верно?' })).toBeVisible();
+  const loan = page.getByRole('region', { name: 'Кредит', exact: true });
+  await expect(loan).toContainText(money(4_500_000));
+  await expect(loan).toContainText(/24\sмесяца/);
+  await expect(page.getByRole('region', { name: 'Финансы', exact: true })).toContainText('Выручка в месяц');
 
   // Это не прогноз: новая заявка на выбранные условия одобряется ровно на них.
   const created = page.url().match(/applications\/(\d+)/)![1];
-  await next.click();
-  await expect(page.getByRole('heading', { name: 'Документы' })).toBeVisible();
-  await next.click();
-  await expect(page.getByRole('heading', { name: 'Всё верно?' })).toBeVisible();
   await page.getByLabel(/Согласен на запрос кредитной истории/).check();
   await page.getByRole('button', { name: 'Отправить в банк' }).click();
   await expect(page).toHaveURL(new RegExp(`/applications/${created}$`));
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
   await expect(page.getByTestId('offer-amount')).toContainText(money(4_500_000));
+
+  // Обе заявки сценариям дальше не нужны: клиент отказывается от обоих предложений.
+  await declineOffer(page);
+  await page.goto(`/applications/${id}`);
+  await declineOffer(page);
 });
 
 test('clean: продукт не проходит ни на одном сроке — одна строка почему, без выбора', async ({ page }) => {

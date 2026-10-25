@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { analystDecides, apply, login, money, PURPOSE, session } from './helpers';
+import { analystDecides, apply, declineOffer, login, money, PURPOSE, session } from './helpers';
 
 // Карточка аналитика: сводка сверху (почему у вас, рекомендация, расхождения), запросы и документы клиента,
 // предпросмотр «Клиент увидит» под формой решения и итог решения вместо формы.
@@ -58,6 +58,8 @@ test('vector: сводка, предпросмотр для клиента и и
   await expect(page.getByRole('heading', { name: 'Банк готов выдать на других условиях' })).toBeVisible();
   await expect(page.getByTestId('offer-amount')).toContainText(money(18_000_000));
   await expect(page.getByText(/Сумма уменьшена до 18/).first()).toBeVisible();
+  // Предложение не нужно сценариям дальше: клиент от него отказывается.
+  await declineOffer(page);
 });
 
 test('smirnova: аналитик видит запрос банка, ответ клиента и выписку, после решения — кто решил', async ({ page, browser }) => {
@@ -101,4 +103,6 @@ test('smirnova: аналитик видит запрос банка, ответ 
   await expect(decided).toContainText(`Предложено: ${money(500_000)} на 12 месяцев`);
   await expect(decided).toContainText('Решение: Мария Кредитова');
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
+  // Одобренная заявка подняла бы в ленте Смирновой этап «одобрено» для следующих сценариев — закрываем её.
+  await declineOffer(page);
 });
