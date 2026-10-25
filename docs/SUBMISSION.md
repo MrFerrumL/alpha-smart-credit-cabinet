@@ -23,10 +23,14 @@
 git clone https://github.com/donaldtrumpdev-commits/alpha.git
 cd alpha
 git checkout v1.0.1
-docker compose up --build
+docker compose up --build -d --wait
 ```
 
-`docker compose up --build -d --wait` вернёт управление, когда всё готово. Файл `.env` не нужен.
+Команда вернёт управление, когда все сервисы готовы. Файл `.env` не нужен. Требования, пошаговая инструкция для
+Windows, macOS и Linux и что делать, если что-то пошло не так, — в README, разделы
+[«Требования»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#требования),
+[«Пошаговый запуск с нуля»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#пошаговый-запуск-с-нуля) и
+[«Если что-то не так»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#если-что-то-не-так).
 
 | Что | Адрес |
 |---|---|
@@ -75,7 +79,7 @@ docker compose up --build
 
 | Документ | Что внутри |
 |---|---|
-| [README.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md) | Запуск, сценарии, переменные, тесты, ограничения |
+| [README.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md) | Полная инструкция: запуск, сценарии, архитектура, данные, настройки, тесты, ограничения |
 | [docs/product.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/product.md) | Пользователи, модель кредитного процесса, почему такой MVP |
 | [docs/architecture.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/architecture.md) | Компоненты и ключевые решения |
 | [docs/api.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/api.md) | API; спецификация [openapi.json](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/openapi.json) и [коллекция запросов](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/postman_collection.json) |
@@ -84,6 +88,18 @@ docker compose up --build
 | [docs/test-scenarios.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/test-scenarios.md) | Тестовые сценарии |
 | [docs/llm.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/llm.md) | Необязательное пояснение решения |
 | [THIRD_PARTY_NOTICES.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/THIRD_PARTY_NOTICES.md) | Сторонние компоненты и лицензии |
+
+## Подробности в README
+
+| Раздел README | Что там |
+|---|---|
+| [Архитектура](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#архитектура) | Сервисы, путь заявки от отправки до решения, воркер и очередь задач, ключевые решения |
+| [Данные](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#данные) | Таблицы, статусы заявки, миграции, синтетические данные, файлы, тома |
+| [Оценка заявки и решение](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#оценка-заявки-и-решение) | Стоп-факторы, скоринг, правила политики, продукты |
+| [Безопасность и надёжность](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#безопасность-и-надёжность) | Роли и доступ, вход, секреты, проверка входных данных, идемпотентность |
+| [Настройки](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#настройки) | Все переменные окружения |
+| [Тесты и CI](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#тесты-и-ci) | Слои проверок, локальный запуск, что делает CI |
+| [Ограничения](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#ограничения) | Упрощения прототипа и что было бы иначе в промышленной версии |
 
 ## Ограничения
 
