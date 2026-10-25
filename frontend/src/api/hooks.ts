@@ -60,6 +60,8 @@ export const keys = {
   products: ['products'] as const,
   applications: (status?: string) => ['applications', status ?? 'all'] as const,
   application: (id: number) => ['application', id] as const,
+  /** Ключ сохранения черновика (мутация): анкета ждёт его, прежде чем открыться снова. */
+  saveApplication: (id: number) => ['application', id, 'save'] as const,
   events: (id: number) => ['application', id, 'events'] as const,
   explanation: (id: number, decidedAt: string | null) => ['application', id, 'explanation', decidedAt] as const,
 };
@@ -267,6 +269,7 @@ export function useUpdateApplication(id: number) {
   const qc = useQueryClient();
   const failed = useActionError(id);
   return useMutation({
+    mutationKey: keys.saveApplication(id),
     mutationFn: (body: Partial<ApplicationUpdate>) =>
       api<Application>(`/applications/${id}`, { method: 'PATCH', json: body }),
     onSuccess: (app) => qc.setQueryData(keys.application(app.id), app),

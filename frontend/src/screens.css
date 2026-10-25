@@ -672,6 +672,11 @@
   font-size: 32px !important;
 }
 
+/* Заголовок шага получает фокус при смене шага (для экранного диктора); это не элемент управления — без рамки. */
+.potok-wz-h:focus {
+  outline: none;
+}
+
 .potok-wz-inset {
   margin-top: 24px;
   padding: 16px 20px;
@@ -776,10 +781,6 @@
   background: var(--potok-paper);
 }
 
-.potok-meter[data-over='true'] .potok-meter-verdict {
-  color: var(--err-text);
-}
-
 .potok-meter-limit {
   position: absolute;
   top: -4px;
@@ -817,6 +818,47 @@
 .potok-meter-verdict {
   margin: 8px 0 0;
   font-weight: 500;
+}
+
+/* Три проверки банка на шаге «Финансы»: строки через тонкий разделитель, вывод — обычным текстом, без красного. */
+.potok-checks {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-checks > li {
+  padding: 14px 0;
+}
+
+.potok-checks > li + li,
+.potok-checks-note {
+  border-top: 1px solid var(--potok-line-strong);
+}
+
+.potok-checks-what {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-checks-text {
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.potok-checks-sub {
+  margin: 2px 0 0;
+  color: var(--potok-steel);
+}
+
+.potok-checks .potok-meter {
+  margin-top: 10px;
+}
+
+.potok-checks-note {
+  margin: 0;
+  padding-top: 14px;
+  max-width: 68ch;
 }
 
 .potok-docs {

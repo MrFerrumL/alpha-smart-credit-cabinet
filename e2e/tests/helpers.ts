@@ -68,8 +68,8 @@ export function money(value: number): string {
 export type ApplyStep = 'match' | 'company' | 'loan' | 'finance' | 'documents' | 'review' | 'consent';
 export type ApplyHook = (step: ApplyStep) => Promise<void>;
 
-/** Подбор → анкета → «Отправить в банк». Возвращает номер заявки в URL. */
-export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyHook, actor: Actor = fast): Promise<string> {
+/** Подбор → «Оформить заявку»: открыт первый шаг анкеты нового черновика. Возвращает номер заявки в URL. */
+export async function startDraft(page: Page, input: ApplicationInput, onStep?: ApplyHook, actor: Actor = fast): Promise<string> {
   // Запись демо открывает подбор через меню сама, остальные тесты приходят сюда с другой страницы.
   if (!/\/match$/.test(page.url())) await page.goto('/match');
   await actor.click(page.getByText(input.purpose, { exact: true }));
@@ -83,10 +83,14 @@ export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyH
   await onStep?.('match');
   await actor.click(card.getByRole('button', { name: 'Оформить заявку' }));
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
-  const id = page.url().match(/applications\/(\d+)/)![1];
-
-  const next = page.getByRole('button', { name: 'Далее' });
   await expect(page.getByRole('heading', { name: 'Проверьте данные компании' })).toBeVisible();
+  return page.url().match(/applications\/(\d+)/)![1];
+}
+
+/** Подбор → анкета → «Отправить в банк». Возвращает номер заявки в URL. */
+export async function apply(page: Page, input: ApplicationInput, onStep?: ApplyHook, actor: Actor = fast): Promise<string> {
+  const id = await startDraft(page, input, onStep, actor);
+  const next = page.getByRole('button', { name: 'Далее' });
   await onStep?.('company');
   await actor.click(next);
   await expect(page.getByRole('heading', { name: 'Какой кредит нужен' })).toBeVisible();
