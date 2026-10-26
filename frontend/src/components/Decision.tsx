@@ -255,10 +255,12 @@ function ApprovalMapPanel({ app }: { app: Application }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const create = useCreateApplication();
+  const decline = useDeclineOffer(app.id);
   const headingId = useId();
   const owner = user?.role === 'client' && user.company?.id === app.company.id;
   const map = useApprovalMap(app, owner);
   const [picked, setPicked] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const data = map.data;
   if (!owner || !data || data.terms.length === 0) return null;
 
@@ -266,19 +268,25 @@ function ApprovalMapPanel({ app }: { app: Application }) {
   const best = Math.max(0, ...passing.map((t) => t.amount ?? 0));
   // Строку с условиями действующего предложения не выбирают: они уже выше, в решении банка.
   const chosen = passing.find((t) => !t.offered && String(t.term_months) === picked) ?? null;
-  const start = () => {
+  // Новая заявка заменяет действующее предложение: два одобрения на одних данных дали бы компании двойной лимит.
+  const offer = app.offer?.status === 'active' ? app.offer : null;
+  const canReplace = !offer || app.allowed_actions.includes('decline_offer');
+  const busy = create.isPending || decline.isPending;
+  const start = async () => {
     if (!chosen || chosen.amount === null) return;
-    create.mutate(
-      {
-        product_code: data.product_code,
-        purpose: app.purpose,
-        amount: chosen.amount,
-        term_months: chosen.term_months,
-        // Анкета — из этой заявки, чтобы не заполнять её заново; согласие на запрос в БКИ даётся к каждой заявке.
-        form: { ...app.form, consent_bki: false },
-      },
-      { onSuccess: (created) => navigate(`/applications/${created.id}/edit`) },
-    );
+    // Сначала новая заявка, потом отказ от прежнего предложения: если что-то сорвётся, клиент не останется без него.
+    const created = await create.mutateAsync({
+      product_code: data.product_code,
+      purpose: app.purpose,
+      amount: chosen.amount,
+      term_months: chosen.term_months,
+      // Анкета — из этой заявки, чтобы не заполнять её заново; согласие на запрос в БКИ даётся к каждой заявке.
+      form: { ...app.form, consent_bki: false },
+    });
+    if (offer) {
+      await decline.mutateAsync({ comment: `Оформлена новая заявка: ${money(chosen.amount)} на ${months(chosen.term_months)}` });
+    }
+    navigate(`/applications/${created.id}/edit`);
   };
 
   return (
@@ -302,17 +310,52 @@ function ApprovalMapPanel({ app }: { app: Application }) {
             </div>
           </Radio.Group>
           <div className="potok-amap-act">
-            <Button variant="default" size="md" disabled={!chosen} loading={create.isPending} onClick={start}>
+            <Button
+              variant="default"
+              size="md"
+              disabled={!chosen || !canReplace}
+              loading={busy}
+              onClick={() => (offer ? setConfirming(true) : start().catch(() => {}))}
+            >
               Оформить на этих условиях
             </Button>
             <Text fz="sm" c="dimmed" aria-live="polite">
-              {chosen && chosen.amount !== null
-                ? `Новая заявка: ${money(chosen.amount)} на ${months(chosen.term_months)}. Анкета заполнится из этой${
-                    app.offer?.status === 'active' ? ', а нынешнее предложение останется в силе' : ''
-                  }.`
-                : 'Выберите срок — откроется новая заявка с этими суммой и сроком.'}
+              {!canReplace
+                ? 'Новую заявку вместо этого предложения оформляет руководитель компании.'
+                : chosen && chosen.amount !== null
+                  ? `Новая заявка: ${money(chosen.amount)} на ${months(chosen.term_months)}. Анкета заполнится из этой${
+                      offer ? ', а нынешнее предложение банка закроется' : ''
+                    }.`
+                  : 'Выберите срок — откроется новая заявка с этими суммой и сроком.'}
             </Text>
           </div>
+          {offer && chosen && chosen.amount !== null && (
+            <Modal
+              opened={confirming}
+              onClose={() => setConfirming(false)}
+              title={<Text fw={600}>Заменить предложение банка?</Text>}
+            >
+              <Stack>
+                <Text fz="sm" c="dimmed">
+                  {nb(
+                    typo(
+                      `Нынешнее предложение — ${money(offer.amount)} на ${months(offer.term_months)} — закроется. Вместо него ` +
+                        `откроется новая заявка: ${money(chosen.amount)} на ${months(chosen.term_months)}. Банк одобрит её на ` +
+                        'этих условиях, если данные компании не изменятся.',
+                    ),
+                  )}
+                </Text>
+                <Group justify="flex-end">
+                  <Button variant="default" onClick={() => setConfirming(false)}>
+                    Вернуться
+                  </Button>
+                  <Button loading={busy} onClick={() => start().catch(() => setConfirming(false))}>
+                    Заменить
+                  </Button>
+                </Group>
+              </Stack>
+            </Modal>
+          )}
         </>
       )}
     </section>

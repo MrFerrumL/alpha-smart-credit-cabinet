@@ -45,7 +45,11 @@ test('sklad: сколько банк одобрит на другом сроке
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth), { timeout: 10_000 }).toBe(PHONE.width);
   await page.setViewportSize({ width: 1366, height: 900 });
 
+  // Новая заявка заменяет действующее предложение — клиент подтверждает это явно.
   await start.click();
+  const confirm = page.getByRole('dialog', { name: 'Заменить предложение банка?' });
+  await expect(confirm).toContainText(`${money(4_500_000)} на 16 месяцев — закроется`);
+  await confirm.getByRole('button', { name: 'Заменить', exact: true }).click();
   await expect(page).toHaveURL(/\/applications\/\d+\/edit$/);
   expect(page.url()).not.toContain(`/applications/${id}/`);
   // Анкета перенесена из прежней заявки целиком, поэтому открывается сразу проверка перед отправкой:
@@ -64,9 +68,12 @@ test('sklad: сколько банк одобрит на другом сроке
   await expect(page.getByRole('heading', { name: 'Банк готов выдать кредит' })).toBeVisible();
   await expect(page.getByTestId('offer-amount')).toContainText(money(4_500_000));
 
-  // Обе заявки сценариям дальше не нужны: клиент отказывается от обоих предложений.
-  await declineOffer(page);
+  // Прежнее предложение закрыто: одобрения не копятся, двойного лимита нет.
   await page.goto(`/applications/${id}`);
+  await expect(page.getByText('Клиент отказался от предложения банка').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Принять предложение' })).toHaveCount(0);
+  // Новое одобрение сценариям дальше не нужно.
+  await page.goto(`/applications/${created}`);
   await declineOffer(page);
 });
 
