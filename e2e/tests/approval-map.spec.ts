@@ -41,7 +41,8 @@ test('sklad: сколько банк одобрит на другом сроке
   // На телефоне панель помещается в ширину экрана.
   await page.setViewportSize(PHONE);
   await expect(panel).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(PHONE.width);
+  // Уведомление о решении выезжает с правого края и на время анимации расширяет документ — ждём, пока оно встанет.
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth), { timeout: 10_000 }).toBe(PHONE.width);
   await page.setViewportSize({ width: 1366, height: 900 });
 
   await start.click();
