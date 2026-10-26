@@ -38,12 +38,12 @@ function CancelAction({ app }: { app: Application }) {
   return (
     <>
       <Button variant="subtle" size="md" px={0} onClick={() => setOpened(true)}>
-        {draft ? 'Удалить черновик' : 'Отозвать заявку'}
+        {draft ? 'Закрыть черновик' : 'Отозвать заявку'}
       </Button>
       <Modal
         opened={opened}
         onClose={() => setOpened(false)}
-        title={<Text fw={600}>{draft ? 'Удалить черновик?' : 'Отозвать заявку?'}</Text>}
+        title={<Text fw={600}>{draft ? 'Закрыть черновик?' : 'Отозвать заявку?'}</Text>}
       >
         <Stack>
           <Text fz="sm" c="dimmed">
@@ -76,7 +76,7 @@ function CancelAction({ app }: { app: Application }) {
               loading={cancel.isPending}
               onClick={() => cancel.mutate({ id: app.id, comment: comment || undefined }, { onSuccess: () => setOpened(false) })}
             >
-              {draft ? 'Удалить' : 'Отозвать'}
+              {draft ? 'Закрыть' : 'Отозвать'}
             </Button>
           </Group>
         </Stack>

@@ -274,7 +274,8 @@ def get_for_user(db: Session, user: User, application_id: int) -> Application:
         raise NotFound("Заявка не найдена")
     if user.role == "client" and app.company_id != user.company_id:
         raise NotFound("Заявка не найдена")
-    if user.role == "analyst" and app.status == Status.DRAFT:
+    # Банк видит только то, что клиент отправил: черновик, закрытый без отправки, остаётся пространством клиента.
+    if user.role == "analyst" and app.submitted_at is None:
         raise NotFound("Заявка не найдена")
     return app
 
@@ -286,7 +287,7 @@ def list_for_user(db: Session, user: User, status: str | None = None) -> list[Ap
             return []
         query = query.where(Application.company_id == user.company_id)
     else:
-        query = query.where(Application.status != Status.DRAFT.value)
+        query = query.where(Application.submitted_at.is_not(None))
     if status:
         query = query.where(Application.status == status)
     return list(db.scalars(query))

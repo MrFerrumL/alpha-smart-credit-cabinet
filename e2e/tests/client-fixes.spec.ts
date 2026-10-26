@@ -63,7 +63,7 @@ test('отзыв заявки с предложением: диалог назы
   await expect(page.getByText('Заявка отозвана').first()).toBeVisible();
 });
 
-test('отзыв черновика: диалог говорит об удалении', async ({ page }) => {
+test('черновик: диалог закрывает его без отправки в банк', async ({ page }) => {
   await login(page, 'Ольга Северова');
   await page.goto('/match');
   await page.getByText(PURPOSE.equipment, { exact: true }).click();
@@ -72,14 +72,14 @@ test('отзыв черновика: диалог говорит об удале
   const id = page.url().match(/applications\/(\d+)/)![1];
 
   await page.goto(`/applications/${id}`);
-  await page.getByRole('button', { name: 'Удалить черновик' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Удалить черновик?' });
+  await page.getByRole('button', { name: 'Закрыть черновик' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Закрыть черновик?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Оставить' }).click();
   await expect(dialog).toBeHidden();
 
-  await page.getByRole('button', { name: 'Удалить черновик' }).click();
-  await dialog.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await page.getByRole('button', { name: 'Закрыть черновик' }).click();
+  await dialog.getByRole('button', { name: 'Закрыть', exact: true }).click();
   await expect(page.getByText('Заявка отозвана').first()).toBeVisible();
 });
 

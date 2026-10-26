@@ -16,6 +16,19 @@ def _draft(client, headers, **overrides) -> dict:
     return response.json()
 
 
+def test_closed_draft_stays_hidden_from_the_bank(client):
+    """Черновик, закрытый без отправки, банку не виден: ни в очереди, ни по прямой ссылке."""
+    owner = auth(client, "bakery@demo.local")
+    draft = _draft(client, owner)
+    closed = client.post(f"/api/applications/{draft['id']}/cancel", headers=owner)
+    assert closed.status_code == 200 and closed.json()["status"]["code"] == "cancelled"
+    analyst = auth(client, "analyst@demo.local")
+    assert client.get(f"/api/applications/{draft['id']}", headers=analyst).status_code == 404
+    queue = client.get("/api/applications", headers=analyst).json()
+    assert draft["id"] not in {a["id"] for a in queue}
+    assert draft["id"] not in {a["id"] for a in client.get("/api/applications?status=cancelled", headers=analyst).json()}
+
+
 def test_unauthorized_request_returns_problem_details(client):
     response = client.get("/api/applications")
     assert response.status_code == 401
