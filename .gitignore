@@ -4,6 +4,14 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.db
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+test-results/
+playwright-report/
+.local-e2e/
 
 # Node
 node_modules/

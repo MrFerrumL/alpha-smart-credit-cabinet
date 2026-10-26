@@ -1,6 +1,6 @@
 # API
 
-Портфолио-дополнение: `GET /api/ml/model` и `POST /api/ml/predict` — экспериментальная модель риска,
+Портфолио-дополнение: `GET /api/ml/model`, `POST /api/ml/predict`, `POST /api/ml/predict-batch` и `GET /api/applications/{id}/ml-risk` — экспериментальная модель риска,
 доступная только аналитику. Примеры и смысл полей: [ML API](ml-api.md).
 
 Спецификация — [openapi.json](openapi.json), она собирается из кода. Здесь то, чего в ней нет: правила доступа,

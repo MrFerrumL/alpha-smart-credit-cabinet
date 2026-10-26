@@ -1049,6 +1049,53 @@
         }
       }
     },
+    "/api/applications/{application_id}/ml-risk": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Experimental ML risk from the saved scoring snapshot; analyst only, no writes",
+        "operationId": "get_application_risk_api_applications__application_id__ml_risk_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRisk"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications/{application_id}/decision": {
       "post": {
         "tags": [
@@ -2064,6 +2111,52 @@
           }
         ]
       }
+    },
+    "/api/ml/predict-batch": {
+      "post": {
+        "tags": [
+          "ML risk"
+        ],
+        "summary": "Experimental predictions for 1–100 rows, input order preserved",
+        "operationId": "predict_batch_api_ml_predict_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRiskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2452,6 +2545,80 @@
           "decided_at"
         ],
         "title": "ApplicationOut"
+      },
+      "ApplicationRisk": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "scoring_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Id"
+          },
+          "scored_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored At"
+          },
+          "source": {
+            "type": "string",
+            "const": "saved_scoring_snapshot",
+            "title": "Source",
+            "default": "saved_scoring_snapshot"
+          },
+          "unavailable_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unavailable Fields"
+          },
+          "prediction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskPrediction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "affects_credit_decision": {
+            "type": "boolean",
+            "const": false,
+            "title": "Affects Credit Decision",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id",
+          "status"
+        ],
+        "title": "ApplicationRisk"
       },
       "ApplicationUpdate": {
         "properties": {
@@ -2950,6 +3117,41 @@
         ],
         "title": "AssessmentOut",
         "description": "Всё, что нужно аналитику для решения: почему заявка у него, оценка, стоп-факторы, рекомендация."
+      },
+      "BatchRiskIn": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RiskFeatures"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "BatchRiskIn"
+      },
+      "BatchRiskOut": {
+        "properties": {
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/RiskPrediction"
+            },
+            "type": "array",
+            "title": "Predictions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "predictions"
+        ],
+        "title": "BatchRiskOut"
       },
       "Body_upload_document_api_applications__application_id__documents_post": {
         "properties": {
@@ -5199,6 +5401,13 @@
             },
             "type": "array",
             "title": "Contributions"
+          },
+          "out_of_training_range": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Out Of Training Range"
           },
           "notice": {
             "type": "string",

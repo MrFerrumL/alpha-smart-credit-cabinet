@@ -14,6 +14,7 @@ def test_generator_has_stochastic_outcomes_and_fixed_seed():
     x2, y2 = generate_data(12000, 42)
     assert np.array_equal(x, x2) and np.array_equal(y, y2)
     assert x.shape == (12000, 7) and set(y) == {0, 1}
+    assert 0.6 < np.mean(x[:, 5] == 0) < 0.7  # Zero tax debt is explicitly represented.
     assert not np.array_equal(y, generate_data(12000, 43)[1])
 
 
@@ -21,7 +22,7 @@ def test_retraining_matches_committed_model_and_beats_constant_baseline(tmp_path
     train(12000, 42, tmp_path)
     expected = json.loads(ARTIFACT_PATH.read_bytes())
     actual = json.loads((tmp_path / "risk_model.json").read_bytes())
-    for key in ("mean", "scale", "coefficients", "intercept", "threshold"):
+    for key in ("mean", "scale", "coefficients", "intercept", "threshold", "training_min", "training_max"):
         np.testing.assert_allclose(actual[key], expected[key], atol=1e-8, rtol=1e-8)
     report = json.loads((tmp_path / "evaluation.json").read_bytes())
     assert report["split_rows"] == {"train": 7200, "validation": 2400, "test": 2400}

@@ -22,6 +22,7 @@ import { COLLATERAL_TITLES } from './ApplicationBlocks';
 import { OUTCOME, REASONS_TITLE } from './Decision';
 import { History } from './History';
 import { MoneyInput } from './Money';
+import { RiskPanel } from './RiskPanel';
 import { Chip, StatusBlock, StatusChip } from './Status';
 
 const OUTCOMES: { value: DecisionOutcome; label: string }[] = [
@@ -1089,6 +1090,7 @@ export function AnalystCard({
             a && (
               <>
                 <AssessmentPanel a={a} />
+                {a.scored && <RiskPanel id={app.id} />}
                 {a.scored && (
                   <section className="potok-panel">
                     <Title order={3}>Условия</Title>

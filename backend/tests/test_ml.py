@@ -45,7 +45,9 @@ def test_feature_contract_rejects_bad_inputs(changes):
 
 @pytest.mark.parametrize("key,value", [
     ("feature_names", []), ("scale", [0] * 7), ("coefficients", [1] * 6),
-    ("threshold", 2), ("intercept", float("nan")), ("schema_version", 2),
+    ("threshold", 2), ("intercept", float("nan")), ("schema_version", 999),
+    ("scale", [1e-300] * 7), ("coefficients", [1e300] * 7),
+    ("training_min", [1e10] * 7), ("training_max", []), ("model_version", ""),
 ])
 def test_invalid_artifact_is_rejected(key, value):
     artifact = json.loads(ARTIFACT_PATH.read_bytes())

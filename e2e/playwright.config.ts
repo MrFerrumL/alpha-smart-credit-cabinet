@@ -12,7 +12,9 @@ export default defineConfig({
   workers: 1,
   // Без повторов: сценарии меняют данные стенда, повтор упавшего теста шёл бы уже по другим данным.
   retries: 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [['list'], ['junit', { outputFile: 'test-results/results.xml' }], ['html', { open: 'never' }]]
+    : [['list'], ['junit', { outputFile: 'test-results/results.xml' }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
     locale: 'ru-RU',

@@ -401,6 +401,30 @@ export interface Terms {
   coverage: number | null;
 }
 
+export interface RiskPrediction {
+  model_version: string;
+  artifact_sha256: string;
+  experimental: true;
+  affects_credit_decision: false;
+  probability_default: number;
+  threshold: number;
+  above_threshold: boolean;
+  intercept_log_odds: number;
+  contributions: { feature: string; log_odds: number }[];
+  out_of_training_range: string[];
+}
+
+export interface ApplicationRisk {
+  application_id: number;
+  status: 'available' | 'unavailable';
+  scoring_id: number | null;
+  scored_at: string | null;
+  source: 'saved_scoring_snapshot';
+  unavailable_fields: string[];
+  prediction: RiskPrediction | null;
+  affects_credit_decision: false;
+}
+
 export interface Assessment {
   review_reason: 'manual_product' | 'grade' | 'source_failure' | 'pipeline_failure' | 'other' | null;
   review_reason_title: string | null;

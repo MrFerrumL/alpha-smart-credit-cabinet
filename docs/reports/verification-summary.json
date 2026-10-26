@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-26",
+  "environment": {
+    "os": "Windows",
+    "python": "3.12.14",
+    "database": "SQLite"
+  },
+  "coverage": {
+    "covered_lines": 4309,
+    "num_statements": 4600,
+    "percent_covered": 92.41502683363149,
+    "percent_covered_display": "92.42",
+    "missing_lines": 291,
+    "excluded_lines": 0,
+    "num_branches": 990,
+    "num_partial_branches": 101,
+    "covered_branches": 857,
+    "missing_branches": 133
+  },
+  "backend_tests": {
+    "passed": 815,
+    "skipped": 1
+  },
+  "ml_training_tests": {
+    "passed": 3
+  },
+  "checks": {
+    "frontend_build": "passed",
+    "openapi": "passed",
+    "postman": "passed",
+    "state_diagram": "passed",
+    "pip_check": "passed"
+  },
+  "ci": "Check GitHub Actions for the exact commit; local results are independent of CI.",
+  "ml_module_coverage": {
+    "app\\ml\\__init__.py": {
+      "covered_lines": 0,
+      "num_statements": 0,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100.00",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 0,
+      "num_partial_branches": 0,
+      "covered_branches": 0,
+      "missing_branches": 0
+    },
+    "app\\ml\\applications.py": {
+      "covered_lines": 39,
+      "num_statements": 39,
+      "percent_covered": 98.03921568627452,
+      "percent_covered_display": "98.04",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 12,
+      "num_partial_branches": 1,
+      "covered_branches": 11,
+      "missing_branches": 1
+    },
+    "app\\ml\\artifact.py": {
+      "covered_lines": 31,
+      "num_statements": 31,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100.00",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 12,
+      "num_partial_branches": 0,
+      "covered_branches": 12,
+      "missing_branches": 0
+    },
+    "app\\ml\\inference.py": {
+      "covered_lines": 32,
+      "num_statements": 32,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100.00",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 0,
+      "num_partial_branches": 0,
+      "covered_branches": 0,
+      "missing_branches": 0
+    },
+    "app\\ml\\schema.py": {
+      "covered_lines": 49,
+      "num_statements": 49,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100.00",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 0,
+      "num_partial_branches": 0,
+      "covered_branches": 0,
+      "missing_branches": 0
+    },
+    "app\\api\\ml.py": {
+      "covered_lines": 14,
+      "num_statements": 14,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100.00",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 0,
+      "num_partial_branches": 0,
+      "covered_branches": 0,
+      "missing_branches": 0
+    }
+  },
+  "browser_tests": {
+    "passed": 6,
+    "specs": [
+      "ml-risk.spec.ts",
+      "analyst-card.spec.ts"
+    ],
+    "duration_seconds": 33.4
+  }
+}

@@ -10,6 +10,7 @@ import type {
   HealthDeps,
   SystemJob,
   Assessment,
+  ApplicationRisk,
   AppNotification,
   Application,
   ApplicationEvent,
@@ -430,6 +431,15 @@ export function useAssessment(id: number, enabled: boolean) {
     queryKey: ['application', id, 'assessment'],
     queryFn: () => api<Assessment>(`/applications/${id}/assessment`),
     enabled,
+  });
+}
+
+export function useApplicationRisk(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['application', id, 'ml-risk'],
+    queryFn: () => api<ApplicationRisk>(`/applications/${id}/ml-risk`),
+    enabled,
+    retry: false,
   });
 }
 

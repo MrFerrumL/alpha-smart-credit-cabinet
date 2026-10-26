@@ -1,0 +1,18 @@
+{
+  "scope": "warm in-process inference only; no HTTP, DB, authentication or concurrency",
+  "model_version": "synthetic-risk-logreg-v2",
+  "artifact_sha256": "1d51f099f111391fa4b236e9c0fddfd25e936c0f8e9c5d2cf0800bd18229f1af",
+  "iterations": 10000,
+  "warmup": 200,
+  "unit": "microseconds",
+  "p50": 10.3,
+  "p95": 19.5,
+  "p99": 29.4,
+  "mean": 13.47824,
+  "environment": {
+    "python": "3.12.14",
+    "os": "Windows",
+    "machine": "AMD64"
+  },
+  "limitations": "Single process and one input; not an API load test or production SLO"
+}

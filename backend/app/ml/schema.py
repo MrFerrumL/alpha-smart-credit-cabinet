@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +36,7 @@ class RiskPrediction(BaseModel):
     above_threshold: bool
     intercept_log_odds: float
     contributions: list[Contribution]
+    out_of_training_range: list[str] = Field(default_factory=list)
     notice: str = "Synthetic-data demonstration; not a validated estimate of real credit risk."
 
 
@@ -44,4 +46,24 @@ class ModelInfo(BaseModel):
     feature_names: list[str]
     training_data: Literal["synthetic"] = "synthetic"
     experimental: Literal[True] = True
+    affects_credit_decision: Literal[False] = False
+
+
+class BatchRiskIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[RiskFeatures] = Field(min_length=1, max_length=100)
+
+
+class BatchRiskOut(BaseModel):
+    predictions: list[RiskPrediction]
+
+
+class ApplicationRisk(BaseModel):
+    application_id: int
+    status: Literal["available", "unavailable"]
+    scoring_id: int | None = None
+    scored_at: datetime | None = None
+    source: Literal["saved_scoring_snapshot"] = "saved_scoring_snapshot"
+    unavailable_fields: list[str] = Field(default_factory=list)
+    prediction: RiskPrediction | None = None
     affects_credit_decision: Literal[False] = False

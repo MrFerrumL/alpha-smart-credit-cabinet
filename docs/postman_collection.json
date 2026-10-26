@@ -959,6 +959,27 @@
           "response": []
         },
         {
+          "name": "Experimental ML risk from the saved scoring snapshot; analyst only, no writes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{{application_id}}/ml-risk",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{application_id}}",
+                "ml-risk"
+              ]
+            },
+            "description": "Experimental ML risk from the saved scoring snapshot; analyst only, no writes\n\nНужен токен аналитика. Используется последний сохранённый снимок признаков отправленной заявки."
+          },
+          "response": []
+        },
+        {
           "name": "Решение аналитика: одобрить, контрпредложение, запросить информацию, отказать, повторить проверки",
           "request": {
             "method": "POST",
@@ -1486,6 +1507,35 @@
               ]
             },
             "description": "Experimental risk estimate on synthetic data\n\nНужен токен аналитика (`analyst@demo.local`). Прогноз не влияет на кредитное решение."
+          },
+          "response": []
+        },
+        {
+          "name": "Experimental predictions for 1–100 rows, input order preserved",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"business_age_years\": 0.0,\n      \"dsr\": 0.0,\n      \"margin\": -1.0,\n      \"max_overdue_days_24m\": 0,\n      \"inquiries_90d\": 0,\n      \"tax_debt_ratio\": 0.0,\n      \"has_credit_history\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ml/predict-batch",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ml",
+                "predict-batch"
+              ]
+            },
+            "description": "Experimental predictions for 1–100 rows, input order preserved\n\nНужен токен аналитика. От 1 до 100 строк, прогнозы не меняют заявки."
           },
           "response": []
         }

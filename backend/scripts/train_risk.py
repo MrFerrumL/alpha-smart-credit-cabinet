@@ -27,6 +27,7 @@ def generate_data(rows: int, seed: int):
     overdue = rng.choice([0, 15, 30, 60, 90, 180], rows, p=[0.65, 0.12, 0.10, 0.07, 0.04, 0.02])
     inquiries = rng.poisson(3, rows)
     tax_ratio = np.clip(rng.exponential(0.025, rows), 0, 1)
+    tax_ratio *= rng.binomial(1, 0.35, rows)  # Many businesses have no tax debt; zero must be represented.
     history = rng.binomial(1, 0.8, rows)
     x = np.column_stack([age, dsr, margin, overdue, inquiries, tax_ratio, history])
     # A designed latent probability, not labels from the existing rule-based scorecard.
@@ -62,10 +63,11 @@ def train(rows: int, seed: int, output: Path):
     threshold = float(candidates[np.argmin(costs)])  # Never tune on the test partition.
     scaler, classifier = pipeline.steps[0][1], pipeline.steps[1][1]
     artifact = {
-        "schema_version": 1, "model_version": "synthetic-risk-logreg-v1", "training_data": "synthetic",
+        "schema_version": 2, "model_version": "synthetic-risk-logreg-v2", "training_data": "synthetic",
         "feature_names": list(FEATURE_NAMES), "mean": scaler.mean_.tolist(), "scale": scaler.scale_.tolist(),
         "coefficients": classifier.coef_[0].tolist(), "intercept": float(classifier.intercept_[0]),
         "threshold": threshold, "seed": seed,
+        "training_min": train_x.min(axis=0).tolist(), "training_max": train_x.max(axis=0).tolist(),
     }
     raw = (json.dumps(artifact, indent=2, allow_nan=False) + "\n").encode()
     portable = RiskModel(raw)
@@ -89,7 +91,7 @@ def train(rows: int, seed: int, output: Path):
             calibration.append({"lower": round(float(low), 1), "count": int(mask.sum()),
                                 "predicted": float(test_p[mask].mean()), "observed": float(test_y[mask].mean())})
     report = {
-        "dataset": "synthetic-v1; Bernoulli outcomes from designed latent probabilities",
+        "dataset": "synthetic-v2; Bernoulli outcomes from designed latent probabilities; zero tax debt supported",
         "seed": seed, "rows": rows, "split_rows": {"train": len(train_y), "validation": len(val_y), "test": len(test_y)},
         "dataset_sha256": hashlib.sha256(np.column_stack([x, y]).astype("<f8").tobytes()).hexdigest(),
         "artifact_sha256": hashlib.sha256(raw).hexdigest(),

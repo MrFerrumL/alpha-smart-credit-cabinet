@@ -47,7 +47,19 @@ jobs:
           alembic upgrade head
           alembic check
       - name: Tests (on the migrated PostgreSQL schema)
-        run: python -m pytest -q
+        run: |
+          python -m coverage run -m pytest -q --junitxml=test-results/backend.xml
+          python -m coverage report --fail-under=80
+          python -m coverage xml
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports
+          path: |
+            backend/test-results/backend.xml
+            backend/coverage.xml
+          retention-days: 14
       - name: docs/openapi.json matches the code
         run: python -m scripts.export_openapi --check
       - name: State diagram in docs matches the code
@@ -112,6 +124,13 @@ jobs:
           E2E_BASE_URL: http://localhost:8080
           E2E_MOCKS_URL: http://localhost:8001
         run: npm run ui
+      - name: Upload browser test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-test-results
+          path: e2e/test-results/results.xml
+          retention-days: 14
       - name: Resources after the full run (peak memory, image sizes, disk)
         if: always()
         continue-on-error: true

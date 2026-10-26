@@ -12,6 +12,8 @@ from app.db import SessionLocal, get_db
 from app.domain.statuses import STATUS_INFO, Status
 from app.explanation import jobs as explanation_jobs
 from app.models import ApplicationEvent, ClientTask, Document, User
+from app.ml.applications import application_risk
+from app.ml.schema import ApplicationRisk
 from app.pipeline.steps import SOURCE_TITLES, SOURCES, checks_by_source
 from app.schemas import (
     AnalystDecisionIn,
@@ -151,6 +153,16 @@ def replay_decision(
     application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
 ) -> ReplayOut:
     return decisions_svc.replay(db, svc.get_for_user(db, user, application_id))
+
+
+@router.get(
+    "/{application_id}/ml-risk", response_model=ApplicationRisk,
+    summary="Experimental ML risk from the saved scoring snapshot; analyst only, no writes",
+)
+def get_application_risk(
+    application_id: int, user: User = Depends(require_analyst), db: Session = Depends(get_db)
+) -> ApplicationRisk:
+    return application_risk(db, svc.get_for_user(db, user, application_id))
 
 
 @router.post(
