@@ -17,10 +17,13 @@ export function statusLabel(app: Pick<Application, 'status' | 'offer' | 'product
   return app.status.title;
 }
 
-/** Чип статуса: приглушённый фон, тёмный текст того же тона и точка. Текст не обрезается. */
-export function Chip({ tone, children, dot = true }: { tone: Tone; children: ReactNode; dot?: boolean }) {
+/**
+ * Чип статуса: приглушённый фон, тёмный текст того же тона и точка. Текст не обрезается; длинный (wrap) переносится
+ * на следующую строку, а не выходит за край узкой колонки.
+ */
+export function Chip({ tone, children, dot = true, wrap = false }: { tone: Tone; children: ReactNode; dot?: boolean; wrap?: boolean }) {
   return (
-    <span className="potok-chip" data-tone={CHIP_TONE[tone]} data-dot={dot}>
+    <span className="potok-chip" data-tone={CHIP_TONE[tone]} data-dot={dot} data-wrap={wrap || undefined}>
       {children}
     </span>
   );
@@ -68,8 +71,15 @@ function stepperState(status: StatusInfo): 'active' | 'done' | 'rejected' | 'clo
   return 'active';
 }
 
+interface Next {
+  label: string;
+  to: string;
+  /** Спокойная кнопка: ход не за этим человеком, он только открывает заявку. */
+  quiet?: boolean;
+}
+
 /** Следующий шаг клиента или аналитика: подпись кнопки и куда она ведёт. */
-function nextAction(app: Application, role: string | undefined, onPage: boolean): { label: string; to: string } | null {
+function nextAction(app: Application, role: string | undefined, onPage: boolean): Next | null {
   const page = `/applications/${app.id}`;
   if (role === 'analyst') {
     return app.allowed_actions.includes('decide') ? { label: 'Принять решение', to: onPage ? '#decision' : page } : null;
@@ -85,7 +95,10 @@ function nextAction(app: Application, role: string | undefined, onPage: boolean)
       // На странице заявки главное действие — в блоке решения; здесь кнопку не дублируем.
       return onPage ? null : { label: 'Открыть предложение', to: page };
     case 'signing':
-      return { label: 'Подписать договор', to: onPage ? '#signing' : page };
+      // Кнопка по тому, что этот человек может сделать: подписать договор, закрыть условия выдачи или только открыть заявку.
+      if (app.allowed_actions.includes('sign')) return { label: 'Подписать договор', to: onPage ? '#signing' : page };
+      if (app.allowed_actions.includes('answer_tasks')) return { label: 'Закрыть условия выдачи', to: onPage ? '#tasks' : page };
+      return onPage ? null : { label: 'Открыть заявку', to: page, quiet: true };
     case 'issued':
       // На странице заявки ссылка на кредит — в карточке выдачи; здесь не дублируем.
       return app.loan_id && !onPage ? { label: 'Кредит и график платежей', to: `/loans/${app.loan_id}` } : null;
@@ -180,7 +193,7 @@ export function StatusBlock({
   const stage = stages[current] ?? '';
   const next = action ? nextAction(app, user?.role, onPage) : null;
   // Красная кнопка — только когда ход за человеком; иначе спокойная вторичная.
-  const variant = (primary ?? (app.status.action_required || user?.role === 'analyst')) ? 'filled' : 'default';
+  const variant = !next?.quiet && (primary ?? (app.status.action_required || user?.role === 'analyst')) ? 'filled' : 'default';
   const where =
     state === 'rejected' || state === 'closed' ? 'Заявка закрыта' : `Шаг ${current + 1} из ${stages.length || 7}: ${stage}`;
   return (

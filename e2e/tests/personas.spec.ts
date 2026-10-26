@@ -100,7 +100,7 @@ test('smirnova: банк просит выписку, специалист св�
   });
   await expect(page.getByRole('heading', { name: 'Банк просит уточнить' })).toBeVisible();
   // Лента реагирует на этап заявки: среди трёх новостей на главной — новость о дополнительных документах
-  // (сами три стоят по дате).
+  // (подробно — в feed.spec.ts).
   const titles = await feedTitles(page, false);
   expect(titles.some((t) => t.includes('банк запросил дополнительные документы'))).toBe(true);
 

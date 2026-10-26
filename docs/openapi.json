@@ -3,7 +3,7 @@
   "info": {
     "title": "Кредитный конвейер для МСБ — core API",
     "description": "Ядро цифрового кредитного конвейера: заявки, их статусы и переходы, каталог продуктов, интеграции с внешними источниками. Ошибки возвращаются в едином формате `{status, code, title, detail, errors?}`.",
-    "version": "1.0.0"
+    "version": "1.0.2"
   },
   "paths": {
     "/health/live": {
@@ -42,6 +42,27 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/deps": {
+      "get": {
+        "tags": [
+          "Служебное"
+        ],
+        "summary": "Очередь конвейера и внешние источники (всегда 200, на готовность не влияет)",
+        "operationId": "deps_health_deps_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepsOut"
+                }
               }
             }
           }
@@ -870,6 +891,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExplanationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/approval-map": {
+      "get": {
+        "tags": [
+          "Заявки"
+        ],
+        "summary": "Сколько банк одобрит по тому же продукту на каждом сроке — по тем же правилам, ничего не меняет",
+        "operationId": "application_approval_map_api_applications__application_id__approval_map_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalMapOut"
                 }
               }
             }
@@ -1867,6 +1935,63 @@
           }
         ]
       }
+    },
+    "/api/system/jobs": {
+      "get": {
+        "tags": [
+          "Состояние системы"
+        ],
+        "summary": "Последние повторы и сбои шагов конвейера",
+        "description": "Шаг, номер заявки, источник и причина простыми словами — без ИНН и текстов ошибок.",
+        "operationId": "recent_jobs_api_system_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "description": "Сколько задач показать, свежие — сверху",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Сколько задач показать, свежие — сверху"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SystemJobOut"
+                  },
+                  "title": "Response Recent Jobs Api System Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2318,6 +2443,190 @@
         },
         "type": "object",
         "title": "ApplicationUpdate"
+      },
+      "ApprovalAlternativeOut": {
+        "properties": {
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "rate": {
+            "type": "number",
+            "title": "Rate"
+          },
+          "monthly_payment": {
+            "type": "integer",
+            "title": "Monthly Payment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_code",
+          "product_name",
+          "amount",
+          "term_months",
+          "rate",
+          "monthly_payment"
+        ],
+        "title": "ApprovalAlternativeOut"
+      },
+      "ApprovalMapOut": {
+        "properties": {
+          "product_code": {
+            "type": "string",
+            "title": "Product Code"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "repayment": {
+            "type": "string",
+            "title": "Repayment",
+            "description": "annuity | interest_only"
+          },
+          "requested_amount": {
+            "type": "integer",
+            "title": "Requested Amount"
+          },
+          "requested_term": {
+            "type": "integer",
+            "title": "Requested Term"
+          },
+          "offered_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Term",
+            "description": "Срок предложения банка, если оно по этому же продукту"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/ApprovalTermOut"
+            },
+            "type": "array",
+            "title": "Terms",
+            "description": "По возрастанию срока; пусто — оценки нет, сработал стоп-фактор, решение принял специалист или по правилам оно всегда за специалистом"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation",
+            "description": "Почему продукт не проходит ни на одном сроке — одной строкой"
+          },
+          "alternative": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApprovalAlternativeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Другой продукт, который по тем же правилам предложит банк, если этот не проходит"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_code",
+          "product_name",
+          "repayment",
+          "requested_amount",
+          "requested_term",
+          "offered_term",
+          "terms",
+          "explanation",
+          "alternative"
+        ],
+        "title": "ApprovalMapOut",
+        "description": "Сколько банк одобрит по тому же продукту на каждом стандартном сроке. Считается теми же правилами скоринга\nи решения на последнем снимке признаков, поэтому заявку на эти условия конвейер одобрит, пока данные компании\nне изменились. Ничего не меняет."
+      },
+      "ApprovalTermOut": {
+        "properties": {
+          "term_months": {
+            "type": "integer",
+            "title": "Term Months"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount",
+            "description": "Наибольшая сумма (не больше запрошенной), которую банк одобрит на этот срок; пусто — не пройдёт"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate",
+            "description": "Ставка при этой сумме, % годовых"
+          },
+          "monthly_payment": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Payment",
+            "description": "Платёж в месяц при этой сумме; у овердрафта — только проценты"
+          },
+          "requested": {
+            "type": "boolean",
+            "title": "Requested",
+            "description": "Срок из заявки"
+          },
+          "offered": {
+            "type": "boolean",
+            "title": "Offered",
+            "description": "Срок нынешнего предложения банка по этому же продукту"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term_months",
+          "amount",
+          "rate",
+          "monthly_payment",
+          "requested",
+          "offered"
+        ],
+        "title": "ApprovalTermOut"
       },
       "AssessmentOut": {
         "properties": {
@@ -3170,6 +3479,12 @@
             },
             "type": "array",
             "title": "Tips"
+          },
+          "stop_factor": {
+            "type": "boolean",
+            "title": "Stop Factor",
+            "description": "Отказ по стоп-фактору: другая сумма, срок или продукт решение не изменят",
+            "default": false
           }
         },
         "type": "object",
@@ -3243,6 +3558,44 @@
           "email"
         ],
         "title": "DemoLoginIn"
+      },
+      "DepsOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueueOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — база данных недоступна"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "paused"
+              ]
+            },
+            "type": "object",
+            "title": "Sources",
+            "description": "paused — источник не опрашивается после серии сбоев, конвейер повторит запрос сам"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "queue",
+          "sources"
+        ],
+        "title": "DepsOut"
       },
       "DocumentOut": {
         "properties": {
@@ -3497,6 +3850,18 @@
             "type": "boolean",
             "title": "Is Synthetic",
             "description": "Новость синтетическая — источник смоделирован"
+          },
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id",
+            "description": "Заявка, этап которой поднял новость в ленте (главная заявка клиента); у остальных новостей — null"
           }
         },
         "type": "object",
@@ -4426,6 +4791,38 @@
         ],
         "title": "PurposeOut"
       },
+      "QueueOut": {
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "title": "Pending",
+            "description": "Сколько задач ждут запуска, включая отложенные повторы"
+          },
+          "running": {
+            "type": "integer",
+            "title": "Running",
+            "description": "Сколько задач выполняется сейчас"
+          },
+          "oldest_ready_age_s": {
+            "type": "number",
+            "title": "Oldest Ready Age S",
+            "description": "Сколько ждёт самая старая задача, которой уже пора выполняться, с"
+          },
+          "failed_last_hour": {
+            "type": "integer",
+            "title": "Failed Last Hour",
+            "description": "Сколько задач завершились сбоем за последний час"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pending",
+          "running",
+          "oldest_ready_age_s",
+          "failed_last_hour"
+        ],
+        "title": "QueueOut"
+      },
       "ReplayOut": {
         "properties": {
           "matches": {
@@ -4767,6 +5164,126 @@
         ],
         "title": "StopCheckOut"
       },
+      "SystemJobOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Id"
+          },
+          "application_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Application Number",
+            "description": "Номер заявки для ссылки на неё"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "Шаг конвейера: pipeline.enrich, pipeline.disburse …"
+          },
+          "step": {
+            "type": "string",
+            "title": "Step",
+            "description": "Шаг простыми словами"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "description": "pending — ждёт повтора; running — повтор идёт; done — получилось; failed — попытки исчерпаны"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "description": "Сколько попыток уже было"
+          },
+          "max_attempts": {
+            "type": "integer",
+            "title": "Max Attempts",
+            "description": "Сколько попыток даётся шагу"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "egrul",
+                  "fns",
+                  "bki",
+                  "abs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Внешний источник, из-за которого был повтор"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Что случилось — коротко, без технических подробностей"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At",
+            "description": "Когда следующая попытка — у задачи, которая ждёт повтора"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "application_id",
+          "application_number",
+          "kind",
+          "step",
+          "status",
+          "attempts",
+          "max_attempts",
+          "source",
+          "reason",
+          "next_attempt_at",
+          "updated_at"
+        ],
+        "title": "SystemJobOut",
+        "description": "Задача конвейера, которая не выполнилась с первой попытки. Без ИНН, данных компании и текстов исключений."
+      },
       "TaskAnswerIn": {
         "properties": {
           "answer": {
@@ -5098,6 +5615,10 @@
     {
       "name": "Уведомления",
       "description": "Уведомления внутри кабинета — вместо SMS и почты"
+    },
+    {
+      "name": "Состояние системы",
+      "description": "Повторы и сбои шагов конвейера — для сотрудников банка"
     },
     {
       "name": "Служебное",

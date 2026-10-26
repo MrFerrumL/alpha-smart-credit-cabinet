@@ -68,7 +68,7 @@ test('ширина 390: экраны клиента и аналитика без
 
   const analyst = await session(browser, 'Мария Кредитова');
   await analyst.setViewportSize(PHONE);
-  for (const path of ['/queue', '/policy', `/applications/${id}`, '/profile']) {
+  for (const path of ['/queue', '/policy', '/system', `/applications/${id}`, '/profile']) {
     await expectFits(analyst, path);
   }
 

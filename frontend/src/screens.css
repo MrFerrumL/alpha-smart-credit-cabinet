@@ -111,6 +111,141 @@
   color: var(--potok-steel);
 }
 
+/*
+ * Граница одобрения по сроку — под сравнением с заявкой. Строки — тот же выбор, что и в списках вариантов (красная
+ * рамка по всему контуру у выбранной), только компактнее; строка, которая не проходит, — тихая, на холсте и без
+ * отметки. Полоса — сумма относительно лучшего срока на карте, графитом.
+ */
+.potok-amap {
+  margin-top: 32px;
+}
+
+.potok-amap-list {
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.potok-choice.potok-amap-row {
+  padding: 12px 20px;
+}
+
+.potok-amap-off {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+  color: var(--potok-steel);
+}
+
+.potok-amap-off .potok-choice-title {
+  font-weight: 400;
+}
+
+/* Строка с условиями действующего предложения: видна на карте, но не для выбора — они уже в решении выше. */
+.potok-amap-current {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border: 1px solid var(--potok-line);
+  border-radius: var(--r-12);
+  background: var(--potok-canvas);
+}
+
+.potok-amap-current .potok-note {
+  display: block;
+  margin-top: 8px;
+}
+
+.potok-amap-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+}
+
+.potok-amap-pay {
+  font-size: 14px;
+  color: var(--potok-steel);
+  white-space: nowrap;
+}
+
+.potok-amap-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.potok-amap-bar {
+  display: block;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--potok-line);
+  overflow: hidden;
+}
+
+.potok-amap-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--potok-neutral-700);
+}
+
+.potok-amap-row[data-checked] .potok-amap-bar > span {
+  background: var(--potok-ink);
+}
+
+.potok-amap-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-top: 16px;
+}
+
+.potok-amap-act > .mantine-Text-root {
+  flex: 1 1 240px;
+  max-width: 60ch;
+}
+
+.potok-amap-none {
+  max-width: 72ch;
+}
+
+@media (max-width: 720px) {
+  .potok-amap {
+    margin-top: 24px;
+  }
+
+  .potok-choice.potok-amap-row,
+  .potok-amap-off,
+  .potok-amap-current {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  /* Платёж — второй строкой под суммой, без точки-разделителя в начале строки. */
+  .potok-amap-line {
+    flex-direction: column;
+  }
+
+  .potok-amap-dot {
+    display: none;
+  }
+
+  .potok-amap-act {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .potok-amap-act > .mantine-Text-root {
+    flex: none;
+  }
+}
+
 .potok-sched {
   margin-top: 32px;
 }
@@ -503,7 +638,14 @@
   text-align: right;
 }
 
-/* Лента: метка и дата строкой, заголовок не длиннее двух строк, пересказ — одна строка. */
+/* Лента: под заголовком — по чему она подобрана; у новости метка и дата строкой, заголовок не длиннее двух строк,
+   пересказ — до трёх. */
+.potok-news-for {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
 .potok-news ul {
   margin: 8px 0 0;
   padding: 0;
@@ -559,12 +701,44 @@
 }
 
 .potok-news-summary {
-  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-top: 6px;
   font-size: 14px;
+  line-height: 20px;
   color: var(--potok-steel);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.potok-news-summary[data-open] {
+  display: block;
+  overflow: visible;
+}
+
+/* «Читать полностью» — текстовой кнопкой под пересказом, только если он не уместился в три строки. */
+.potok-news-more {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--potok-ink);
+  font: 500 14px/20px var(--font-ui);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+/* Ссылка из новости этапа на главную заявку — спокойной ссылкой: красная кнопка шага уже в карточке заявки. */
+.potok-news-act {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.potok-news-state {
+  margin: 8px 0 0;
+  color: var(--potok-steel);
 }
 
 .potok-news-foot {
@@ -631,6 +805,11 @@
 .potok-wz-h {
   margin: 4px 0 6px;
   font-size: 32px !important;
+}
+
+/* Заголовок шага получает фокус при смене шага (для экранного диктора); это не элемент управления — без рамки. */
+.potok-wz-h:focus {
+  outline: none;
 }
 
 .potok-wz-inset {
@@ -737,10 +916,6 @@
   background: var(--potok-paper);
 }
 
-.potok-meter[data-over='true'] .potok-meter-verdict {
-  color: var(--err-text);
-}
-
 .potok-meter-limit {
   position: absolute;
   top: -4px;
@@ -778,6 +953,47 @@
 .potok-meter-verdict {
   margin: 8px 0 0;
   font-weight: 500;
+}
+
+/* Три проверки банка на шаге «Финансы»: строки через тонкий разделитель, вывод — обычным текстом, без красного. */
+.potok-checks {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-checks > li {
+  padding: 14px 0;
+}
+
+.potok-checks > li + li,
+.potok-checks-note {
+  border-top: 1px solid var(--potok-line-strong);
+}
+
+.potok-checks-what {
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-checks-text {
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.potok-checks-sub {
+  margin: 2px 0 0;
+  color: var(--potok-steel);
+}
+
+.potok-checks .potok-meter {
+  margin-top: 10px;
+}
+
+.potok-checks-note {
+  margin: 0;
+  padding-top: 14px;
+  max-width: 68ch;
 }
 
 .potok-docs {
@@ -1384,6 +1600,135 @@ a.potok-note-title:hover {
   background: var(--potok-canvas);
 }
 
+/* --- Состояние системы ---------------------------------------------------------------------------- */
+/* Слева — источники и очередь, справа — повторы и сбои: колонки примерно одной высоты. */
+.potok-sys {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--potok-gap);
+  align-items: start;
+}
+
+.potok-sys-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 20px;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--potok-ink);
+  font-weight: 500;
+}
+
+.potok-sys-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-sys-list > li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-sys-source,
+.potok-sys-job {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 14px 0;
+}
+
+/* Источник: состояние всегда справа от названия, текст под названием переносится. */
+.potok-sys-source {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.potok-sys-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.potok-sys-job .potok-sys-main {
+  flex-basis: 280px;
+}
+
+.potok-sys-job-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+
+.potok-sys-job-side time {
+  font-size: 13px;
+  color: var(--potok-steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.potok-sys-note {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-queue {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
+  margin: 16px 0 0;
+}
+
+.potok-sys-queue dt {
+  font-size: 14px;
+  color: var(--potok-steel);
+}
+
+.potok-sys-queue dd {
+  margin: 4px 0 0;
+  font: 600 32px/1.1 var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-sys-sk {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.potok-sys .potok-inline-note {
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .potok-sys {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Строка повтора: состояние и время — под текстом, в одну линию. */
+  .potok-sys-job-side {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .potok-sys-queue dd {
+    font-size: 26px;
+  }
+}
+
 /* --- Уведомления (панель под колокольчиком) ------------------------------------------------------- */
 .potok-ntf-head {
   padding: 16px 20px 4px;
@@ -1635,8 +1980,13 @@ a.potok-note-title:hover {
   background: var(--potok-ink);
 }
 
-.potok-login-form {
+/* Правая колонка: форма входа, под ней в демо-режиме — маршрут проверки. */
+.potok-login-side {
   grid-area: form;
+  min-width: 0;
+}
+
+.potok-login-form {
   padding: 32px;
 }
 
@@ -1649,6 +1999,80 @@ a.potok-note-title:hover {
   margin: 0;
   font-size: 13px;
   color: var(--potok-steel);
+}
+
+/* Маршрут проверки — вторичный текст на холсте под формой: без карточки, иконок и цветных плашек. */
+.potok-login-route {
+  margin-top: 32px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--potok-steel);
+}
+
+.potok-login-route-h {
+  color: var(--potok-ink);
+}
+
+.potok-login-route-lead {
+  margin: 4px 0 0;
+}
+
+.potok-login-steps {
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+
+.potok-login-steps li + li {
+  margin-top: 8px;
+}
+
+.potok-login-steps li::marker {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--potok-ink);
+}
+
+.potok-login-step-t {
+  font-weight: 500;
+  color: var(--potok-ink);
+}
+
+/* Имя профиля — кнопка в строке текста, выглядит как ссылка. */
+.potok-login-who {
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--potok-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.potok-login-who:hover {
+  text-decoration-thickness: 2px;
+}
+
+.potok-login-route-tip {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* С маршрутом правая колонка выше промо: подпись о прототипе встаёт под промо, к низу колонки, — экран не растёт
+   на её строку и левый край не пустеет. */
+@media (min-width: 721px) {
+  .potok-login-routed {
+    grid-template-areas: 'promo form' 'note form';
+  }
+
+  .potok-login-routed .potok-login-note {
+    align-self: end;
+    max-width: 44ch;
+  }
 }
 
 .potok-personas {
@@ -1717,9 +2141,150 @@ a.potok-note-title:hover {
   align-items: start;
 }
 
+/* Отступ сверху ставит useStickyTop: панель выше экрана прилипает нижним краем. */
 .potok-analyst-side {
   position: sticky;
   top: 16px;
+}
+
+/* Сводка — три короткие строки: почему у вас, рекомендация конвейера, расхождения. */
+.potok-summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.potok-summary > p {
+  margin: 0;
+}
+
+.potok-summary-k {
+  color: var(--potok-steel);
+  font-weight: 500;
+}
+
+.potok-summary-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+/* Запросы клиенту и документы: строки через линию, состояние справа. */
+.potok-sub-h {
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--potok-steel);
+}
+
+.potok-reqs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.potok-reqs > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 16px;
+  padding: 12px 0;
+}
+
+.potok-reqs > li + li {
+  border-top: 1px solid var(--potok-line);
+}
+
+.potok-reqs-title {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.potok-reqs-meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--potok-steel);
+}
+
+.potok-reqs-side {
+  margin-top: 0;
+  text-align: right;
+}
+
+.potok-reqs-answer {
+  margin-top: 6px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Таблица условий с тремя колонками цифр на телефоне прокручивается сама, страница — нет. */
+.potok-terms-wrap {
+  overflow-x: auto;
+}
+
+/* «Клиент увидит» — уменьшенный блок решения клиента на сером фоне, прямо над кнопкой сохранения. */
+.potok-preview-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--potok-steel);
+}
+
+.potok-preview-card {
+  padding: 16px;
+  border-radius: var(--r-16);
+  background: var(--potok-canvas);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+.potok-preview-say {
+  font: 600 17px/1.3 var(--font-display);
+}
+
+.potok-preview-big {
+  margin-top: 10px;
+  font: 700 28px/1.15 var(--font-display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.potok-preview-terms {
+  margin-top: 2px;
+  color: var(--potok-steel);
+}
+
+.potok-preview-block {
+  margin-top: 12px;
+}
+
+.potok-preview-block b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--potok-steel);
+}
+
+.potok-preview-notes {
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--potok-line-strong);
+  list-style: none;
+  font-size: 13px;
+}
+
+.potok-preview-notes li + li {
+  margin-top: 4px;
+}
+
+.potok-decided-state {
+  display: flex;
+  margin-top: 8px;
 }
 
 .potok-facts {
@@ -1894,8 +2459,17 @@ a.potok-note-title:hover {
   color: var(--ok-text);
 }
 
+/* Непройденное правило — на тёплом фоне во всю ширину строки: его видно, не вчитываясь в список. */
+.potok-trace li[data-result='fail'] {
+  margin-inline: -10px;
+  padding: 8px 10px;
+  border-radius: var(--r-12);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
 .potok-trace li[data-result='fail'] > svg {
-  color: var(--err-text);
+  color: var(--warn-text);
 }
 
 .potok-outcomes {
@@ -2360,6 +2934,10 @@ a.potok-note-title:hover {
     padding: 20px 16px;
   }
 
+  .potok-login-route {
+    margin-top: 24px;
+  }
+
   .potok-contract {
     padding: 20px 16px;
   }
@@ -2408,6 +2986,27 @@ a.potok-note-title:hover {
     order: -1;
   }
 
+  /* Запрос банка: «Отозвать заявку» стоит после запроса и его кнопки, а не над ними. Обёртки статуса растворяются,
+     чтобы действие можно было переставить в конец блока. */
+  .potok-status-asking {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .potok-status-asking > .potok-status,
+  .potok-status-asking .potok-status-row {
+    display: contents;
+  }
+
+  .potok-status-asking .potok-status-row > :first-child {
+    margin-top: 16px;
+  }
+
+  .potok-status-asking .potok-status-actions {
+    order: 1;
+    margin-top: 16px;
+  }
+
   .potok-home .potok-news {
     order: 1;
   }
@@ -2446,6 +3045,19 @@ a.potok-note-title:hover {
 
   .potok-factor {
     grid-template-columns: 1fr 72px 40px;
+  }
+
+  /* Запрос и документ — в одну колонку: состояние и подробности под названием. */
+  .potok-reqs > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .potok-reqs > li > .potok-chip {
+    justify-self: start;
+  }
+
+  .potok-reqs-side {
+    text-align: left;
   }
 
   .potok-phone-only {

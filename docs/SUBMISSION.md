@@ -11,8 +11,8 @@
 | | |
 |---|---|
 | Репозиторий | https://github.com/donaldtrumpdev-commits/alpha |
-| Версия | тег <!--TAG-->`v1.0.1`<!--/TAG--> |
-| Коммит | <!--COMMIT-->хеш указан в форме сдачи и в приложенном к ней PDF; проверить: `git rev-parse v1.0.1^{commit}`<!--/COMMIT--> |
+| Версия | тег <!--TAG-->`v1.0.2`<!--/TAG--> |
+| Коммит | <!--COMMIT-->хеш указан в форме сдачи и в приложенном к ней PDF; проверить: `git rev-parse v1.0.2^{commit}`<!--/COMMIT--> |
 | Доступ | репозиторий приватный, приглашение отправлено аккаунту `alfa-hack-2026` |
 
 ## Запуск
@@ -22,11 +22,15 @@
 ```bash
 git clone https://github.com/donaldtrumpdev-commits/alpha.git
 cd alpha
-git checkout v1.0.1
-docker compose up --build
+git checkout v1.0.2
+docker compose up --build -d --wait
 ```
 
-`docker compose up --build -d --wait` вернёт управление, когда всё готово. Файл `.env` не нужен.
+Команда вернёт управление, когда все сервисы готовы. Файл `.env` не нужен. Требования, пошаговая инструкция для
+Windows, macOS и Linux и что делать, если что-то пошло не так, — в README, разделы
+[«Требования»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#требования),
+[«Пошаговый запуск с нуля»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#пошаговый-запуск-с-нуля) и
+[«Если что-то не так»](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#если-что-то-не-так).
 
 | Что | Адрес |
 |---|---|
@@ -55,12 +59,12 @@ docker compose up --build
 | `analyst@demo.local` | Очередь, карточка оценки, трасса правил, решение, симулятор политики |
 
 Что именно вводить для каждой учётки, описано в разделе
-[«Демо-сценарии» README](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#демо-сценарии).
+[«Демо-сценарии» README](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#демо-сценарии).
 
 ## Основной сценарий
 
 Кабинет открывается в двух вкладках: клиент и банк. Шаги с точными данными — в разделе
-[«Проверка за 10 минут» README](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md#проверка-за-10-минут).
+[«Проверка за 10 минут» README](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#проверка-за-10-минут).
 
 1. Пекарня получает одобрение, подписывает договор кодом и видит кредит с графиком.
 2. «ТехноСклад» получает другие условия, химчистка — другой продукт.
@@ -69,21 +73,34 @@ docker compose up --build
 5. Сбой бюро кредитных историй: конвейер повторяет запрос и доходит до решения.
 6. Симулятор политики показывает, как изменились бы решения при других порогах.
 
-Видео этого сценария записывает CI, оно лежит в артефакте `demo-video` прогона на коммите тега.
+Видео этого сценария (`potok-demo.mp4`) приложено к [релизу v1.0.2](https://github.com/donaldtrumpdev-commits/alpha/releases/tag/v1.0.2); его же записывает CI в артефакт
+`demo-video` прогона на коммите тега.
 
 ## Документы
 
 | Документ | Что внутри |
 |---|---|
-| [README.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/README.md) | Запуск, сценарии, переменные, тесты, ограничения |
-| [docs/product.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/product.md) | Пользователи, модель кредитного процесса, почему такой MVP |
-| [docs/architecture.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/architecture.md) | Компоненты и ключевые решения |
-| [docs/api.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/api.md) | API; спецификация [openapi.json](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/openapi.json) и [коллекция запросов](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/postman_collection.json) |
-| [docs/state-machine.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/state-machine.md) | Статусы заявки и переходы; модель данных — [data-model.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/data-model.md) |
-| [docs/scoring.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/scoring.md) | Правила оценки и решения |
-| [docs/test-scenarios.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/test-scenarios.md) | Тестовые сценарии |
-| [docs/llm.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/docs/llm.md) | Необязательное пояснение решения |
-| [THIRD_PARTY_NOTICES.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.1/THIRD_PARTY_NOTICES.md) | Сторонние компоненты и лицензии |
+| [README.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md) | Полная инструкция: запуск, сценарии, архитектура, данные, настройки, тесты, ограничения |
+| [docs/product.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/product.md) | Пользователи, модель кредитного процесса, почему такой MVP |
+| [docs/architecture.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/architecture.md) | Компоненты и ключевые решения |
+| [docs/api.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/api.md) | API; спецификация [openapi.json](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/openapi.json) и [коллекция запросов](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/postman_collection.json) |
+| [docs/state-machine.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/state-machine.md) | Статусы заявки и переходы; модель данных — [data-model.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/data-model.md) |
+| [docs/scoring.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/scoring.md) | Правила оценки и решения |
+| [docs/test-scenarios.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/test-scenarios.md) | Тестовые сценарии |
+| [docs/llm.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/docs/llm.md) | Необязательное пояснение решения |
+| [THIRD_PARTY_NOTICES.md](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/THIRD_PARTY_NOTICES.md) | Сторонние компоненты и лицензии |
+
+## Подробности в README
+
+| Раздел README | Что там |
+|---|---|
+| [Архитектура](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#архитектура) | Сервисы, путь заявки от отправки до решения, воркер и очередь задач, ключевые решения |
+| [Данные](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#данные) | Таблицы, статусы заявки, миграции, синтетические данные, файлы, тома |
+| [Оценка заявки и решение](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#оценка-заявки-и-решение) | Стоп-факторы, скоринг, правила политики, продукты |
+| [Безопасность и надёжность](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#безопасность-и-надёжность) | Роли и доступ, вход, секреты, проверка входных данных, идемпотентность |
+| [Настройки](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#настройки) | Все переменные окружения |
+| [Тесты и CI](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#тесты-и-ci) | Слои проверок, локальный запуск, что делает CI |
+| [Ограничения](https://github.com/donaldtrumpdev-commits/alpha/blob/v1.0.2/README.md#ограничения) | Упрощения прототипа и что было бы иначе в промышленной версии |
 
 ## Ограничения
 

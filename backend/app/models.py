@@ -11,9 +11,9 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, event, inspect
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, ORMExecuteState, Session, mapped_column, relationship
 
 from app.db import Base
 
@@ -93,13 +93,17 @@ class Application(Base):
 
     company: Mapped[Company] = relationship()
     created_by: Mapped[User] = relationship()
+    # Заявки не удаляются; удаление заявки с историей через ORM остановит запрет на удаление событий (ниже).
     events: Mapped[list[ApplicationEvent]] = relationship(
         back_populates="application", order_by="ApplicationEvent.id", cascade="all, delete-orphan"
     )
 
 
 class ApplicationEvent(Base):
-    """Журнал аудита: каждое изменение статуса и каждое значимое действие по заявке."""
+    """Журнал аудита: каждое изменение статуса и каждое значимое действие по заявке.
+
+    Журнал только дописывается: изменить или удалить событие через ORM нельзя (AuditLogImmutable ниже).
+    """
 
     __tablename__ = "application_events"
 
@@ -116,6 +120,37 @@ class ApplicationEvent(Base):
 
     application: Mapped[Application] = relationship(back_populates="events")
     actor: Mapped[User | None] = relationship()
+
+
+class AuditLogImmutable(RuntimeError):
+    """Попытка изменить или удалить событие журнала аудита. Это ошибка в коде, а не в запросе клиента."""
+
+
+_APPEND_ONLY = "Журнал аудита (application_events) только дописывается: события нельзя изменять и удалять"
+
+
+@event.listens_for(ApplicationEvent, "before_update")
+def _forbid_event_update(_mapper, _connection, target: ApplicationEvent) -> None:
+    # Хук вызывается и для объектов, «грязных» только по связям; запрещаем то, что дало бы UPDATE строки.
+    state = inspect(target)
+    changed = [a.key for a in state.mapper.column_attrs if state.attrs[a.key].history.has_changes()]
+    if changed:
+        raise AuditLogImmutable(f"{_APPEND_ONLY} (событие {target.id}, поля: {', '.join(changed)})")
+
+
+@event.listens_for(ApplicationEvent, "before_delete")
+def _forbid_event_delete(_mapper, _connection, target: ApplicationEvent) -> None:
+    raise AuditLogImmutable(f"{_APPEND_ONLY} (событие {target.id})")
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _forbid_bulk_event_changes(state: ORMExecuteState) -> None:
+    """Массовые update() и delete() по журналу: и через модель, и через таблицу, в том числе Query.update/delete."""
+    if not (state.is_update or state.is_delete):
+        return
+    statement = getattr(state.statement, "element", state.statement)  # select(...).from_statement(update(...))
+    if getattr(getattr(statement, "table", None), "name", None) == ApplicationEvent.__tablename__:
+        raise AuditLogImmutable(_APPEND_ONLY)
 
 
 class CheckResult(Base):

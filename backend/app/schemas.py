@@ -271,6 +271,9 @@ class DecisionOut(BaseModel):
     outcome: str
     reasons: list[str]
     tips: list[str]
+    stop_factor: bool = Field(
+        False, description="Отказ по стоп-фактору: другая сумма, срок или продукт решение не изменят"
+    )
 
 
 class ExplanationOut(BaseModel):
@@ -582,6 +585,10 @@ class FeedItemOut(BaseModel):
     summary: str
     reasons: list[str] = Field(description="Почему новость показана этому клиенту")
     is_synthetic: bool = Field(description="Новость синтетическая — источник смоделирован")
+    application_id: int | None = Field(
+        None,
+        description="Заявка, этап которой поднял новость в ленте (главная заявка клиента); у остальных новостей — null",
+    )
 
 
 class ReplayOut(BaseModel):
@@ -593,6 +600,50 @@ class ReplayOut(BaseModel):
     replayed: dict
     policy_version_stored: str | None
     policy_version_current: str
+
+
+# --- Граница одобрения по сроку ------------------------------------------------------------
+
+
+class ApprovalTermOut(BaseModel):
+    term_months: int
+    amount: int | None = Field(
+        description="Наибольшая сумма (не больше запрошенной), которую банк одобрит на этот срок; пусто — не пройдёт"
+    )
+    rate: float | None = Field(description="Ставка при этой сумме, % годовых")
+    monthly_payment: int | None = Field(description="Платёж в месяц при этой сумме; у овердрафта — только проценты")
+    requested: bool = Field(description="Срок из заявки")
+    offered: bool = Field(description="Срок нынешнего предложения банка по этому же продукту")
+
+
+class ApprovalAlternativeOut(BaseModel):
+    product_code: str
+    product_name: str
+    amount: int
+    term_months: int
+    rate: float
+    monthly_payment: int
+
+
+class ApprovalMapOut(BaseModel):
+    """Сколько банк одобрит по тому же продукту на каждом стандартном сроке. Считается теми же правилами скоринга
+    и решения на последнем снимке признаков, поэтому заявку на эти условия конвейер одобрит, пока данные компании
+    не изменились. Ничего не меняет."""
+
+    product_code: str
+    product_name: str
+    repayment: str = Field(description="annuity | interest_only")
+    requested_amount: int
+    requested_term: int
+    offered_term: int | None = Field(description="Срок предложения банка, если оно по этому же продукту")
+    terms: list[ApprovalTermOut] = Field(
+        description="По возрастанию срока; пусто — оценки нет, сработал стоп-фактор, решение принял специалист "
+        "или по правилам оно всегда за специалистом"
+    )
+    explanation: str | None = Field(description="Почему продукт не проходит ни на одном сроке — одной строкой")
+    alternative: ApprovalAlternativeOut | None = Field(
+        description="Другой продукт, который по тем же правилам предложит банк, если этот не проходит"
+    )
 
 
 # --- Симулятор политики --------------------------------------------------------------------
@@ -623,3 +674,27 @@ class PolicySimulationOut(BaseModel):
     current: dict
     simulated: dict
     changed: list[SimulatedApplicationOut]
+
+
+# --- Состояние системы ---------------------------------------------------------------------
+
+
+class SystemJobOut(BaseModel):
+    """Задача конвейера, которая не выполнилась с первой попытки. Без ИНН, данных компании и текстов исключений."""
+
+    id: int
+    application_id: int | None
+    application_number: str | None = Field(description="Номер заявки для ссылки на неё")
+    kind: str = Field(description="Шаг конвейера: pipeline.enrich, pipeline.disburse …")
+    step: str = Field(description="Шаг простыми словами")
+    status: Literal["pending", "running", "done", "failed"] = Field(
+        description="pending — ждёт повтора; running — повтор идёт; done — получилось; failed — попытки исчерпаны"
+    )
+    attempts: int = Field(description="Сколько попыток уже было")
+    max_attempts: int = Field(description="Сколько попыток даётся шагу")
+    source: Literal["egrul", "fns", "bki", "abs"] | None = Field(
+        description="Внешний источник, из-за которого был повтор"
+    )
+    reason: str = Field(description="Что случилось — коротко, без технических подробностей")
+    next_attempt_at: UtcDatetime | None = Field(description="Когда следующая попытка — у задачи, которая ждёт повтора")
+    updated_at: UtcDatetime

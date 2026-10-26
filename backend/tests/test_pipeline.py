@@ -91,6 +91,7 @@ def test_overdue_and_tax_debt_lead_to_explained_rejection(client, mocks):
     assert app["status"]["code"] == "rejected"
     assert len(app["decision"]["reasons"]) == 3
     assert app["decision"]["tips"]
+    assert app["decision"]["stop_factor"] is False  # грейд E: подсказки есть, это не стоп-фактор
 
 
 def test_liquidating_company_hits_stop_factor(client, mocks):
@@ -99,6 +100,7 @@ def test_liquidating_company_hits_stop_factor(client, mocks):
     app = get(client, app_id, headers)
     assert app["status"]["code"] == "rejected"
     assert "ликвидации" in app["decision"]["reasons"][0]
+    assert app["decision"]["stop_factor"] is True
 
 
 def test_missing_tax_revenue_requests_statement_and_resumes(client, mocks):

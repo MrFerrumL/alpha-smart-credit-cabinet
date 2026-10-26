@@ -21,4 +21,6 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready').status == 200 else 1)"
 
 # Миграции применяются при старте; демо-данные загружаются, если SEED_ON_START=true.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+# exec — чтобы uvicorn стал главным процессом и получил SIGTERM от docker stop (иначе его получит только sh).
+# При остановке открытые запросы доделываются не дольше 10 с, потоки SSE, не закрывшиеся сами, обрываются.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 10"]

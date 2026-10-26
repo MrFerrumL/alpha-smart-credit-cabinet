@@ -73,8 +73,18 @@ export function Empty({
   );
 }
 
-/** Ошибка загрузки: что случилось и что сделать. */
-export function LoadError({ error, what, back }: { error: unknown; what: string; back?: ReactNode }) {
+/** Ошибка загрузки: что случилось и что сделать. С onRetry кнопка повторяет запрос, без него — обновляет страницу. */
+export function LoadError({
+  error,
+  what,
+  back,
+  onRetry,
+}: {
+  error: unknown;
+  what: string;
+  back?: ReactNode;
+  onRetry?: () => void;
+}) {
   const code = error instanceof ApiError ? error.status : null;
   return (
     <div className="potok-panel" role="alert">
@@ -86,12 +96,14 @@ export function LoadError({ error, what, back }: { error: unknown; what: string;
         <Text c="dimmed" mt={6} maw={460} mx="auto">
           {code === 404
             ? 'Такой страницы нет: возможно, ссылка устарела.'
-            : 'Сервер банка не ответил. Данные не потеряны — обновите страницу через минуту.'}
+            : onRetry
+              ? 'Сервер банка не ответил. Данные не потеряны — повторите через минуту.'
+              : 'Сервер банка не ответил. Данные не потеряны — обновите страницу через минуту.'}
         </Text>
         <div className="potok-error-actions">
           {code !== 404 && (
-            <Button size="md" onClick={() => window.location.reload()}>
-              Обновить страницу
+            <Button size="md" onClick={onRetry ?? (() => window.location.reload())}>
+              {onRetry ? 'Повторить' : 'Обновить страницу'}
             </Button>
           )}
           {back}

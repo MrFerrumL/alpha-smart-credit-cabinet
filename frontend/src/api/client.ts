@@ -51,7 +51,16 @@ export function setUnauthorizedHandler(handler: () => void) {
 
 type RequestOptions = Omit<RequestInit, 'body'> & { json?: unknown; form?: FormData };
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return send<T>(`/api${path}`, options);
+}
+
+/** Служебные проверки backend (/health/…): открыты без входа, nginx и vite проксируют их рядом с /api. */
+export function health<T>(path: string): Promise<T> {
+  return send<T>(`/health${path}`);
+}
+
+async function send<T>(url: string, options: RequestOptions = {}): Promise<T> {
   const { json, form, headers: rawHeaders, ...rest } = options;
   const headers = new Headers(rawHeaders);
   const token = tokenStore.get();
@@ -66,7 +75,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   let response: Response;
   try {
-    response = await fetch(`/api${path}`, { ...rest, headers, body });
+    response = await fetch(url, { ...rest, headers, body });
   } catch {
     throw new ApiError(0, { title: 'Нет связи с сервером', detail: 'Проверьте подключение и попробуйте ещё раз.' });
   }

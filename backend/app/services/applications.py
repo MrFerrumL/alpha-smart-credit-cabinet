@@ -1,6 +1,7 @@
 """Сценарии работы с заявкой: черновик, редактирование, отправка, отзыв, доступ."""
 
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -36,6 +37,7 @@ from app.schemas import (
     ProductRef,
     StatusInfoOut,
 )
+from app.services.integrations import CIRCUIT_OPEN
 from app.services.state_machine import apply_transition, record_event
 
 EVENT_TITLES = {
@@ -62,8 +64,19 @@ EVENT_TITLES = {
     "issued": "Деньги зачислены на расчётный счёт",
 }
 
+# Повтор проверки, когда предохранитель источника открыт после серии сбоев (services/integrations.py).
+SOURCE_PAUSED_TITLES = {
+    "egrul": "ЕГРЮЛ недоступен — запросы приостановлены, повторим автоматически",
+    "fns": "ФНС «Прозрачный бизнес» недоступна — запросы приостановлены, повторим автоматически",
+    "bki": "Бюро кредитных историй недоступно — запросы приостановлены, повторим автоматически",
+}
+
 # Пока у заявки есть предложение банка (до выдачи): отзыв заявки здесь равен отказу от кредита.
 OFFER_STAGE = OFFER_STATUSES | {Status.SIGNING}
+
+# Мастер сохраняет анкету на каждом шаге и автоматически, а журнал только дописывается. Серия сохранений
+# одного пользователя — одно событие «Анкета обновлена»: следующее пишется не раньше чем через это окно.
+DRAFT_SAVE_WINDOW = timedelta(minutes=10)
 
 
 def status_out(status: Status, info: StatusInfo | None = None) -> StatusInfoOut:
@@ -182,7 +195,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         awaiting_signer=awaiting,
         offer=OfferOut.model_validate(offer) if offer else None,
         decision=DecisionOut(
-            outcome=decision["outcome"], reasons=decision.get("reasons", []), tips=decision.get("tips", [])
+            outcome=decision["outcome"],
+            reasons=decision.get("reasons", []),
+            tips=decision.get("tips", []),
+            stop_factor=decision["outcome"] == Status.REJECTED.value and bool(decision.get("stop_factors")),
         )
         if decision
         else None,
@@ -198,6 +214,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
 def event_out(ev: ApplicationEvent, for_bank: bool = False) -> EventOut:
     if ev.event == "issued" and (ev.payload or {}).get("limit"):
         title = "Лимит овердрафта открыт на расчётном счёте"
+    elif ev.event == "check_retry" and (ev.payload or {}).get("reason") == CIRCUIT_OPEN:
+        title = SOURCE_PAUSED_TITLES.get(
+            ev.payload.get("source", ""), "Источник недоступен — запросы приостановлены, повторим автоматически"
+        )
     elif ev.event in EVENT_TITLES:
         payload = ev.payload or {}
         title = EVENT_TITLES[ev.event].format(
@@ -257,7 +277,8 @@ def get_for_user(db: Session, user: User, application_id: int) -> Application:
         raise NotFound("Заявка не найдена")
     if user.role == "client" and app.company_id != user.company_id:
         raise NotFound("Заявка не найдена")
-    if user.role == "analyst" and app.status == Status.DRAFT:
+    # Банк видит только то, что клиент отправил: черновик, закрытый без отправки, остаётся пространством клиента.
+    if user.role == "analyst" and app.submitted_at is None:
         raise NotFound("Заявка не найдена")
     return app
 
@@ -269,7 +290,7 @@ def list_for_user(db: Session, user: User, status: str | None = None) -> list[Ap
             return []
         query = query.where(Application.company_id == user.company_id)
     else:
-        query = query.where(Application.status != Status.DRAFT.value)
+        query = query.where(Application.submitted_at.is_not(None))
     if status:
         query = query.where(Application.status == status)
     return list(db.scalars(query))
@@ -299,6 +320,24 @@ def create_draft(db: Session, user: User, data: ApplicationCreate) -> Applicatio
     return app
 
 
+def _continues_editing(db: Session, app: Application, user: User, now: datetime, fields: set[str]) -> bool:
+    """Последнее событие заявки — «Анкета обновлена» от этого же пользователя про те же поля, и окно серии ещё не
+    закрылось. Правка новых полей открывает новое событие, чтобы журнал помнил, что именно меняли."""
+    last = db.scalar(
+        select(ApplicationEvent)
+        .where(ApplicationEvent.application_id == app.id)
+        .order_by(ApplicationEvent.id.desc())
+        .limit(1)
+    )
+    if last is None or last.event != "updated" or last.actor_id != user.id:
+        return False
+    if not fields <= set((last.payload or {}).get("fields", [])):
+        return False
+    at = last.created_at
+    at = at if at.tzinfo else at.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
+    return now - at < DRAFT_SAVE_WINDOW
+
+
 def update_draft(db: Session, user: User, app: Application, data: ApplicationUpdate) -> Application:
     if "edit" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Редактировать можно только черновик")
@@ -312,13 +351,8 @@ def update_draft(db: Session, user: User, app: Application, data: ApplicationUpd
         app.purpose = Purpose(changes["purpose"]).value
     if data.form is not None:
         app.form = data.form.model_dump()
-    # Анкета сохраняется на каждом шаге; подряд идущие сохранения — одно событие в истории.
-    last = app.events[-1] if app.events else None
-    if last is not None and last.event == "updated" and last.actor_id == user.id:
-        fields = set(last.payload.get("fields", [])) | set(changes)
-        last.payload = {"fields": sorted(fields)}
-        last.created_at = utcnow()
-    else:
+    # Внутри серии событие не пишется: последнее состояние хранит сама анкета, прежние события не переписываются.
+    if not _continues_editing(db, app, user, utcnow(), set(changes)):
         record_event(db, app, "updated", Actor.CLIENT, actor_id=user.id, payload={"fields": sorted(changes)})
     db.commit()
     return app

@@ -220,6 +220,41 @@ export interface Decision {
   outcome: string;
   reasons: string[];
   tips: string[];
+  /** Отказ по стоп-фактору: другая сумма, срок или продукт решение не изменят. */
+  stop_factor: boolean;
+}
+
+/** Одна строка границы одобрения: сколько банк одобрит по тому же продукту на этот срок. */
+export interface ApprovalTerm {
+  term_months: number;
+  /** Наибольшая сумма (не больше запрошенной), которую банк одобрит; null — не пройдёт ни на какую. */
+  amount: number | null;
+  rate: number | null;
+  monthly_payment: number | null;
+  requested: boolean;
+  offered: boolean;
+}
+
+/** Граница одобрения по сроку — теми же правилами, что и решение (GET /applications/{id}/approval-map). */
+export interface ApprovalMap {
+  product_code: string;
+  product_name: string;
+  repayment: 'annuity' | 'interest_only';
+  requested_amount: number;
+  requested_term: number;
+  offered_term: number | null;
+  /** Пусто — оценки нет, сработал стоп-фактор или решение только за специалистом: панель не показывается. */
+  terms: ApprovalTerm[];
+  /** Почему продукт не проходит ни на одном сроке — одной строкой. */
+  explanation: string | null;
+  alternative: {
+    product_code: string;
+    product_name: string;
+    amount: number;
+    term_months: number;
+    rate: number;
+    monthly_payment: number;
+  } | null;
 }
 
 /** Пояснение решения простыми словами, составленное языковой моделью (необязательная функция). */
@@ -437,6 +472,8 @@ export interface FeedItem {
   summary: string;
   reasons: string[];
   is_synthetic: boolean;
+  /** Заявка, этап которой поднял новость (главная заявка клиента); у остальных новостей — null. */
+  application_id: number | null;
 }
 
 export interface PolicySummary {
@@ -463,4 +500,36 @@ export interface PolicySimulation {
     offered_now: number;
     offered_then: number;
   }[];
+}
+
+// --- Состояние системы ---------------------------------------------------------------------
+
+export type SourceCode = 'egrul' | 'fns' | 'bki' | 'abs';
+
+/** GET /health/deps: версия, очередь конвейера и внешние источники. queue — null, если база данных не ответила. */
+export interface HealthDeps {
+  version: string;
+  queue: {
+    pending: number;
+    running: number;
+    oldest_ready_age_s: number;
+    failed_last_hour: number;
+  } | null;
+  sources: Record<SourceCode, 'ok' | 'paused'>;
+}
+
+/** GET /api/system/jobs: шаг конвейера, который не выполнился с первой попытки. */
+export interface SystemJob {
+  id: number;
+  application_id: number | null;
+  application_number: string | null;
+  kind: string;
+  step: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  attempts: number;
+  max_attempts: number;
+  source: SourceCode | null;
+  reason: string;
+  next_attempt_at: string | null;
+  updated_at: string;
 }

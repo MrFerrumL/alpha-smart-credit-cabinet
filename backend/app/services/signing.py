@@ -263,9 +263,34 @@ def request_code(db: Session, user: User, app: Application) -> tuple[SigningChal
     return challenge, code
 
 
+def _signed_with(db: Session, user: User, app: Application, challenge_id: int, code: str) -> Offer | None:
+    """Повтор подтверждения, ответ на которое не дошёл до клиента: последнее предложение уже подписано этим
+    пользователем этим самым кодом. Возвращает предложение, ничего не меняя; любое расхождение — не повтор."""
+    offer = latest_offer(db, app)
+    if offer is None or offer.status != "signed" or offer.signed_by_id != user.id:
+        return None
+    challenge = get_by_id(db, SigningChallenge, challenge_id)
+    if challenge is None or challenge.application_id != app.id or challenge.user_id != user.id:
+        return None
+    signed = db.scalar(
+        select(ApplicationEvent)
+        .where(ApplicationEvent.application_id == app.id, ApplicationEvent.event == "contract_signed")
+        .order_by(ApplicationEvent.id.desc())
+        .limit(1)
+    )
+    if challenge.used_at is None or signed is None or (signed.payload or {}).get("challenge_id") != challenge.id:
+        return None
+    if not hmac.compare_digest(challenge.code_hash, _hash(str(challenge.id), terms_hash(app, offer), code.strip())):
+        return None
+    return offer
+
+
 def confirm(db: Session, user: User, app: Application, challenge_id: int, code: str) -> Offer:
     require_owner(app, user)
     _require_signer(user, app)
+    # Раньше проверки статуса: после выдачи заявка уже не в «Подписании», а повтор всё равно должен получить 200.
+    if (offer := _signed_with(db, user, app, challenge_id, code)) is not None:
+        return offer
     if app.status != Status.SIGNING.value:
         raise Conflict("Договор сейчас не ждёт подписи")
     offer = _require_offer(db, app, "accepted")

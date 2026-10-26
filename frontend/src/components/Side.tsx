@@ -65,12 +65,21 @@ const clean = (text: string) => typo(text.replace(/№\s*(?=\d)/g, ''));
 
 /**
  * Последние уведомления — те же, что под колокольчиком: только свои события, без кодов подписи (код живёт
- * в окне подписания). Одна форма времени — «23 октября в 14:35».
+ * в окне подписания). По одному на заявку — последнее: прежние шаги той же заявки уже в её истории.
+ * Одна форма времени — «23 октября в 14:35».
  */
 export function RecentNotifications({ limit = 3, exclude }: { limit?: number; exclude?: string }) {
   const { user } = useAuth();
   const query = useNotifications(!!user);
-  const own = (query.data ?? []).filter((n) => n.kind !== 'signing_code');
+  // Список приходит от новых к старым, поэтому первое уведомление по ссылке — последнее по времени.
+  const seen = new Set<string>();
+  const own = (query.data ?? []).filter((n) => {
+    if (n.kind === 'signing_code') return false;
+    if (!n.link) return true;
+    if (seen.has(n.link)) return false;
+    seen.add(n.link);
+    return true;
+  });
   // Уведомление о заявке, карточка которой уже на экране, не повторяем — но если других нет, карточка остаётся.
   const rest = exclude ? own.filter((n) => n.link !== exclude) : own;
   const items = (rest.length ? rest : own).slice(0, limit);

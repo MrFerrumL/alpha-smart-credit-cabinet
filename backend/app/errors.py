@@ -39,7 +39,7 @@ class Unauthorized(AppError):
 
 
 class Conflict(AppError):
-    status, code, title = 409, "conflict", "Конфликт состояния"
+    status, code, title = 409, "conflict", "Действие сейчас недоступно"
 
 
 class InvalidTransition(Conflict):

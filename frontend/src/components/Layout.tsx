@@ -1,5 +1,6 @@
 import { Menu, Text, UnstyledButton } from '@mantine/core';
 import {
+  IconActivity,
   IconAdjustments,
   IconChevronDown,
   IconCreditCard,
@@ -35,6 +36,7 @@ const CLIENT_NAV: NavItem[] = [
 const ANALYST_NAV: NavItem[] = [
   { to: '/queue', label: 'Очередь заявок', short: 'Очередь', icon: IconListCheck },
   { to: '/policy', label: 'Кредитная политика', short: 'Политика', icon: IconAdjustments },
+  { to: '/system', label: 'Состояние системы', short: 'Система', icon: IconActivity },
 ];
 
 /** Меню профиля: кто вошёл и выход. */

@@ -116,6 +116,16 @@ def test_rejection_by_analyst_shows_reasons_to_client(client, mocks):
     assert app["status"]["code"] == "rejected"
     assert app["decision"]["reasons"] == ["Высокая долговая нагрузка группы"]
     assert app["decision"]["tips"] == ["Погасите часть кредитной линии"]
+    assert app["decision"]["stop_factor"] is False
+
+
+def test_analyst_rejection_without_tip_is_not_a_stop_factor(client, mocks):
+    app_id, client_headers = vector_in_review(client, mocks)
+    analyst = auth(client, "analyst@demo.local")
+    response = decide(client, app_id, analyst, outcome="reject", reasons=["Залог не покрывает риск"], tips=[])
+    assert response.status_code == 200, response.text
+    decision = get(client, app_id, client_headers)["decision"]
+    assert decision["tips"] == [] and decision["stop_factor"] is False
 
 
 def test_information_request_returns_to_analyst_after_client_answers(client, mocks):
