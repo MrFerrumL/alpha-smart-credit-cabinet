@@ -1,5 +1,16 @@
 # Сторонние компоненты
 
+## Дополнение портфолио: offline ML
+
+Только для обучения и ML-проверок (`backend/requirements-ml.txt`): scikit-learn 1.7.2 (BSD-3-Clause),
+NumPy 2.5.4 (BSD-3-Clause), SciPy 1.18.1 (BSD-3-Clause), joblib 1.6.0 (BSD-3-Clause),
+threadpoolctl 3.7.0 (BSD-3-Clause), cloudpickle 3.1.2 (BSD-3-Clause).
+Они не устанавливаются в API Docker-образ. JSON-веса получены локально на собственном синтетическом генераторе;
+внешние датасеты и предобученные веса для этого модуля не используются.
+Происхождение основной кодовой базы описано в [PROVENANCE.md](PROVENANCE.md).
+
+## Компоненты основного прототипа
+
 Здесь перечислены прямые зависимости, образы, шрифты, модель и данные, которые использует проект. Полный список
 с транзитивными пакетами — в lock-файлах: `backend/requirements.txt`, `mocks/requirements.txt`,
 `frontend/package-lock.json`, `e2e/package-lock.json`.

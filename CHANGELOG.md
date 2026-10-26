@@ -1,5 +1,14 @@
 # История изменений
 
+## Портфолио Backend / ML — 26.10.2026
+
+- Добавлена экспериментальная Logistic Regression на синтетических данных, отдельная от кредитной политики.
+- Реализованы versioned feature contract, JSON inference, SHA-256 и вклады признаков в log-odds.
+- Добавлены аналитические ручки `/api/ml/model`, `/api/ml/predict`, проверки ролей и ошибок входных данных.
+- Добавлены воспроизводимое обучение, train/validation/test, baseline, ML-метрики и training-serving parity.
+- Добавлен ML workflow; обновлены OpenAPI и коллекция запросов.
+- README переоформлен для портфолио, исходное руководство перенесено в RUNBOOK.md; добавлены model card и provenance.
+
 ## 1.0.2 — 26.10.2026
 
 Для клиента:

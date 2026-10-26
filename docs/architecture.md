@@ -1,5 +1,10 @@
 # Архитектура
 
+Портфолио-дополнение: `backend/app/ml` обслуживает отдельный экспериментальный API `/api/ml/model`
+и `/api/ml/predict` под ролью аналитика. Offline-скрипт обучает Logistic Regression; backend читает
+локальный JSON с коэффициентами без sklearn. Прогноз не меняет кредитную политику и данные заявок.
+Подробнее: [model card](ml-model-card.md), [ML API](ml-api.md).
+
 ## Компоненты
 
 ```mermaid
