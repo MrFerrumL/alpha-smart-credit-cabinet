@@ -694,18 +694,20 @@ function ClientPreview({ app, a, outcome, amount, term, ratePct, payment, messag
       </>
     );
   } else if (outcome === 'reject') {
-    // Без подсказки клиент видит отказ как ограничение самой компании — так же, как при стоп-факторе.
+    // Отказ специалиста — не стоп-фактор: без подсказки у клиента просто нет раздела «Что можно сделать».
     body = (
       <>
-        <div className="potok-preview-say">{tip.trim() ? 'Банк не может выдать этот кредит сейчас' : 'Банк не может выдать кредит этой компании'}</div>
+        <div className="potok-preview-say">Банк не может выдать этот кредит сейчас</div>
         <div className="potok-preview-block">
           <b>{REASONS_TITLE.rejected}</b>
           {reason.trim() ? typo(reason) : <span className="potok-muted-text">Укажите причину выше</span>}
         </div>
-        <div className="potok-preview-block">
-          <b>Что можно сделать</b>
-          {tip.trim() ? typo(tip) : 'Общий текст: другой продукт или меньшая сумма решение не изменят'}
-        </div>
+        {tip.trim() && (
+          <div className="potok-preview-block">
+            <b>Что можно сделать</b>
+            {typo(tip)}
+          </div>
+        )}
       </>
     );
   } else {

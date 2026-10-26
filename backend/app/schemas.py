@@ -271,6 +271,9 @@ class DecisionOut(BaseModel):
     outcome: str
     reasons: list[str]
     tips: list[str]
+    stop_factor: bool = Field(
+        False, description="Отказ по стоп-фактору: другая сумма, срок или продукт решение не изменят"
+    )
 
 
 class ExplanationOut(BaseModel):

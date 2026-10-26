@@ -524,7 +524,7 @@ export function OfferActions({ app }: { app: Application }) {
 
 /** Что сказать, когда отказ из-за стоп-фактора: ограничение касается самой компании, а не суммы или продукта. */
 const HARD_STOP_TIPS = [
-  'Если в ЕГРЮЛ ошибка в статусе компании, исправьте её через налоговую — после этого можно подать новую заявку',
+  'Если в ЕГРЮЛ или ЕГРИП ошибка в статусе компании, исправьте её через налоговую — после этого можно подать новую заявку',
   'Другой продукт или меньшая сумма решение не изменят: ограничение касается компании, а не условий кредита',
 ];
 
@@ -573,9 +573,9 @@ export function DecisionBlock({ app }: { app: Application }) {
   }
 
   if (code === 'rejected' && app.decision) {
-    // Советов нет — сработал стоп-фактор (например, ликвидация): другой продукт или сумма не помогут,
-    // поэтому «Подобрать другой вариант» не предлагаем.
-    const hardStop = app.decision.tips.length === 0;
+    // Стоп-фактор (например, ликвидация): другой продукт или сумма не помогут, поэтому «Подобрать другой вариант» не
+    // предлагаем. Отказ специалиста без подсказки — не стоп-фактор: просто без раздела «Что можно сделать».
+    const hardStop = app.decision.stop_factor;
     const tips = hardStop ? HARD_STOP_TIPS : app.decision.tips;
     return (
       <section className="potok-decision" aria-live="polite">
@@ -595,14 +595,16 @@ export function DecisionBlock({ app }: { app: Application }) {
               ))}
             </ul>
           </section>
-          <section>
-            <Title order={3}>Что можно сделать</Title>
-            <ul aria-label="Что можно сделать">
-              {tips.map((t) => (
-                <li key={t}>{typo(t)}</li>
-              ))}
-            </ul>
-          </section>
+          {tips.length > 0 && (
+            <section>
+              <Title order={3}>Что можно сделать</Title>
+              <ul aria-label="Что можно сделать">
+                {tips.map((t) => (
+                  <li key={t}>{typo(t)}</li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
         {/* Без стоп-фактора — сколько банк одобрит на каждом сроке: иногда меньшая сумма или другой срок проходят. */}
         {!hardStop && <ApprovalMapPanel app={app} />}

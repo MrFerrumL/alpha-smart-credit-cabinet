@@ -195,7 +195,10 @@ def to_out(app: Application, user: User, db: Session) -> ApplicationOut:
         awaiting_signer=awaiting,
         offer=OfferOut.model_validate(offer) if offer else None,
         decision=DecisionOut(
-            outcome=decision["outcome"], reasons=decision.get("reasons", []), tips=decision.get("tips", [])
+            outcome=decision["outcome"],
+            reasons=decision.get("reasons", []),
+            tips=decision.get("tips", []),
+            stop_factor=decision["outcome"] == Status.REJECTED.value and bool(decision.get("stop_factors")),
         )
         if decision
         else None,

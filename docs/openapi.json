@@ -3479,6 +3479,12 @@
             },
             "type": "array",
             "title": "Tips"
+          },
+          "stop_factor": {
+            "type": "boolean",
+            "title": "Stop Factor",
+            "description": "Отказ по стоп-фактору: другая сумма, срок или продукт решение не изменят",
+            "default": false
           }
         },
         "type": "object",
