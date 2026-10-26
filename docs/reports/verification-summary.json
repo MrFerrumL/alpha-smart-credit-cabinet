@@ -31,7 +31,12 @@
     "state_diagram": "passed",
     "pip_check": "passed"
   },
-  "ci": "Check GitHub Actions for the exact commit; local results are independent of CI.",
+  "ci": {
+    "verified_on": "2026-10-27",
+    "tested_code_commit": "52400680f40b184af22a28788cf375cd3d3fad52",
+    "conclusion": "success",
+    "details": "ci-summary.json"
+  },
   "ml_module_coverage": {
     "app\\ml\\__init__.py": {
       "covered_lines": 0,

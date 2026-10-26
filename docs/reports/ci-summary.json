@@ -1,0 +1,64 @@
+{
+  "verified_on": "2026-10-27",
+  "commit": "52400680f40b184af22a28788cf375cd3d3fad52",
+  "runs": [
+    {
+      "id": 40355625394,
+      "name": "CI",
+      "head_sha": "52400680f40b184af22a28788cf375cd3d3fad52",
+      "conclusion": "success",
+      "html_url": "https://github.com/MrFerrumL/alpha-smart-credit-cabinet/actions/runs/40355625394",
+      "updated_at": "2026-10-26T16:19:08Z"
+    },
+    {
+      "id": 40355625529,
+      "name": "ML reproducibility",
+      "head_sha": "52400680f40b184af22a28788cf375cd3d3fad52",
+      "conclusion": "success",
+      "html_url": "https://github.com/MrFerrumL/alpha-smart-credit-cabinet/actions/runs/40355625529",
+      "updated_at": "2026-10-26T16:05:40Z"
+    }
+  ],
+  "suites": {
+    "browser-test-results/results.xml": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 31,
+      "time_seconds": 344.461
+    },
+    "backend-test-reports/backend.xml": {
+      "tests": 816,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 816,
+      "time_seconds": 66.098
+    },
+    "ml-test-reports/inference.xml": {
+      "tests": 45,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 45,
+      "time_seconds": 1.711
+    },
+    "ml-test-reports/training.xml": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 3,
+      "time_seconds": 1.038
+    }
+  },
+  "coverage": {
+    "line-rate": "0.9365",
+    "branch-rate": "0.8646",
+    "lines-covered": "4308",
+    "lines-valid": "4600",
+    "branches-covered": "856",
+    "branches-valid": "990"
+  }
+}
