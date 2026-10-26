@@ -18,6 +18,7 @@ import type {
 import { monthlyPayment } from '../lib/finance';
 import { NBSP, dateTime, dayMonth, decimal, duration, lowerFirst, money, months, percent, plural, rate, typo } from '../lib/format';
 import { nb } from '../lib/nobreak';
+import { COLLATERAL_TITLES } from './ApplicationBlocks';
 import { OUTCOME, REASONS_TITLE } from './Decision';
 import { History } from './History';
 import { MoneyInput } from './Money';
@@ -306,7 +307,7 @@ function Facts({ app, a, empty }: { app: Application; a: Assessment | undefined;
     ['Срок', months(app.term_months)],
     ['Цель', app.purpose_title],
   ];
-  if (collateral?.kind) items.push(['Залог', `${collateral.description ?? 'указан'}${collateral.value ? `, ${money(collateral.value)}` : ''}`]);
+  if (collateral?.kind) items.push(['Залог', `${collateral.description ?? COLLATERAL_TITLES[collateral.kind] ?? 'указан'}${collateral.value ? `, ${money(collateral.value)}` : ''}`]);
   // Источник — после запятой, «в месяц» — один раз в подзаголовке: подписи в узкой сетке не растягиваются на 3 строки.
   if (a?.revenue) {
     const confirmed = a.revenue.confirmed_monthly;
