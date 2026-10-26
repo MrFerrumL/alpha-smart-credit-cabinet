@@ -1,6 +1,7 @@
 """Сценарии работы с заявкой: черновик, редактирование, отправка, отзыв, доступ."""
 
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -72,6 +73,10 @@ SOURCE_PAUSED_TITLES = {
 
 # Пока у заявки есть предложение банка (до выдачи): отзыв заявки здесь равен отказу от кредита.
 OFFER_STAGE = OFFER_STATUSES | {Status.SIGNING}
+
+# Мастер сохраняет анкету на каждом шаге и автоматически, а журнал только дописывается. Серия сохранений
+# одного пользователя — одно событие «Анкета обновлена»: следующее пишется не раньше чем через это окно.
+DRAFT_SAVE_WINDOW = timedelta(minutes=10)
 
 
 def status_out(status: Status, info: StatusInfo | None = None) -> StatusInfoOut:
@@ -311,6 +316,21 @@ def create_draft(db: Session, user: User, data: ApplicationCreate) -> Applicatio
     return app
 
 
+def _continues_editing(db: Session, app: Application, user: User, now: datetime) -> bool:
+    """Последнее событие заявки — «Анкета обновлена» от этого же пользователя, и окно серии ещё не закрылось."""
+    last = db.scalar(
+        select(ApplicationEvent)
+        .where(ApplicationEvent.application_id == app.id)
+        .order_by(ApplicationEvent.id.desc())
+        .limit(1)
+    )
+    if last is None or last.event != "updated" or last.actor_id != user.id:
+        return False
+    at = last.created_at
+    at = at if at.tzinfo else at.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
+    return now - at < DRAFT_SAVE_WINDOW
+
+
 def update_draft(db: Session, user: User, app: Application, data: ApplicationUpdate) -> Application:
     if "edit" not in allowed_actions(app, user, latest_offer(db, app)):
         raise Conflict("Редактировать можно только черновик")
@@ -324,13 +344,8 @@ def update_draft(db: Session, user: User, app: Application, data: ApplicationUpd
         app.purpose = Purpose(changes["purpose"]).value
     if data.form is not None:
         app.form = data.form.model_dump()
-    # Анкета сохраняется на каждом шаге; подряд идущие сохранения — одно событие в истории.
-    last = app.events[-1] if app.events else None
-    if last is not None and last.event == "updated" and last.actor_id == user.id:
-        fields = set(last.payload.get("fields", [])) | set(changes)
-        last.payload = {"fields": sorted(fields)}
-        last.created_at = utcnow()
-    else:
+    # Внутри серии событие не пишется: последнее состояние хранит сама анкета, прежние события не переписываются.
+    if not _continues_editing(db, app, user, utcnow()):
         record_event(db, app, "updated", Actor.CLIENT, actor_id=user.id, payload={"fields": sorted(changes)})
     db.commit()
     return app
