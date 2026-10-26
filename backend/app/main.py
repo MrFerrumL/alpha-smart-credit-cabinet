@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import inspect
 
 from app import __version__
-from app.api import applications, auth, companies, feed, health, loans, meta, notifications, policy, products, system
+from app.api import applications, auth, companies, feed, health, loans, meta, ml, notifications, policy, products, system
 from app.config import Settings, get_settings
 from app.db import SessionLocal, engine
 from app.errors import register_error_handlers
@@ -27,6 +27,7 @@ TAGS = [
     {"name": "Уведомления", "description": "Уведомления внутри кабинета — вместо SMS и почты"},
     {"name": "Состояние системы", "description": "Повторы и сбои шагов конвейера — для сотрудников банка"},
     {"name": "Служебное", "description": "Проверки живости и готовности"},
+    {"name": "ML risk", "description": "Экспериментальная модель на синтетических данных, только для аналитика"},
 ]
 
 
@@ -73,7 +74,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
     app.include_router(health.router)
-    for module in (auth, meta, products, companies, applications, loans, notifications, feed, policy, system):
+    for module in (auth, meta, products, companies, applications, loans, notifications, feed, policy, system, ml):
         app.include_router(module.router, prefix="/api")
     return app
 

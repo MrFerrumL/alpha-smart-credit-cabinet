@@ -77,6 +77,8 @@ LOGIN_HINTS: dict[tuple[str, str], str] = {
     ("get", "/api/applications/{application_id}/assessment"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/applications/{application_id}/assessment/replay"): "Нужен токен аналитика (`analyst@demo.local`).",
     ("post", "/api/policy/simulate"): "Нужен токен аналитика (`analyst@demo.local`).",
+    ("get", "/api/ml/model"): "Нужен токен аналитика (`analyst@demo.local`). Эксперимент на синтетических данных.",
+    ("post", "/api/ml/predict"): "Нужен токен аналитика (`analyst@demo.local`). Прогноз не влияет на кредитное решение.",
     ("get", "/api/system/jobs"): "Нужен токен аналитика (`analyst@demo.local`).",
 }
 

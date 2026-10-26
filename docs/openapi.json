@@ -1992,6 +1992,78 @@
           }
         }
       }
+    },
+    "/api/ml/model": {
+      "get": {
+        "tags": [
+          "ML risk"
+        ],
+        "summary": "Version and provenance of the experimental model",
+        "operationId": "model_info_api_ml_model_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/ml/predict": {
+      "post": {
+        "tags": [
+          "ML risk"
+        ],
+        "summary": "Experimental risk estimate on synthetic data",
+        "operationId": "predict_risk_api_ml_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskFeatures"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskPrediction"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3460,6 +3532,24 @@
         ],
         "title": "ContractSection"
       },
+      "Contribution": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "log_odds": {
+            "type": "number",
+            "title": "Log Odds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "log_odds"
+        ],
+        "title": "Contribution"
+      },
       "DecisionOut": {
         "properties": {
           "outcome": {
@@ -4412,6 +4502,50 @@
         ],
         "title": "MetaOut"
       },
+      "ModelInfo": {
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "feature_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Feature Names"
+          },
+          "training_data": {
+            "type": "string",
+            "const": "synthetic",
+            "title": "Training Data",
+            "default": "synthetic"
+          },
+          "experimental": {
+            "type": "boolean",
+            "const": true,
+            "title": "Experimental",
+            "default": true
+          },
+          "affects_credit_decision": {
+            "type": "boolean",
+            "const": false,
+            "title": "Affects Credit Decision",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_version",
+          "artifact_sha256",
+          "feature_names"
+        ],
+        "title": "ModelInfo"
+      },
       "NotificationOut": {
         "properties": {
           "id": {
@@ -4940,6 +5074,149 @@
           "gap_pct"
         ],
         "title": "RevenueOut"
+      },
+      "RiskFeatures": {
+        "properties": {
+          "business_age_years": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Business Age Years",
+            "examples": [
+              5.0
+            ]
+          },
+          "dsr": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Dsr",
+            "description": "Debt payments / monthly revenue",
+            "examples": [
+              0.25
+            ]
+          },
+          "margin": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Margin",
+            "examples": [
+              0.18
+            ]
+          },
+          "max_overdue_days_24m": {
+            "type": "integer",
+            "maximum": 730.0,
+            "minimum": 0.0,
+            "title": "Max Overdue Days 24M",
+            "examples": [
+              0
+            ]
+          },
+          "inquiries_90d": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Inquiries 90D",
+            "examples": [
+              2
+            ]
+          },
+          "tax_debt_ratio": {
+            "type": "number",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Tax Debt Ratio",
+            "description": "Tax debt / annual revenue",
+            "examples": [
+              0.0
+            ]
+          },
+          "has_credit_history": {
+            "type": "boolean",
+            "title": "Has Credit History",
+            "examples": [
+              true
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "business_age_years",
+          "dsr",
+          "margin",
+          "max_overdue_days_24m",
+          "inquiries_90d",
+          "tax_debt_ratio",
+          "has_credit_history"
+        ],
+        "title": "RiskFeatures",
+        "description": "Versioned numeric contract shared by training and serving. No identifiers or outcomes."
+      },
+      "RiskPrediction": {
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "experimental": {
+            "type": "boolean",
+            "const": true,
+            "title": "Experimental",
+            "default": true
+          },
+          "affects_credit_decision": {
+            "type": "boolean",
+            "const": false,
+            "title": "Affects Credit Decision",
+            "default": false
+          },
+          "probability_default": {
+            "type": "number",
+            "title": "Probability Default"
+          },
+          "threshold": {
+            "type": "number",
+            "title": "Threshold"
+          },
+          "above_threshold": {
+            "type": "boolean",
+            "title": "Above Threshold"
+          },
+          "intercept_log_odds": {
+            "type": "number",
+            "title": "Intercept Log Odds"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/Contribution"
+            },
+            "type": "array",
+            "title": "Contributions"
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice",
+            "default": "Synthetic-data demonstration; not a validated estimate of real credit risk."
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_version",
+          "artifact_sha256",
+          "probability_default",
+          "threshold",
+          "above_threshold",
+          "intercept_log_odds",
+          "contributions"
+        ],
+        "title": "RiskPrediction"
       },
       "ScheduleRowOut": {
         "properties": {
@@ -5623,6 +5900,10 @@
     {
       "name": "Служебное",
       "description": "Проверки живости и готовности"
+    },
+    {
+      "name": "ML risk",
+      "description": "Экспериментальная модель на синтетических данных, только для аналитика"
     }
   ]
 }

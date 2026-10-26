@@ -1435,6 +1435,61 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "ML risk",
+      "description": "Экспериментальная модель на синтетических данных, только для аналитика",
+      "item": [
+        {
+          "name": "Version and provenance of the experimental model",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ml/model",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ml",
+                "model"
+              ]
+            },
+            "description": "Version and provenance of the experimental model\n\nНужен токен аналитика (`analyst@demo.local`). Эксперимент на синтетических данных."
+          },
+          "response": []
+        },
+        {
+          "name": "Experimental risk estimate on synthetic data",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"business_age_years\": 0.0,\n  \"dsr\": 0.0,\n  \"margin\": -1.0,\n  \"max_overdue_days_24m\": 0,\n  \"inquiries_90d\": 0,\n  \"tax_debt_ratio\": 0.0,\n  \"has_credit_history\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ml/predict",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ml",
+                "predict"
+              ]
+            },
+            "description": "Experimental risk estimate on synthetic data\n\nНужен токен аналитика (`analyst@demo.local`). Прогноз не влияет на кредитное решение."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }
