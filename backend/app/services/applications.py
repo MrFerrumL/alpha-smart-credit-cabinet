@@ -320,8 +320,9 @@ def create_draft(db: Session, user: User, data: ApplicationCreate) -> Applicatio
     return app
 
 
-def _continues_editing(db: Session, app: Application, user: User, now: datetime) -> bool:
-    """Последнее событие заявки — «Анкета обновлена» от этого же пользователя, и окно серии ещё не закрылось."""
+def _continues_editing(db: Session, app: Application, user: User, now: datetime, fields: set[str]) -> bool:
+    """Последнее событие заявки — «Анкета обновлена» от этого же пользователя про те же поля, и окно серии ещё не
+    закрылось. Правка новых полей открывает новое событие, чтобы журнал помнил, что именно меняли."""
     last = db.scalar(
         select(ApplicationEvent)
         .where(ApplicationEvent.application_id == app.id)
@@ -329,6 +330,8 @@ def _continues_editing(db: Session, app: Application, user: User, now: datetime)
         .limit(1)
     )
     if last is None or last.event != "updated" or last.actor_id != user.id:
+        return False
+    if not fields <= set((last.payload or {}).get("fields", [])):
         return False
     at = last.created_at
     at = at if at.tzinfo else at.replace(tzinfo=timezone.utc)  # SQLite отдаёт время без пояса
@@ -349,7 +352,7 @@ def update_draft(db: Session, user: User, app: Application, data: ApplicationUpd
     if data.form is not None:
         app.form = data.form.model_dump()
     # Внутри серии событие не пишется: последнее состояние хранит сама анкета, прежние события не переписываются.
-    if not _continues_editing(db, app, user, utcnow()):
+    if not _continues_editing(db, app, user, utcnow(), set(changes)):
         record_event(db, app, "updated", Actor.CLIENT, actor_id=user.id, payload={"fields": sorted(changes)})
     db.commit()
     return app

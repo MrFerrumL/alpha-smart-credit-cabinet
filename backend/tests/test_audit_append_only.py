@@ -136,6 +136,19 @@ def test_ten_saves_within_the_window_make_one_event(client):
     assert client.get(f"/api/applications/{app_id}", headers=headers).json()["amount"] == 2_090_000
 
 
+def test_new_fields_in_the_window_open_a_new_event(client):
+    """Правка других полей внутри окна пишет новое событие: журнал помнит, что меняли, прежнее не переписывается."""
+    headers = auth(client, "bakery@demo.local")
+    app_id = draft(client, headers)
+    save(client, app_id, headers, amount=2_000_000)
+    save(client, app_id, headers, amount=2_100_000)
+    save(client, app_id, headers, term_months=18)
+    save(client, app_id, headers, term_months=24)
+    rows = stored(app_id)
+    assert names(history(client, app_id, headers)) == ["created", "updated", "updated"]
+    assert [r[4] for r in rows[-2:]] == [{"fields": ["amount"]}, {"fields": ["term_months"]}]
+
+
 def test_another_user_in_the_window_writes_own_event(client):
     owner, accountant = auth(client, "bakery@demo.local"), auth(client, "buh@demo.local")
     app_id = draft(client, owner)
